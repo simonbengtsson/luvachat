@@ -30,6 +30,9 @@
 		"react-dom": "^19.2.4",
 		"tailwindcss": "^4.2.1"
 	},
+	"overrides": {
+		"entities": "^7.0.0"
+	},
 	"devDependencies": {
 		"@tanstack/devtools-vite": "^0.5.3",
 		"@types/node": "^25.3.3",
