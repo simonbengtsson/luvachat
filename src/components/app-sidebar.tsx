@@ -9,8 +9,16 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSkeleton,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { addChannel, getChannels } from "@/core/database"
+import type { Channel } from "@/core/schema"
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 import {
   BellIcon,
@@ -28,6 +36,7 @@ import {
 } from "lucide-react"
 import * as React from "react"
 import { AppCommand } from "./app-command"
+import { PopupInput } from "./PopupInput"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,9 +47,85 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu"
 
+const CHANNEL_NAME_PLACEHOLDER = "Channel name"
+
+function sanitizeChannelName(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "")
+}
+
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { isMobile } = useSidebar()
   const [isSearchDialogOpen, setIsSearchDialogOpen] = React.useState(false)
+  const [isAddChannelOpen, setIsAddChannelOpen] = React.useState(false)
+  const queryClient = useQueryClient()
+
+  const channelsQuery = useQuery({
+    queryKey: ["channels"],
+    queryFn: () => getChannels(),
+  })
+
+  const addChannelMutation = useMutation({
+    mutationFn: (name: string) =>
+      addChannel({ data: { name } }),
+    onMutate: async (name) => {
+      await queryClient.cancelQueries({ queryKey: ["channels"] })
+      const prev = queryClient.getQueryData<Channel[]>(["channels"])
+      const optimistic: Channel = {
+        id: `optimistic-${Date.now()}`,
+        name,
+        createdAt: new Date().toISOString(),
+      }
+      queryClient.setQueryData<Channel[]>(["channels"], (old) => [
+        ...(old ?? []),
+        optimistic,
+      ])
+      return { prev }
+    },
+    onError: (_err, _name, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(["channels"], ctx.prev)
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["channels"] })
+    },
+  })
+
+  React.useEffect(() => {
+    if (!isAddChannelOpen) return
+    let frameId: number | undefined
+    let cleanup: (() => void) | undefined
+
+    const bindInputHandler = () => {
+      const input = document.querySelector<HTMLInputElement>(
+        `input[placeholder="${CHANNEL_NAME_PLACEHOLDER}"]`
+      )
+      if (!input) {
+        frameId = requestAnimationFrame(bindInputHandler)
+        return
+      }
+      const handleInput = () => {
+        const raw = input.value
+        const sanitized = sanitizeChannelName(raw)
+        if (raw === sanitized) return
+        const cursor = input.selectionStart ?? raw.length
+        const removedCount = raw.length - sanitized.length
+        input.value = sanitized
+        const nextCursor = Math.max(0, cursor - Math.max(removedCount, 0))
+        input.setSelectionRange(nextCursor, nextCursor)
+      }
+
+      handleInput()
+      input.addEventListener("input", handleInput)
+      cleanup = () => {
+        input.removeEventListener("input", handleInput)
+      }
+    }
+
+    bindInputHandler()
+    return () => {
+      if (frameId !== undefined) cancelAnimationFrame(frameId)
+      cleanup?.()
+    }
+  }, [isAddChannelOpen])
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -60,28 +145,63 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         <SidebarGroup className="group-data-[collapsible=icon]:hidden">
           <SidebarMenu>
+            {channelsQuery.isLoading ? (
+              <>
+                <SidebarMenuItem>
+                  <SidebarMenuSkeleton showIcon />
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuSkeleton showIcon />
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuSkeleton showIcon />
+                </SidebarMenuItem>
+              </>
+            ) : channelsQuery.data?.length === 0 ? (
+              <SidebarMenuItem>
+                <div className="px-2 py-2 text-sm text-muted-foreground">
+                  No channels yet
+                </div>
+              </SidebarMenuItem>
+            ) : (
+              channelsQuery.data?.map((channel) => {
+                const isPending = channel.id.startsWith("optimistic-")
+                return (
+                  <SidebarMenuItem key={channel.id}>
+                    <SidebarMenuButton
+                      className={isPending ? "opacity-50" : undefined}
+                      render={
+                        isPending ? (
+                          <span />
+                        ) : (
+                          <Link to={`/c/${channel.name}`} />
+                        )
+                      }
+                    >
+                      <HashIcon />
+                      <span>{channel.name}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )
+              })
+            )}
             <SidebarMenuItem>
-              <SidebarMenuButton
-                render={<Link to="/c/general" />}
-                className="font-extrabold"
-              >
-                <HashIcon strokeWidth={3} />
-                <span>general</span>
-                <span
-                  aria-hidden="true"
-                  className="ml-auto size-2 rounded-full bg-red-300"
-                />
-              </SidebarMenuButton>
-              <SidebarMenuButton render={<Link to="/c/random" />}>
-                <HashIcon />
-                <span>random</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton className="text-sidebar-foreground/70">
-                <PlusIcon className="text-sidebar-foreground/70" />
-                <span>Add Channel</span>
-              </SidebarMenuButton>
+              <PopupInput
+                placeholder={CHANNEL_NAME_PLACEHOLDER}
+                open={isAddChannelOpen}
+                onOpenChange={setIsAddChannelOpen}
+                onSubmit={(name) => {
+                  const sanitized = sanitizeChannelName(name)
+                  if (!sanitized) return
+                  addChannelMutation.mutate(sanitized)
+                }}
+                trigger={
+                  <SidebarMenuButton className="text-sidebar-foreground/70">
+                    <PlusIcon className="text-sidebar-foreground/70" />
+                    <span>Add Channel</span>
+                  </SidebarMenuButton>
+                }
+              />
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
