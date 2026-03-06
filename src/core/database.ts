@@ -2,6 +2,7 @@ import { createClient } from "@libsql/client"
 import { createServerFn } from "@tanstack/react-start"
 import { eq } from "drizzle-orm"
 import { drizzle } from "drizzle-orm/libsql"
+import { generateShortId } from "./generateId"
 import { channelsTable } from "./schema"
 
 const CHANNEL_NAME_REGEX = /^[a-z0-9]+$/
@@ -34,7 +35,7 @@ export const addChannel = createServerFn({ method: "POST" })
     const name = data.name.trim()
     validateChannelName(name)
     const channel = {
-      id: crypto.randomUUID(),
+      id: generateShortId(),
       name,
       createdAt: new Date().toISOString(),
     }
