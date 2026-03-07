@@ -1,5 +1,5 @@
-import { getChannelByName } from "@/core/database"
 import { SiteHeader } from "@/components/site-header"
+import { getChannelByName } from "@/core/functions"
 import { useQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 

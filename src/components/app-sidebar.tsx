@@ -12,13 +12,9 @@ import {
   SidebarMenuSkeleton,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { addChannel, getChannels } from "@/core/database"
+import { addChannel, getChannels } from "@/core/functions"
 import type { Channel } from "@/core/schema"
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 import {
   BellIcon,
@@ -65,8 +61,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   })
 
   const addChannelMutation = useMutation({
-    mutationFn: (name: string) =>
-      addChannel({ data: { name } }),
+    mutationFn: (name: string) => addChannel({ data: { name } }),
     onMutate: async (name) => {
       await queryClient.cancelQueries({ queryKey: ["channels"] })
       const prev = queryClient.getQueryData<Channel[]>(["channels"])
@@ -96,7 +91,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
     const bindInputHandler = () => {
       const input = document.querySelector<HTMLInputElement>(
-        `input[placeholder="${CHANNEL_NAME_PLACEHOLDER}"]`
+        `input[placeholder="${CHANNEL_NAME_PLACEHOLDER}"]`,
       )
       if (!input) {
         frameId = requestAnimationFrame(bindInputHandler)
@@ -174,7 +169,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         isPending ? (
                           <span />
                         ) : (
-                          <Link to={`/c/${channel.name}`} />
+                          <Link
+                            to="/c/$channelName"
+                            params={{ channelName: channel.name }}
+                          />
                         )
                       }
                     >

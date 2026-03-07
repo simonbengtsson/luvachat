@@ -6,12 +6,11 @@
     "moduleResolution": "bundler",
     "verbatimModuleSyntax": true,
     "allowImportingTsExtensions": true,
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     },
     "types": ["node", "vite/client"],
     "noEmit": true,
-    "skipLibCheck": true,
+    "skipLibCheck": true
   }
 }
