@@ -2,7 +2,7 @@ import { DurableObject } from "cloudflare:workers"
 import { drizzle } from "drizzle-orm/durable-sqlite/driver"
 import { migrate } from "drizzle-orm/durable-sqlite/migrator"
 
-import blushingPathSql from "../../drizzle/20260307162158_outstanding_jasper_sitwell/migration.sql?raw"
+import blushingPathSql from "../../drizzle/20260307213200_tiny_shadowcat/migration.sql?raw"
 
 export class SyncObject extends DurableObject {
   private db: ReturnType<typeof drizzle>

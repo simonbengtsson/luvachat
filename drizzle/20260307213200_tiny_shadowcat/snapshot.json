@@ -1,13 +1,13 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "a6fd6045-68ed-44bc-b55c-6abeb5773d20",
+  "id": "42e5d77e-6139-456b-a025-9f47fd53ccc1",
   "prevIds": [
     "00000000-0000-0000-0000-000000000000"
   ],
   "ddl": [
     {
-      "name": "channels",
+      "name": "conversations",
       "entityType": "tables"
     },
     {
@@ -22,17 +22,27 @@
       "generated": null,
       "name": "id",
       "entityType": "columns",
-      "table": "channels"
+      "table": "conversations"
     },
     {
       "type": "text",
       "notNull": true,
       "autoincrement": false,
+      "default": "'channel'",
+      "generated": null,
+      "name": "type",
+      "entityType": "columns",
+      "table": "conversations"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
       "default": null,
       "generated": null,
       "name": "name",
       "entityType": "columns",
-      "table": "channels"
+      "table": "conversations"
     },
     {
       "type": "text",
@@ -42,7 +52,7 @@
       "generated": null,
       "name": "created_at",
       "entityType": "columns",
-      "table": "channels"
+      "table": "conversations"
     },
     {
       "type": "text",
@@ -88,14 +98,14 @@
       "columns": [
         "channel_id"
       ],
-      "tableTo": "channels",
+      "tableTo": "conversations",
       "columnsTo": [
         "id"
       ],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "nameExplicit": false,
-      "name": "fk_messages_channel_id_channels_id_fk",
+      "name": "fk_messages_channel_id_conversations_id_fk",
       "entityType": "fks",
       "table": "messages"
     },
@@ -104,8 +114,8 @@
         "id"
       ],
       "nameExplicit": false,
-      "name": "channels_pk",
-      "table": "channels",
+      "name": "conversations_pk",
+      "table": "conversations",
       "entityType": "pks"
     },
     {
@@ -116,15 +126,6 @@
       "name": "messages_pk",
       "table": "messages",
       "entityType": "pks"
-    },
-    {
-      "columns": [
-        "name"
-      ],
-      "nameExplicit": false,
-      "name": "channels_name_unique",
-      "entityType": "uniques",
-      "table": "channels"
     }
   ],
   "renames": []

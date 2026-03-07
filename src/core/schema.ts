@@ -1,9 +1,10 @@
 import type { InferSelectModel } from "drizzle-orm"
 import { sqliteTable, text } from "drizzle-orm/sqlite-core"
 
-export const channelsTable = sqliteTable("channels", {
+export const channelsTable = sqliteTable("conversations", {
   id: text("id").primaryKey(),
-  name: text("name").notNull().unique(),
+  type: text("type").notNull().default("channel"), // channel, group, thread
+  name: text("name"),
   createdAt: text("created_at").notNull(),
 })
 
