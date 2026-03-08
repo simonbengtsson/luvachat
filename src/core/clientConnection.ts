@@ -1,4 +1,5 @@
 import { handleMessage } from "./clientStore"
+import { generateShortId } from "./generateId"
 import { ServerEventSchema, type ClientEvent } from "./sync-events"
 
 let socket: WebSocket | null = null
@@ -15,7 +16,8 @@ export function initializeSyncConnection(): () => void {
     }
   }
 
-  const ws = new WebSocket(getSyncUrl())
+  const clientId = generateShortId().slice(0, 6)
+  const ws = new WebSocket(getSyncUrl(clientId))
   socket = ws
 
   ws.addEventListener("open", () => {
@@ -23,8 +25,8 @@ export function initializeSyncConnection(): () => void {
       return
     }
 
-    console.log("[sync] websocket connected")
-    startPingInterval(ws)
+    console.log("[sync] websocket connected", { clientId })
+    startPingInterval(ws, clientId)
   })
 
   ws.addEventListener("message", (messageEvent) => {
@@ -33,7 +35,9 @@ export function initializeSyncConnection(): () => void {
     }
 
     if (typeof messageEvent.data !== "string") {
-      console.warn("[sync] unsupported non-text websocket payload")
+      console.warn("[sync] unsupported non-text websocket payload", {
+        clientId,
+      })
       return
     }
 
@@ -41,25 +45,32 @@ export function initializeSyncConnection(): () => void {
     try {
       payload = JSON.parse(messageEvent.data)
     } catch {
-      console.warn(
-        "[sync] received invalid sync event payload",
-        messageEvent.data,
-      )
+      console.warn("[sync] received invalid sync event payload", {
+        clientId,
+        payload: messageEvent.data,
+      })
       return
     }
 
     const parsedEvent = ServerEventSchema.safeParse(payload)
     if (!parsedEvent.success) {
-      console.warn("[sync] received invalid sync event payload", payload)
+      console.warn("[sync] received invalid sync event payload", {
+        clientId,
+        payload,
+      })
       return
     }
 
-    console.log("[sync] client received event", parsedEvent.data)
+    console.log("[sync] client received event", {
+      clientId,
+      event: parsedEvent.data,
+    })
     handleMessage(parsedEvent.data)
   })
 
   ws.addEventListener("close", (event) => {
     console.log("[sync] websocket closed", {
+      clientId,
       code: event.code,
       reason: event.reason,
     })
@@ -70,7 +81,7 @@ export function initializeSyncConnection(): () => void {
   })
 
   ws.addEventListener("error", () => {
-    console.error("[sync] websocket error")
+    console.error("[sync] websocket error", { clientId })
   })
 
   return () => {
@@ -78,12 +89,14 @@ export function initializeSyncConnection(): () => void {
   }
 }
 
-function getSyncUrl(): string {
+function getSyncUrl(clientId: string): string {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
-  return `${protocol}//${window.location.host}/sync`
+  const url = new URL(`${protocol}//${window.location.host}/sync`)
+  url.searchParams.set("userId", clientId)
+  return url.toString()
 }
 
-function startPingInterval(ws: WebSocket): void {
+function startPingInterval(ws: WebSocket, clientId: string): void {
   clearPingInterval()
 
   pingIntervalId = window.setInterval(() => {
@@ -91,14 +104,16 @@ function startPingInterval(ws: WebSocket): void {
       return
     }
 
-    const pingEvent: ClientEvent = {
+    sendEvent(ws, clientId, {
       type: "ping",
       timestamp: new Date().toISOString(),
-    }
-
-    console.log("[sync] client sending event", pingEvent)
-    ws.send(JSON.stringify(pingEvent))
+    })
   }, 5_000)
+}
+
+function sendEvent(ws: WebSocket, clientId: string, event: ClientEvent): void {
+  console.log("[sync] client sending event", { clientId, event })
+  ws.send(JSON.stringify(event))
 }
 
 function clearPingInterval(): void {

@@ -13,5 +13,6 @@ export const ServerEventSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("pong"),
     timestamp: z.string(),
+    fromClientId: z.string().min(1),
   }),
 ])

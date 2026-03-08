@@ -8,7 +8,16 @@ export default {
 
     if (url.pathname === "/sync") {
       const syncObject = env.SyncObject.getByName("workspace")
-      return syncObject.fetch(request)
+      const headers = new Headers(request.headers)
+
+      if (!headers.get("x-luvabase-user-id")) {
+        const userId = url.searchParams.get("userId")?.trim()
+        if (userId) {
+          headers.set("x-luvabase-user-id", userId)
+        }
+      }
+
+      return syncObject.fetch(new Request(request, { headers }))
     }
 
     return handler.fetch(request)
