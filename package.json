@@ -12,6 +12,7 @@
     "preview": "bun run build && vite preview",
     "test": "vitest run",
     "deploy": "bun run build && wrangler deploy",
+    "check": "bunx tsc --noEmit",
     "cf-typegen": "wrangler types"
   },
   "dependencies": {

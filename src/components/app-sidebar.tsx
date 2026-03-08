@@ -45,55 +45,16 @@ function sanitizeChannelName(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]/g, "")
 }
 
+const conversations = [
+  {
+    id: "abc",
+    name: "Channel 1",
+  },
+]
+
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { isMobile } = useSidebar()
   const [isSearchDialogOpen, setIsSearchDialogOpen] = React.useState(false)
-  const [isAddChannelOpen, setIsAddChannelOpen] = React.useState(false)
-
-  const conversations = [
-    {
-      id: "1",
-      name: "Channel 1",
-    },
-  ]
-
-  React.useEffect(() => {
-    if (!isAddChannelOpen) return
-    let frameId: number | undefined
-    let cleanup: (() => void) | undefined
-
-    const bindInputHandler = () => {
-      const input = document.querySelector<HTMLInputElement>(
-        `input[placeholder="${CHANNEL_NAME_PLACEHOLDER}"]`,
-      )
-      if (!input) {
-        frameId = requestAnimationFrame(bindInputHandler)
-        return
-      }
-      const handleInput = () => {
-        const raw = input.value
-        const sanitized = sanitizeChannelName(raw)
-        if (raw === sanitized) return
-        const cursor = input.selectionStart ?? raw.length
-        const removedCount = raw.length - sanitized.length
-        input.value = sanitized
-        const nextCursor = Math.max(0, cursor - Math.max(removedCount, 0))
-        input.setSelectionRange(nextCursor, nextCursor)
-      }
-
-      handleInput()
-      input.addEventListener("input", handleInput)
-      cleanup = () => {
-        input.removeEventListener("input", handleInput)
-      }
-    }
-
-    bindInputHandler()
-    return () => {
-      if (frameId !== undefined) cancelAnimationFrame(frameId)
-      cleanup?.()
-    }
-  }, [isAddChannelOpen])
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -132,7 +93,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         ) : (
                           <Link
                             to="/c/$conversationId"
-                            params={{ conversationId: conversation.id }}
+                            params={{ conversationId: conversation.id } as any}
                           />
                         )
                       }
@@ -147,8 +108,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarMenuItem>
               <PopupInput
                 placeholder={CHANNEL_NAME_PLACEHOLDER}
-                open={isAddChannelOpen}
-                onOpenChange={setIsAddChannelOpen}
                 onSubmit={(name) => {
                   const sanitized = sanitizeChannelName(name)
                   if (!sanitized) return
