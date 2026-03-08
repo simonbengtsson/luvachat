@@ -8,8 +8,8 @@ export const conversationsTable = sqliteTable("conversations", {
   name: text("name"),
   createdAt: text("created_at").notNull(),
 })
-export type Conversation = z.infer<typeof Conversation>
-export const Conversation = createSelectSchema(conversationsTable)
+export const ConversationSchema = createSelectSchema(conversationsTable)
+export type Conversation = z.infer<typeof ConversationSchema>
 
 export const messagesTable = sqliteTable("messages", {
   id: text("id").primaryKey(),
@@ -20,5 +20,5 @@ export const messagesTable = sqliteTable("messages", {
   createdAt: text("created_at").notNull(),
   authorId: text("author_id").notNull(),
 })
-export type Message = z.infer<typeof Message>
-export const Message = createSelectSchema(messagesTable)
+export const MessageSchema = createSelectSchema(messagesTable)
+export type Message = z.infer<typeof MessageSchema>

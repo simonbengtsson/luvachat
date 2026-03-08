@@ -40,6 +40,7 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu"
 import { conversationsAtom } from "@/core/clientStore"
+import { createConversation } from "@/core/clientConnection"
 
 const CHANNEL_NAME_PLACEHOLDER = "Channel name"
 
@@ -107,7 +108,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 onSubmit={(name) => {
                   const sanitized = sanitizeChannelName(name)
                   if (!sanitized) return
-                  console.log("Should create conversation", sanitized)
+                  createConversation(sanitized)
                 }}
                 trigger={
                   <SidebarMenuButton className="text-sidebar-foreground/70">

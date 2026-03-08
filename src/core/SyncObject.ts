@@ -65,8 +65,14 @@ export class SyncObject extends DurableObject {
       return
     }
 
-    handleMessage(this.ctx, this.getClientId(ws), parsedEvent.data, (recipientWs) =>
-      this.getClientId(recipientWs),
+    this.ctx.waitUntil(
+      handleMessage(
+        this.ctx,
+        this.getClientId(ws),
+        parsedEvent.data,
+        (recipientWs) => this.getClientId(recipientWs),
+        this.db,
+      ),
     )
   }
 
