@@ -12,6 +12,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { Link } from "@tanstack/react-router"
+import { useAtomValue } from "jotai"
 import {
   BellIcon,
   CircleUserRoundIcon,
@@ -38,6 +39,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu"
+import { conversationsAtom } from "@/core/clientStore"
 
 const CHANNEL_NAME_PLACEHOLDER = "Channel name"
 
@@ -45,16 +47,10 @@ function sanitizeChannelName(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]/g, "")
 }
 
-const conversations = [
-  {
-    id: "abc",
-    name: "Channel 1",
-  },
-]
-
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { isMobile } = useSidebar()
   const [isSearchDialogOpen, setIsSearchDialogOpen] = React.useState(false)
+  const conversations = useAtomValue(conversationsAtom)
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -99,7 +95,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       }
                     >
                       <HashIcon />
-                      <span>{conversation.name}</span>
+                      <span>{conversation.name ?? conversation.id}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 )

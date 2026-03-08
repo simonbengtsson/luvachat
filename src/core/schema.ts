@@ -1,5 +1,6 @@
-import type { InferSelectModel } from "drizzle-orm"
 import { sqliteTable, text } from "drizzle-orm/sqlite-core"
+import { createSelectSchema } from "drizzle-orm/zod"
+import { z } from "zod"
 
 export const conversationsTable = sqliteTable("conversations", {
   id: text("id").primaryKey(),
@@ -7,6 +8,8 @@ export const conversationsTable = sqliteTable("conversations", {
   name: text("name"),
   createdAt: text("created_at").notNull(),
 })
+export type Conversation = z.infer<typeof Conversation>
+export const Conversation = createSelectSchema(conversationsTable)
 
 export const messagesTable = sqliteTable("messages", {
   id: text("id").primaryKey(),
@@ -17,6 +20,5 @@ export const messagesTable = sqliteTable("messages", {
   createdAt: text("created_at").notNull(),
   authorId: text("author_id").notNull(),
 })
-
-export type ConversationRow = InferSelectModel<typeof conversationsTable>
-export type MessageRow = InferSelectModel<typeof messagesTable>
+export type Message = z.infer<typeof Message>
+export const Message = createSelectSchema(messagesTable)

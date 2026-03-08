@@ -1,14 +1,15 @@
 import { migrations } from "@/server/migrations"
 import { DurableObject } from "cloudflare:workers"
+import { desc } from "drizzle-orm"
 import { drizzle } from "drizzle-orm/durable-sqlite/driver"
 import { migrate } from "drizzle-orm/durable-sqlite/migrator"
+import { conversationsTable } from "./schema"
 import { handleMessage } from "./serverStore"
-import { ClientEventSchema } from "./sync-events"
+import { ClientEventSchema, type ServerEvent } from "./sync-events"
 
 export class SyncObject extends DurableObject {
   private db: ReturnType<typeof drizzle>
   private decoder = new TextDecoder()
-  private clientIds = new Map<WebSocket, string>()
 
   constructor(state: DurableObjectState, env: Cloudflare.Env) {
     super(state, env)
@@ -31,8 +32,9 @@ export class SyncObject extends DurableObject {
     }
 
     const [client, server] = Object.values(new WebSocketPair())
-    this.ctx.acceptWebSocket(server)
-    this.clientIds.set(server, clientId)
+    this.ctx.acceptWebSocket(server, [clientId])
+
+    this.ctx.waitUntil(this.sendInitialData(server, clientId))
 
     console.log("[sync] websocket connected", {
       clientId,
@@ -69,11 +71,8 @@ export class SyncObject extends DurableObject {
   }
 
   webSocketClose(ws: WebSocket, code: number, reason: string): void {
-    const clientId = this.getClientId(ws)
-    this.clientIds.delete(ws)
-
     console.log("[sync] websocket closed", {
-      clientId,
+      clientId: this.getClientId(ws),
       code,
       reason,
       connectedClients: this.ctx.getWebSockets().length,
@@ -88,6 +87,35 @@ export class SyncObject extends DurableObject {
   }
 
   private getClientId(ws: WebSocket): string {
-    return this.clientIds.get(ws) ?? "unknown"
+    const [id] = this.ctx.getTags(ws)
+    return id ?? "unknown"
+  }
+
+  private async sendInitialData(ws: WebSocket, clientId: string): Promise<void> {
+    try {
+      const conversations = await this.db
+        .select({
+          id: conversationsTable.id,
+          type: conversationsTable.type,
+          name: conversationsTable.name,
+          createdAt: conversationsTable.createdAt,
+        })
+        .from(conversationsTable)
+        .orderBy(desc(conversationsTable.createdAt))
+
+      const initialDataEvent: ServerEvent = {
+        type: "initialData",
+        conversations,
+      }
+
+      console.log("[sync] server sending event", {
+        recipientClientId: clientId,
+        eventType: initialDataEvent.type,
+        conversations: conversations.length,
+      })
+      ws.send(JSON.stringify(initialDataEvent))
+    } catch (error) {
+      console.error("[sync] failed to send initialData", { clientId, error })
+    }
   }
 }
