@@ -1,9 +1,8 @@
 import { SiteHeader } from "@/components/site-header"
-import { getChannelByName } from "@/core/functions"
 import { useQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 
-export const Route = createFileRoute("/c/$channelName")({
+export const Route = createFileRoute("/c/$conversationId")({
   component: RouteComponent,
 })
 

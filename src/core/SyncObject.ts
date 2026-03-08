@@ -1,8 +1,7 @@
+import { migrations } from "@/server/migrations"
 import { DurableObject } from "cloudflare:workers"
 import { drizzle } from "drizzle-orm/durable-sqlite/driver"
 import { migrate } from "drizzle-orm/durable-sqlite/migrator"
-
-import blushingPathSql from "../../drizzle/20260307213200_tiny_shadowcat/migration.sql?raw"
 
 export class SyncObject extends DurableObject {
   private db: ReturnType<typeof drizzle>
@@ -16,8 +15,4 @@ export class SyncObject extends DurableObject {
       await migrate(this.db, { migrations })
     })
   }
-}
-
-const migrations = {
-  "20260307150611_blushing_patch": blushingPathSql,
 }

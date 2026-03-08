@@ -9,12 +9,8 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSkeleton,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { addChannel, getChannels } from "@/core/functions"
-import type { Channel } from "@/core/schema"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 import {
   BellIcon,
@@ -53,36 +49,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { isMobile } = useSidebar()
   const [isSearchDialogOpen, setIsSearchDialogOpen] = React.useState(false)
   const [isAddChannelOpen, setIsAddChannelOpen] = React.useState(false)
-  const queryClient = useQueryClient()
 
-  const channelsQuery = useQuery({
-    queryKey: ["channels"],
-    queryFn: () => getChannels(),
-  })
-
-  const addChannelMutation = useMutation({
-    mutationFn: (name: string) => addChannel({ data: { name } }),
-    onMutate: async (name) => {
-      await queryClient.cancelQueries({ queryKey: ["channels"] })
-      const prev = queryClient.getQueryData<Channel[]>(["channels"])
-      const optimistic: Channel = {
-        id: `optimistic-${Date.now()}`,
-        name,
-        createdAt: new Date().toISOString(),
-      }
-      queryClient.setQueryData<Channel[]>(["channels"], (old) => [
-        ...(old ?? []),
-        optimistic,
-      ])
-      return { prev }
+  const conversations = [
+    {
+      id: "1",
+      name: "Channel 1",
     },
-    onError: (_err, _name, ctx) => {
-      if (ctx?.prev) queryClient.setQueryData(["channels"], ctx.prev)
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["channels"] })
-    },
-  })
+  ]
 
   React.useEffect(() => {
     if (!isAddChannelOpen) return
@@ -140,29 +113,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         <SidebarGroup className="group-data-[collapsible=icon]:hidden">
           <SidebarMenu>
-            {channelsQuery.isLoading ? (
-              <>
-                <SidebarMenuItem>
-                  <SidebarMenuSkeleton showIcon />
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuSkeleton showIcon />
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuSkeleton showIcon />
-                </SidebarMenuItem>
-              </>
-            ) : channelsQuery.data?.length === 0 ? (
+            {conversations.length === 0 ? (
               <SidebarMenuItem>
                 <div className="px-2 py-2 text-sm text-muted-foreground">
                   No channels yet
                 </div>
               </SidebarMenuItem>
             ) : (
-              channelsQuery.data?.map((channel) => {
-                const isPending = channel.id.startsWith("optimistic-")
+              conversations.map((conversation) => {
+                const isPending = conversation.id.startsWith("optimistic-")
                 return (
-                  <SidebarMenuItem key={channel.id}>
+                  <SidebarMenuItem key={conversation.id}>
                     <SidebarMenuButton
                       className={isPending ? "opacity-50" : undefined}
                       render={
@@ -170,14 +131,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                           <span />
                         ) : (
                           <Link
-                            to="/c/$channelName"
-                            params={{ channelName: channel.name }}
+                            to="/c/$conversationId"
+                            params={{ conversationId: conversation.id }}
                           />
                         )
                       }
                     >
                       <HashIcon />
-                      <span>{channel.name}</span>
+                      <span>{conversation.name}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 )
@@ -191,7 +152,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 onSubmit={(name) => {
                   const sanitized = sanitizeChannelName(name)
                   if (!sanitized) return
-                  addChannelMutation.mutate(sanitized)
+                  console.log("Should create conversation", sanitized)
                 }}
                 trigger={
                   <SidebarMenuButton className="text-sidebar-foreground/70">

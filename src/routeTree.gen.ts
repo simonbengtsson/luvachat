@@ -11,7 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as FilesRouteImport } from './routes/files'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as CChannelNameRouteImport } from './routes/c.$channelName'
+import { Route as CConversationIdRouteImport } from './routes/c.$conversationId'
 
 const FilesRoute = FilesRouteImport.update({
   id: '/files',
@@ -23,40 +23,40 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CChannelNameRoute = CChannelNameRouteImport.update({
-  id: '/c/$channelName',
-  path: '/c/$channelName',
+const CConversationIdRoute = CConversationIdRouteImport.update({
+  id: '/c/$conversationId',
+  path: '/c/$conversationId',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/files': typeof FilesRoute
-  '/c/$channelName': typeof CChannelNameRoute
+  '/c/$conversationId': typeof CConversationIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/files': typeof FilesRoute
-  '/c/$channelName': typeof CChannelNameRoute
+  '/c/$conversationId': typeof CConversationIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/files': typeof FilesRoute
-  '/c/$channelName': typeof CChannelNameRoute
+  '/c/$conversationId': typeof CConversationIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/files' | '/c/$channelName'
+  fullPaths: '/' | '/files' | '/c/$conversationId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/files' | '/c/$channelName'
-  id: '__root__' | '/' | '/files' | '/c/$channelName'
+  to: '/' | '/files' | '/c/$conversationId'
+  id: '__root__' | '/' | '/files' | '/c/$conversationId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   FilesRoute: typeof FilesRoute
-  CChannelNameRoute: typeof CChannelNameRoute
+  CConversationIdRoute: typeof CConversationIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -75,11 +75,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/c/$channelName': {
-      id: '/c/$channelName'
-      path: '/c/$channelName'
-      fullPath: '/c/$channelName'
-      preLoaderRoute: typeof CChannelNameRouteImport
+    '/c/$conversationId': {
+      id: '/c/$conversationId'
+      path: '/c/$conversationId'
+      fullPath: '/c/$conversationId'
+      preLoaderRoute: typeof CConversationIdRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -88,7 +88,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   FilesRoute: FilesRoute,
-  CChannelNameRoute: CChannelNameRoute,
+  CConversationIdRoute: CConversationIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
