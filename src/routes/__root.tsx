@@ -1,11 +1,12 @@
 import { TanStackDevtools } from "@tanstack/react-devtools"
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools"
-import * as React from "react"
 
 import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { initializeSyncConnection } from "@/core/clientConnection"
+import { useEffect } from "react"
 import appCss from "../styles.css?url"
 
 export const Route = createRootRoute({
@@ -33,6 +34,8 @@ export const Route = createRootRoute({
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  useEffect(() => initializeSyncConnection(), [])
+
   return (
     <html lang="en">
       <head>
