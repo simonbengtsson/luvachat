@@ -1,5 +1,4 @@
 import { z } from "zod"
-import { ConversationSchema } from "./schema"
 
 export type ClientEvent = z.infer<typeof ClientEventSchema>
 export const ClientEventSchema = z.discriminatedUnion("type", [
@@ -21,11 +20,6 @@ export const ServerEventSchema = z.discriminatedUnion("type", [
     fromClientId: z.string().min(1),
   }),
   z.object({
-    type: z.literal("initialData"),
-    conversations: z.array(ConversationSchema),
-  }),
-  z.object({
-    type: z.literal("conversationCreated"),
-    conversation: ConversationSchema,
+    type: z.literal("workspaceUpdated"),
   }),
 ])

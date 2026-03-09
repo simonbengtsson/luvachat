@@ -3,9 +3,9 @@ import { DurableObject } from "cloudflare:workers"
 import { desc } from "drizzle-orm"
 import { drizzle } from "drizzle-orm/durable-sqlite/driver"
 import { migrate } from "drizzle-orm/durable-sqlite/migrator"
-import { conversationsTable } from "./schema"
+import { conversationsTable, type Conversation } from "./schema"
 import { handleMessage } from "./serverStore"
-import { ClientEventSchema, type ServerEvent } from "./sync-events"
+import { ClientEventSchema } from "./sync-events"
 
 export class SyncObject extends DurableObject {
   private db: ReturnType<typeof drizzle>
@@ -33,8 +33,6 @@ export class SyncObject extends DurableObject {
 
     const [client, server] = Object.values(new WebSocketPair())
     this.ctx.acceptWebSocket(server, [clientId])
-
-    this.ctx.waitUntil(this.sendInitialData(server, clientId))
 
     console.log("[sync] websocket connected", {
       clientId,
@@ -97,31 +95,15 @@ export class SyncObject extends DurableObject {
     return id ?? "unknown"
   }
 
-  private async sendInitialData(ws: WebSocket, clientId: string): Promise<void> {
-    try {
-      const conversations = await this.db
-        .select({
-          id: conversationsTable.id,
-          type: conversationsTable.type,
-          name: conversationsTable.name,
-          createdAt: conversationsTable.createdAt,
-        })
-        .from(conversationsTable)
-        .orderBy(desc(conversationsTable.createdAt))
-
-      const initialDataEvent: ServerEvent = {
-        type: "initialData",
-        conversations,
-      }
-
-      console.log("[sync] server sending event", {
-        recipientClientId: clientId,
-        eventType: initialDataEvent.type,
-        conversations: conversations.length,
+  async getConversations(): Promise<Conversation[]> {
+    return this.db
+      .select({
+        id: conversationsTable.id,
+        type: conversationsTable.type,
+        name: conversationsTable.name,
+        createdAt: conversationsTable.createdAt,
       })
-      ws.send(JSON.stringify(initialDataEvent))
-    } catch (error) {
-      console.error("[sync] failed to send initialData", { clientId, error })
-    }
+      .from(conversationsTable)
+      .orderBy(desc(conversationsTable.createdAt))
   }
 }

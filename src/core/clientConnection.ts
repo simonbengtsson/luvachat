@@ -1,5 +1,6 @@
-import { handleMessage } from "./clientStore"
+import { conversationsQueryKey } from "./conversationsQuery"
 import { generateShortId } from "./generateId"
+import { queryClient } from "./queryClient"
 import { ServerEventSchema, type ClientEvent } from "./sync-events"
 
 let socket: WebSocket | null = null
@@ -67,7 +68,10 @@ export function initializeSyncConnection(): () => void {
       clientId,
       event: parsedEvent.data,
     })
-    handleMessage(parsedEvent.data)
+
+    if (parsedEvent.data.type === "workspaceUpdated") {
+      void queryClient.invalidateQueries({ queryKey: conversationsQueryKey })
+    }
   })
 
   ws.addEventListener("close", (event) => {
@@ -102,9 +106,12 @@ export function createConversation(name: string): void {
   }
 
   if (!ws || ws.readyState !== WebSocket.OPEN || !clientId) {
-    console.warn("[sync] cannot create conversation while websocket is disconnected", {
-      channelName,
-    })
+    console.warn(
+      "[sync] cannot create conversation while websocket is disconnected",
+      {
+        channelName,
+      },
+    )
     return
   }
 

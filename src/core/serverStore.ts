@@ -43,8 +43,7 @@ export async function handleMessage(
     await db.insert(conversationsTable).values(conversation)
 
     const outboundEvent: ServerEvent = {
-      type: "conversationCreated",
-      conversation,
+      type: "workspaceUpdated",
     }
     broadcastEvent(ctx, senderClientId, outboundEvent, getRecipientClientId)
     return

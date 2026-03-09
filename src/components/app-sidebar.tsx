@@ -11,8 +11,10 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { conversationsQueryOptions } from "@/core/conversationsQuery"
+import { createConversation } from "@/core/clientConnection"
+import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
-import { useAtomValue } from "jotai"
 import {
   BellIcon,
   CircleUserRoundIcon,
@@ -39,8 +41,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu"
-import { conversationsAtom } from "@/core/clientStore"
-import { createConversation } from "@/core/clientConnection"
 
 const CHANNEL_NAME_PLACEHOLDER = "Channel name"
 
@@ -51,7 +51,9 @@ function sanitizeChannelName(value: string) {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { isMobile } = useSidebar()
   const [isSearchDialogOpen, setIsSearchDialogOpen] = React.useState(false)
-  const conversations = useAtomValue(conversationsAtom)
+  const { data: conversations = [], isPending } = useQuery(
+    conversationsQueryOptions(),
+  )
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -71,7 +73,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         <SidebarGroup className="group-data-[collapsible=icon]:hidden">
           <SidebarMenu>
-            {conversations.length === 0 ? (
+            {isPending && conversations.length === 0 ? (
+              <SidebarMenuItem>
+                <div className="px-2 py-2 text-sm text-muted-foreground">
+                  Loading channels...
+                </div>
+              </SidebarMenuItem>
+            ) : conversations.length === 0 ? (
               <SidebarMenuItem>
                 <div className="px-2 py-2 text-sm text-muted-foreground">
                   No channels yet
@@ -79,20 +87,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               </SidebarMenuItem>
             ) : (
               conversations.map((conversation) => {
-                const isPending = conversation.id.startsWith("optimistic-")
                 return (
                   <SidebarMenuItem key={conversation.id}>
                     <SidebarMenuButton
-                      className={isPending ? "opacity-50" : undefined}
                       render={
-                        isPending ? (
-                          <span />
-                        ) : (
-                          <Link
-                            to="/c/$conversationId"
-                            params={{ conversationId: conversation.id } as any}
-                          />
-                        )
+                        <Link
+                          to="/c/$conversationId"
+                          params={{ conversationId: conversation.id } as any}
+                        />
                       }
                     >
                       <HashIcon />

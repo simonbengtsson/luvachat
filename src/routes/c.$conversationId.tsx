@@ -1,7 +1,7 @@
 import { SiteHeader } from "@/components/site-header"
-import { conversationAtom } from "@/core/clientStore"
+import { conversationsQueryOptions } from "@/core/conversationsQuery"
+import { useQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
-import { useAtomValue } from "jotai"
 import { useMemo } from "react"
 
 export const Route = createFileRoute("/c/$conversationId")({
@@ -10,8 +10,12 @@ export const Route = createFileRoute("/c/$conversationId")({
 
 function RouteComponent() {
   const { conversationId } = Route.useParams()
-  const conversation = useAtomValue(
-    useMemo(() => conversationAtom(conversationId), [conversationId]),
+  const { data: conversations = [] } = useQuery(conversationsQueryOptions())
+  const conversation = useMemo(
+    () =>
+      conversations.find((currentConversation) => currentConversation.id === conversationId) ??
+      null,
+    [conversations, conversationId],
   )
 
   return (
