@@ -7,6 +7,11 @@ import { defineConfig } from "vite"
 import tsconfigPaths from "vite-tsconfig-paths"
 
 const config = defineConfig({
+  define: {
+    "import.meta.env.VITE_APP_BUILD_ID": JSON.stringify(
+      new Date().toISOString(),
+    ),
+  },
   plugins: [
     devtools(),
     cloudflare({ viteEnvironment: { name: "ssr" } }),

@@ -11,8 +11,8 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { conversationsQueryOptions } from "@/core/conversationsQuery"
 import { createConversation } from "@/core/clientConnection"
+import { conversationsQueryOptions } from "@/core/conversationsQuery"
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 import {
@@ -41,6 +41,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu"
+import { Skeleton } from "./ui/skeleton"
 
 const CHANNEL_NAME_PLACEHOLDER = "Channel name"
 
@@ -51,9 +52,7 @@ function sanitizeChannelName(value: string) {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { isMobile } = useSidebar()
   const [isSearchDialogOpen, setIsSearchDialogOpen] = React.useState(false)
-  const { data: conversations = [], isPending } = useQuery(
-    conversationsQueryOptions(),
-  )
+  const conversationsQuery = useQuery(conversationsQueryOptions())
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -73,20 +72,23 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         <SidebarGroup className="group-data-[collapsible=icon]:hidden">
           <SidebarMenu>
-            {isPending && conversations.length === 0 ? (
-              <SidebarMenuItem>
-                <div className="px-2 py-2 text-sm text-muted-foreground">
-                  Loading channels...
-                </div>
-              </SidebarMenuItem>
-            ) : conversations.length === 0 ? (
+            {conversationsQuery.isLoading ? (
+              Array.from({ length: 4 }).map((_, index) => (
+                <SidebarMenuItem key={`conversation-skeleton-${index}`}>
+                  <div className="flex items-center gap-2 px-2 py-2">
+                    <Skeleton className="size-4 rounded-sm" />
+                    <Skeleton className="h-4 w-28" />
+                  </div>
+                </SidebarMenuItem>
+              ))
+            ) : conversationsQuery.data?.length === 0 ? (
               <SidebarMenuItem>
                 <div className="px-2 py-2 text-sm text-muted-foreground">
                   No channels yet
                 </div>
               </SidebarMenuItem>
             ) : (
-              conversations.map((conversation) => {
+              conversationsQuery.data?.map((conversation) => {
                 return (
                   <SidebarMenuItem key={conversation.id}>
                     <SidebarMenuButton
