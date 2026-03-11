@@ -55,7 +55,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
               }
             >
               <AppSidebar variant="inset" />
-              <SidebarInset>{children}</SidebarInset>
+              <SidebarInset className="flex h-screen flex-col overflow-hidden">
+                {children}
+              </SidebarInset>
             </SidebarProvider>
           </TooltipProvider>
         </QueryClientProvider>

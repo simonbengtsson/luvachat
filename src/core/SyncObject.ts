@@ -1,9 +1,9 @@
 import { migrations } from "@/server/migrations"
 import { DurableObject } from "cloudflare:workers"
-import { desc } from "drizzle-orm"
+import { and, desc, eq, lt } from "drizzle-orm"
 import { drizzle } from "drizzle-orm/durable-sqlite/driver"
 import { migrate } from "drizzle-orm/durable-sqlite/migrator"
-import { conversationsTable, type Conversation } from "./schema"
+import { conversationsTable, messagesTable, type Conversation, type Message } from "./schema"
 import { handleMessage } from "./serverStore"
 import { ClientEventSchema } from "./sync-events"
 
@@ -105,5 +105,52 @@ export class SyncObject extends DurableObject {
       })
       .from(conversationsTable)
       .orderBy(desc(conversationsTable.createdAt))
+  }
+
+  async getMessages(
+    conversationId: string,
+    limit: number = 10,
+    cursor?: string,
+  ): Promise<{ messages: Message[]; nextCursor?: string }> {
+    const query = this.db
+      .select()
+      .from(messagesTable)
+      .where(
+        cursor
+          ? and(eq(messagesTable.conversationId, conversationId), lt(messagesTable.createdAt, cursor))
+          : eq(messagesTable.conversationId, conversationId),
+      )
+      .orderBy(desc(messagesTable.createdAt))
+      .limit(limit + 1)
+
+    const messages = await query
+
+    let nextCursor: string | undefined
+    if (messages.length > limit) {
+      const nextItem = messages.pop()
+      nextCursor = nextItem?.createdAt
+    }
+
+    return {
+      messages, // Keep newest first within each page
+      nextCursor,
+    }
+  }
+
+  async sendMessage(
+    conversationId: string,
+    content: string,
+    authorId: string,
+  ): Promise<Message> {
+    const message: Message = {
+      id: crypto.randomUUID(),
+      conversationId,
+      content,
+      authorId,
+      createdAt: new Date().toISOString(),
+    }
+
+    await this.db.insert(messagesTable).values(message)
+    return message
   }
 }
