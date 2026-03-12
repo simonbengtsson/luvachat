@@ -20,7 +20,7 @@
     "@cloudflare/vite-plugin": "^1.26.1",
     "@fontsource-variable/geist": "^5.2.8",
     "@luvabase/cli": "^0.0.1",
-    "@luvabase/sdk": "^0.0.7",
+    "@luvabase/sdk": "^0.0.12",
     "@tailwindcss/vite": "^4.2.1",
     "@tanstack/react-devtools": "^0.9.10",
     "@tanstack/react-query": "^5.90.21",

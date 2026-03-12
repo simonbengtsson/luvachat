@@ -3,7 +3,13 @@ import { DurableObject } from "cloudflare:workers"
 import { and, desc, eq, lt } from "drizzle-orm"
 import { drizzle } from "drizzle-orm/durable-sqlite/driver"
 import { migrate } from "drizzle-orm/durable-sqlite/migrator"
-import { conversationsTable, messagesTable, type Conversation, type Message } from "./schema"
+import { setLuvabaseDevEnvironment } from "./luvabase"
+import {
+  conversationsTable,
+  messagesTable,
+  type Conversation,
+  type Message,
+} from "./schema"
 import { handleMessage } from "./serverStore"
 import { ClientEventSchema } from "./sync-events"
 
@@ -13,6 +19,8 @@ export class SyncObject extends DurableObject {
 
   constructor(state: DurableObjectState, env: Cloudflare.Env) {
     super(state, env)
+
+    setLuvabaseDevEnvironment()
 
     this.db = drizzle(state.storage)
 
@@ -117,7 +125,10 @@ export class SyncObject extends DurableObject {
       .from(messagesTable)
       .where(
         cursor
-          ? and(eq(messagesTable.conversationId, conversationId), lt(messagesTable.createdAt, cursor))
+          ? and(
+              eq(messagesTable.conversationId, conversationId),
+              lt(messagesTable.createdAt, cursor),
+            )
           : eq(messagesTable.conversationId, conversationId),
       )
       .orderBy(desc(messagesTable.createdAt))
