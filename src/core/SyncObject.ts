@@ -3,6 +3,7 @@ import { DurableObject } from "cloudflare:workers"
 import { and, desc, eq, lt } from "drizzle-orm"
 import { drizzle } from "drizzle-orm/durable-sqlite/driver"
 import { migrate } from "drizzle-orm/durable-sqlite/migrator"
+import { generateId } from "./generateId"
 import { setLuvabaseDevEnvironment } from "./luvabase"
 import {
   conversationsTable,
@@ -115,6 +116,24 @@ export class SyncObject extends DurableObject {
       .orderBy(desc(conversationsTable.createdAt))
   }
 
+  async createConversation(name: string): Promise<Conversation> {
+    const channelName = name.trim()
+    if (!channelName) {
+      throw new Error("Conversation name is required")
+    }
+
+    const conversation: Conversation = {
+      id: generateId(),
+      type: "channel",
+      name: channelName,
+      createdAt: new Date().toISOString(),
+    }
+
+    await this.db.insert(conversationsTable).values(conversation)
+    this.broadcastWorkspaceUpdated()
+    return conversation
+  }
+
   async getMessages(
     conversationId: string,
     limit: number = 10,
@@ -163,5 +182,15 @@ export class SyncObject extends DurableObject {
 
     await this.db.insert(messagesTable).values(message)
     return message
+  }
+
+  private broadcastWorkspaceUpdated(): void {
+    const payload = JSON.stringify({
+      type: "workspaceUpdated",
+    })
+
+    for (const ws of this.ctx.getWebSockets()) {
+      ws.send(payload)
+    }
   }
 }

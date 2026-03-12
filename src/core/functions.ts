@@ -10,6 +10,17 @@ export const getConversations = createServerFn({ method: "GET" }).handler(
   },
 )
 
+export const createConversation = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      name: z.string().min(1),
+    }),
+  )
+  .handler(async (ctx): Promise<Conversation> => {
+    const syncObject = env.SyncObject.getByName("workspace")
+    return syncObject.createConversation(ctx.data.name)
+  })
+
 export const getMessages = createServerFn({ method: "GET" })
   .inputValidator(
     z.object({

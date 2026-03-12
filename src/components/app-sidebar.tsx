@@ -12,10 +12,11 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { createConversation } from "@/core/clientConnection"
-import { conversationsQueryOptions } from "@/core/conversationsQuery"
+import { conversationsQueryKey, conversationsQueryOptions } from "@/core/conversationsQuery"
+import { createConversation as createConversationServerFn } from "@/core/functions"
+import type { Conversation } from "@/core/schema"
 import { getAdminUrl, getMembers, getSessionInfo } from "@luvabase/sdk"
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
 import {
@@ -71,7 +72,88 @@ const getPodInfo = createServerFn({ method: "GET" }).handler(async () => {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { isMobile } = useSidebar()
+  const queryClient = useQueryClient()
   const conversationsQuery = useQuery(conversationsQueryOptions())
+  const createConversationMutation = useMutation({
+    mutationFn: (name: string) =>
+      createConversationServerFn({
+        data: {
+          name,
+        },
+      }),
+    onMutate: async (name) => {
+      const trimmedName = name.trim()
+      if (!trimmedName) {
+        return {
+          optimisticConversationId: null as string | null,
+          previousConversations: queryClient.getQueryData<Conversation[]>(
+            conversationsQueryKey,
+          ),
+        }
+      }
+
+      await queryClient.cancelQueries({ queryKey: conversationsQueryKey })
+      const previousConversations =
+        queryClient.getQueryData<Conversation[]>(conversationsQueryKey)
+      const optimisticConversation: Conversation = {
+        id: `optimistic-${Date.now()}`,
+        type: "channel",
+        name: trimmedName,
+        createdAt: new Date().toISOString(),
+      }
+
+      queryClient.setQueryData<Conversation[]>(
+        conversationsQueryKey,
+        (conversations = []) => [optimisticConversation, ...conversations],
+      )
+
+      return {
+        optimisticConversationId: optimisticConversation.id,
+        previousConversations,
+      }
+    },
+    onError: (_error, _name, context) => {
+      if (context?.previousConversations) {
+        queryClient.setQueryData(
+          conversationsQueryKey,
+          context.previousConversations,
+        )
+        return
+      }
+
+      if (context?.optimisticConversationId) {
+        queryClient.setQueryData<Conversation[]>(
+          conversationsQueryKey,
+          (conversations = []) =>
+            conversations.filter(
+              (conversation) =>
+                conversation.id !== context.optimisticConversationId,
+            ),
+        )
+      }
+    },
+    onSuccess: (conversation, _name, context) => {
+      queryClient.setQueryData<Conversation[]>(
+        conversationsQueryKey,
+        (conversations = []) => {
+          const withoutOptimistic = context?.optimisticConversationId
+            ? conversations.filter(
+                (item) => item.id !== context.optimisticConversationId,
+              )
+            : conversations
+
+          if (withoutOptimistic.some((item) => item.id === conversation.id)) {
+            return withoutOptimistic
+          }
+
+          return [conversation, ...withoutOptimistic]
+        },
+      )
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: conversationsQueryKey })
+    },
+  })
 
   const membersQuery = useQuery({
     queryKey: ["sidebar-members-session"],
@@ -140,7 +222,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 onSubmit={(name) => {
                   const sanitized = sanitizeChannelName(name)
                   if (!sanitized) return
-                  createConversation(sanitized)
+                  createConversationMutation.mutate(sanitized)
                 }}
                 trigger={
                   <SidebarMenuButton className="text-sidebar-foreground/70">
