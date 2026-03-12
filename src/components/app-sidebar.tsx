@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/sidebar"
 import { createConversation } from "@/core/clientConnection"
 import { conversationsQueryOptions } from "@/core/conversationsQuery"
-import { getMembers, getSessionInfo } from "@luvabase/sdk"
+import { getAdminUrl, getMembers, getSessionInfo } from "@luvabase/sdk"
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
@@ -65,6 +65,7 @@ const getPodInfo = createServerFn({ method: "GET" }).handler(async () => {
   return {
     members,
     session,
+    adminUrl: getAdminUrl(),
   }
 })
 
@@ -173,7 +174,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               membersQuery.data?.members.map((member) => (
                 <SidebarMenuItem key={member.id}>
                   <div className="flex items-center gap-2 px-2 py-2 text-sm">
-                    <Avatar className="size-6">
+                    <Avatar className="size-4">
                       <AvatarImage
                         src={member.imageUrl ?? undefined}
                         alt={member.name}
@@ -210,7 +211,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  render={<a href="https://luvabase.com" target="_blank" />}
+                  render={
+                    <a
+                      href={membersQuery.data?.adminUrl ?? ""}
+                      target="_blank"
+                    />
+                  }
                 >
                   <Settings2Icon />
                   <span>Admin</span>
