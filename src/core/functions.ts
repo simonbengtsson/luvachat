@@ -2,10 +2,10 @@ import { createServerFn } from "@tanstack/react-start"
 import { env } from "cloudflare:workers"
 import { getSessionInfo } from "@luvabase/sdk"
 import { z } from "zod"
-import type { Channel, Conversation, Message } from "./schema"
+import type { Conversation, ConversationWithUserState, Message } from "./schema"
 
 export const getConversations = createServerFn({ method: "GET" }).handler(
-  async (): Promise<Channel[]> => {
+  async (): Promise<ConversationWithUserState[]> => {
     const session = await getSessionInfo()
     const userId = session.user?.id?.trim() ?? ""
     const syncObject = env.SyncObject.getByName("workspace")
@@ -51,8 +51,15 @@ export const getMessages = createServerFn({ method: "GET" })
       messages: Message[]
       nextCursor?: string
     }> => {
+      const session = await getSessionInfo()
+      const userId = session.user?.id?.trim() ?? ""
       const syncObject = env.SyncObject.getByName("workspace")
-      return syncObject.getMessages(ctx.data.conversationId, ctx.data.limit, ctx.data.cursor)
+      return syncObject.getMessages(
+        ctx.data.conversationId,
+        ctx.data.limit,
+        ctx.data.cursor,
+        userId,
+      )
     },
   )
 

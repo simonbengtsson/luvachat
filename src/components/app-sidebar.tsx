@@ -14,7 +14,8 @@ import {
 } from "@/components/ui/sidebar"
 import { conversationsQueryKey, conversationsQueryOptions } from "@/core/conversationsQuery"
 import { createConversation as createConversationServerFn } from "@/core/functions"
-import type { Channel } from "@/core/schema"
+import type { ConversationWithUserState } from "@/core/schema"
+import { cn } from "@/lib/utils"
 import { getAdminUrl, getMembers, getSessionInfo } from "@luvabase/sdk"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
@@ -61,6 +62,18 @@ function getFallbackText(value?: string | null) {
   return source.slice(0, 2).toUpperCase()
 }
 
+function hasUnreadMessages(conversation: ConversationWithUserState) {
+  if (!conversation.lastMessageAt) {
+    return false
+  }
+
+  if (!conversation.lastViewedAt) {
+    return true
+  }
+
+  return conversation.lastViewedAt < conversation.lastMessageAt
+}
+
 const getPodInfo = createServerFn({ method: "GET" }).handler(async () => {
   const [members, session] = await Promise.all([getMembers(), getSessionInfo()])
   return {
@@ -86,7 +99,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       if (!trimmedName) {
         return {
           optimisticConversationId: null as string | null,
-          previousConversations: queryClient.getQueryData<Channel[]>(
+          previousConversations: queryClient.getQueryData<
+            ConversationWithUserState[]
+          >(
             conversationsQueryKey,
           ),
         }
@@ -94,16 +109,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
       await queryClient.cancelQueries({ queryKey: conversationsQueryKey })
       const previousConversations =
-        queryClient.getQueryData<Channel[]>(conversationsQueryKey)
-      const optimisticConversation: Channel = {
+        queryClient.getQueryData<ConversationWithUserState[]>(
+          conversationsQueryKey,
+        )
+      const optimisticConversation: ConversationWithUserState = {
         id: `optimistic-${Date.now()}`,
         type: "channel",
         name: trimmedName,
         createdAt: new Date().toISOString(),
         lastViewedAt: null,
+        lastMessageAt: null,
       }
 
-      queryClient.setQueryData<Channel[]>(
+      queryClient.setQueryData<ConversationWithUserState[]>(
         conversationsQueryKey,
         (conversations = []) => [optimisticConversation, ...conversations],
       )
@@ -123,7 +141,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       }
 
       if (context?.optimisticConversationId) {
-        queryClient.setQueryData<Channel[]>(
+        queryClient.setQueryData<ConversationWithUserState[]>(
           conversationsQueryKey,
           (conversations = []) =>
             conversations.filter(
@@ -134,12 +152,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       }
     },
     onSuccess: (conversation, _name, context) => {
-      queryClient.setQueryData<Channel[]>(
+      queryClient.setQueryData<ConversationWithUserState[]>(
         conversationsQueryKey,
         (conversations = []) => {
-          const createdChannel: Channel = {
+          const createdChannel: ConversationWithUserState = {
             ...conversation,
             lastViewedAt: null,
+            lastMessageAt: null,
           }
           const withoutOptimistic = context?.optimisticConversationId
             ? conversations.filter(
@@ -204,6 +223,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               </SidebarMenuItem>
             ) : (
               conversationsQuery.data?.map((conversation) => {
+                const hasUnread = hasUnreadMessages(conversation)
                 return (
                   <SidebarMenuItem key={conversation.id}>
                     <SidebarMenuButton
@@ -215,7 +235,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       }
                     >
                       <HashIcon />
-                      <span>{conversation.name ?? conversation.id}</span>
+                      <span className={cn("truncate", hasUnread && "font-semibold")}>
+                        {conversation.name ?? conversation.id}
+                      </span>
+                      {hasUnread ? (
+                        <span
+                          aria-hidden
+                          className="ml-auto size-2 rounded-full bg-sidebar-foreground"
+                        />
+                      ) : null}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 )

@@ -1,6 +1,6 @@
 import { migrations } from "@/server/migrations"
 import { DurableObject } from "cloudflare:workers"
-import { and, desc, eq, lt } from "drizzle-orm"
+import { and, desc, eq, lt, sql } from "drizzle-orm"
 import { drizzle } from "drizzle-orm/durable-sqlite/driver"
 import { migrate } from "drizzle-orm/durable-sqlite/migrator"
 import { generateId } from "./generateId"
@@ -108,13 +108,25 @@ export class SyncObject extends DurableObject {
 
   async getConversations(userId: string): Promise<ConversationWithUserState[]> {
     const normalizedUserId = userId.trim()
-    return this.db
+    const conversationLastMessageSubquery = this.db
+      .select({
+        conversationId: messagesTable.conversationId,
+        lastMessageAt: sql<string>`max(${messagesTable.createdAt})`.as(
+          "last_message_at",
+        ),
+      })
+      .from(messagesTable)
+      .groupBy(messagesTable.conversationId)
+      .as("conversation_last_message")
+
+    let result = await this.db
       .select({
         id: conversationsTable.id,
         type: conversationsTable.type,
         name: conversationsTable.name,
         createdAt: conversationsTable.createdAt,
         lastViewedAt: conversationUserStateTable.lastViewedAt,
+        lastMessageAt: conversationLastMessageSubquery.lastMessageAt,
       })
       .from(conversationsTable)
       .leftJoin(
@@ -124,7 +136,21 @@ export class SyncObject extends DurableObject {
           eq(conversationUserStateTable.userId, normalizedUserId),
         ),
       )
+      .leftJoin(
+        conversationLastMessageSubquery,
+        eq(
+          conversationLastMessageSubquery.conversationId,
+          conversationsTable.id,
+        ),
+      )
       .orderBy(desc(conversationsTable.createdAt))
+
+    // result = result.map((row) => ({
+    //   ...row,
+    //   lastViewedAt: new Date(0).toISOString(),
+    // }))
+
+    return result
   }
 
   async createConversation(name: string): Promise<Conversation> {
@@ -167,22 +193,36 @@ export class SyncObject extends DurableObject {
     conversationId: string,
     limit: number = 10,
     cursor?: string,
+    userId?: string,
   ): Promise<{ messages: Message[]; nextCursor?: string }> {
+    const normalizedConversationId = conversationId.trim()
+    const normalizedUserId = userId?.trim()
     const query = this.db
       .select()
       .from(messagesTable)
       .where(
         cursor
           ? and(
-              eq(messagesTable.conversationId, conversationId),
+              eq(messagesTable.conversationId, normalizedConversationId),
               lt(messagesTable.createdAt, cursor),
             )
-          : eq(messagesTable.conversationId, conversationId),
+          : eq(messagesTable.conversationId, normalizedConversationId),
       )
       .orderBy(desc(messagesTable.createdAt))
       .limit(limit + 1)
 
     const messages = await query
+    const mostRecentMessageCreatedAt = cursor
+      ? undefined
+      : messages[0]?.createdAt
+
+    if (normalizedUserId && mostRecentMessageCreatedAt) {
+      await this.markConversationAsViewed(
+        normalizedConversationId,
+        normalizedUserId,
+        mostRecentMessageCreatedAt,
+      )
+    }
 
     let nextCursor: string | undefined
     if (messages.length > limit) {
@@ -194,6 +234,55 @@ export class SyncObject extends DurableObject {
       messages, // Keep newest first within each page
       nextCursor,
     }
+  }
+
+  private async markConversationAsViewed(
+    conversationId: string,
+    userId: string,
+    mostRecentMessageCreatedAt: string,
+  ): Promise<void> {
+    const existingState = await this.db
+      .select({
+        lastViewedAt: conversationUserStateTable.lastViewedAt,
+      })
+      .from(conversationUserStateTable)
+      .where(
+        and(
+          eq(conversationUserStateTable.conversationId, conversationId),
+          eq(conversationUserStateTable.userId, userId),
+        ),
+      )
+      .limit(1)
+
+    const previousLastViewedAt = existingState[0]?.lastViewedAt
+    if (
+      previousLastViewedAt &&
+      previousLastViewedAt > mostRecentMessageCreatedAt
+    ) {
+      return
+    }
+
+    const nextLastViewedAt = new Date().toISOString()
+
+    if (previousLastViewedAt) {
+      await this.db
+        .update(conversationUserStateTable)
+        .set({ lastViewedAt: nextLastViewedAt })
+        .where(
+          and(
+            eq(conversationUserStateTable.conversationId, conversationId),
+            eq(conversationUserStateTable.userId, userId),
+          ),
+        )
+      return
+    }
+
+    await this.db.insert(conversationUserStateTable).values({
+      id: `${userId}_${conversationId}`,
+      userId,
+      conversationId,
+      lastViewedAt: nextLastViewedAt,
+    })
   }
 
   async sendMessage(

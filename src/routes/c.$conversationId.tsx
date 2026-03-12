@@ -146,7 +146,10 @@ function ConversationView({
   const queryClient = useQueryClient()
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useInfiniteQuery(messagesInfiniteQueryOptions(conversationId))
+    useInfiniteQuery({
+      ...messagesInfiniteQueryOptions(conversationId),
+      enabled: isActive,
+    })
 
   const messages = data?.messages ?? []
 
@@ -231,7 +234,7 @@ function ConversationView({
       }
     },
     onSuccess: async () => {
-      queryClient.setQueryData<Channel[]>(
+      queryClient.setQueryData<ConversationWithUserState[]>(
         conversationsQueryKey,
         (conversations = []) =>
           conversations.filter(
@@ -371,6 +374,14 @@ function ConversationView({
     previousMessagesLengthRef.current = currentMessagesLength
     previousScrollHeightRef.current = container.scrollHeight
   }, [isActive, messages.length, isInitialLoadComplete])
+
+  // Refresh sidebar conversation state (read/unread metadata) after message loads.
+  useEffect(() => {
+    if (!isActive || !data) {
+      return
+    }
+    void queryClient.invalidateQueries({ queryKey: conversationsQueryKey })
+  }, [isActive, data, queryClient])
 
   // Infinite scroll: load more when scrolling near top
   useEffect(() => {

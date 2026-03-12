@@ -12,6 +12,7 @@ export const ConversationSchema = createSelectSchema(conversationsTable)
 export type Conversation = z.infer<typeof ConversationSchema>
 export const ConversationWithUserState = ConversationSchema.extend({
   lastViewedAt: z.string().nullable(),
+  lastMessageAt: z.string().nullable(),
 })
 export type ConversationWithUserState = z.infer<
   typeof ConversationWithUserState
