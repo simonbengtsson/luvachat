@@ -1,4 +1,5 @@
 import { createRouter as createTanStackRouter } from "@tanstack/react-router"
+import { getScrollRestorationKey } from "./core/scrollRestorationKey"
 import { routeTree } from "./routeTree.gen"
 
 export function getRouter() {
@@ -6,6 +7,7 @@ export function getRouter() {
     routeTree,
 
     scrollRestoration: true,
+    getScrollRestorationKey,
     defaultPreload: "intent",
     defaultPreloadStaleTime: 0,
   })

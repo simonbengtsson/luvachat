@@ -21,6 +21,7 @@ import {
   messagesInfiniteQueryOptions,
   messagesQueryKey,
 } from "@/core/messagesQuery"
+import { getScrollRestorationKey } from "@/core/scrollRestorationKey"
 import type { ConversationWithUserState } from "@/core/schema"
 import { getMembers, getSessionInfo, type Member } from "@luvabase/sdk"
 import {
@@ -29,7 +30,11 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query"
-import { createFileRoute, useNavigate } from "@tanstack/react-router"
+import {
+  createFileRoute,
+  useElementScrollRestoration,
+  useNavigate,
+} from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
 import {
   EllipsisVerticalIcon,
@@ -117,44 +122,42 @@ function RouteComponent() {
   }
 
   const currentUserId = conversationMetaQuery.data.session.user!.id
+  const activeConversation =
+    conversations.find((conversation) => conversation.id === conversationId) ??
+    null
 
   return (
-    <>
-      {conversations.map((conversation) => (
-        <ConversationView
-          key={conversation.id}
-          conversationId={conversation.id}
-          conversationName={conversation.name}
-          isActive={conversation.id === conversationId}
-          membersById={membersById}
-          currentUserId={currentUserId}
-        />
-      ))}
-    </>
+    <ConversationView
+      key={conversationId}
+      conversationId={conversationId}
+      conversationName={activeConversation?.name ?? null}
+      membersById={membersById}
+      currentUserId={currentUserId}
+    />
   )
 }
 
 function ConversationView({
   conversationId,
   conversationName,
-  isActive,
   membersById,
   currentUserId,
 }: {
   conversationId: string
   conversationName: string | null
-  isActive: boolean
   membersById: Map<string, Member>
   currentUserId: string
 }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const scrollRestorationId = `conversation-messages-${conversationId}`
+  const scrollRestorationEntry = useElementScrollRestoration({
+    id: scrollRestorationId,
+    getKey: getScrollRestorationKey,
+  })
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useInfiniteQuery({
-      ...messagesInfiniteQueryOptions(conversationId),
-      enabled: isActive,
-    })
+    useInfiniteQuery(messagesInfiniteQueryOptions(conversationId))
 
   const messages = data?.messages ?? []
 
@@ -167,10 +170,9 @@ function ConversationView({
   const loadMoreRef = useRef<HTMLDivElement>(null)
   const previousScrollHeightRef = useRef<number>(0)
   const previousMessagesLengthRef = useRef<number>(0)
-  const hasScrolledToBottomRef = useRef(false)
+  const hasInitializedScrollRef = useRef(false)
 
   const focusComposer = () => {
-    if (!isActive) return
     textareaRef.current?.focus({ preventScroll: true })
   }
 
@@ -249,10 +251,6 @@ function ConversationView({
       queryClient.removeQueries({
         queryKey: messagesQueryKey(conversationId),
       })
-
-      if (!isActive) {
-        return
-      }
 
       const remainingConversations =
         queryClient.getQueryData<ConversationWithUserState[]>(
@@ -334,28 +332,37 @@ function ConversationView({
     })
   }
 
-  // Scroll to bottom on initial load only (once per conversation view)
+  // Initialize scroll once: restore prior position if available, otherwise start at bottom.
   useEffect(() => {
-    if (!isActive) return
-    if (!hasScrolledToBottomRef.current && messages.length > 0) {
-      scrollMessagesToBottom()
-      hasScrolledToBottomRef.current = true
-      previousMessagesLengthRef.current = messages.length
-      // Wait a bit before enabling infinite scroll to let scroll settle
-      setTimeout(() => {
-        setIsInitialLoadComplete(true)
-      }, 300)
+    const container = scrollContainerRef.current
+    if (!container || hasInitializedScrollRef.current || !data) {
+      return
     }
-  }, [isActive, messages.length])
 
-  // Focus input on route switch without scrolling the page
+    if (typeof scrollRestorationEntry?.scrollY === "number") {
+      container.scrollTop = scrollRestorationEntry.scrollY
+    } else if (messages.length > 0) {
+      scrollMessagesToBottom()
+    }
+
+    hasInitializedScrollRef.current = true
+    previousMessagesLengthRef.current = messages.length
+    previousScrollHeightRef.current = container.scrollHeight
+
+    // Wait a bit before enabling infinite scroll to let scroll settle.
+    setTimeout(() => {
+      setIsInitialLoadComplete(true)
+    }, 300)
+  }, [data, messages.length, scrollRestorationEntry?.scrollY])
+
+  // Focus input on route switch without scrolling the page.
   useEffect(() => {
     focusComposer()
-  }, [isActive])
+  }, [])
 
-  // Preserve scroll position when loading older messages
+  // Preserve scroll position when loading older messages.
   useEffect(() => {
-    if (!isActive || !scrollContainerRef.current || !isInitialLoadComplete) {
+    if (!scrollContainerRef.current || !isInitialLoadComplete) {
       return
     }
 
@@ -378,21 +385,20 @@ function ConversationView({
 
     previousMessagesLengthRef.current = currentMessagesLength
     previousScrollHeightRef.current = container.scrollHeight
-  }, [isActive, messages.length, isInitialLoadComplete])
+  }, [messages.length, isInitialLoadComplete])
 
   // Refresh sidebar conversation state (read/unread metadata) after message loads.
   useEffect(() => {
-    if (!isActive || !data) {
+    if (!data) {
       return
     }
     void queryClient.invalidateQueries({ queryKey: conversationsQueryKey })
-  }, [isActive, data, queryClient])
+  }, [data, queryClient])
 
-  // Infinite scroll: load more when scrolling near top
+  // Infinite scroll: load more when scrolling near top.
   useEffect(() => {
-    if (!isActive) return
     if (!loadMoreRef.current || !scrollContainerRef.current) return
-    // Don't set up observer until initial load is done
+    // Don't set up observer until initial load is done.
     if (!isInitialLoadComplete) return
 
     const observer = new IntersectionObserver(
@@ -416,7 +422,6 @@ function ConversationView({
     observer.observe(loadMoreRef.current)
     return () => observer.disconnect()
   }, [
-    isActive,
     hasNextPage,
     isFetchingNextPage,
     fetchNextPage,
@@ -424,10 +429,7 @@ function ConversationView({
   ])
 
   return (
-    <div
-      className="flex h-full flex-col overflow-hidden"
-      style={{ display: isActive ? "flex" : "none" }}
-    >
+    <div className="flex h-full flex-col overflow-hidden">
       <SiteHeader
         title={"#" + (conversationName ?? conversationId)}
         actions={
@@ -455,6 +457,7 @@ function ConversationView({
         {/* Messages container with native scroll */}
         <div
           ref={scrollContainerRef}
+          data-scroll-restoration-id={scrollRestorationId}
           className="flex-1 overflow-y-auto overscroll-none"
           style={{
             WebkitOverflowScrolling: "touch",
