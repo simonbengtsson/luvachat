@@ -17,8 +17,11 @@ import {
   deleteConversation as deleteConversationServerFn,
   sendMessage,
 } from "@/core/functions"
-import { messagesInfiniteQueryOptions, messagesQueryKey } from "@/core/messagesQuery"
-import type { Conversation } from "@/core/schema"
+import {
+  messagesInfiniteQueryOptions,
+  messagesQueryKey,
+} from "@/core/messagesQuery"
+import type { ConversationWithUserState } from "@/core/schema"
 import { getMembers, getSessionInfo, type Member } from "@luvabase/sdk"
 import {
   useInfiniteQuery,
@@ -30,11 +33,12 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
 import {
   EllipsisVerticalIcon,
+  FileIcon,
   PlusIcon,
   SendHorizontalIcon,
   Smile,
 } from "lucide-react"
-import type { FormEvent, KeyboardEvent } from "react"
+import type { ChangeEvent, FormEvent, KeyboardEvent } from "react"
 import { useEffect, useMemo, useRef, useState } from "react"
 
 export const Route = createFileRoute("/c/$conversationId")({
@@ -147,8 +151,10 @@ function ConversationView({
   const messages = data?.messages ?? []
 
   const [messageContent, setMessageContent] = useState("")
+  const [selectedAttachments, setSelectedAttachments] = useState<File[]>([])
   const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const loadMoreRef = useRef<HTMLDivElement>(null)
   const previousScrollHeightRef = useRef<number>(0)
@@ -202,13 +208,16 @@ function ConversationView({
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: conversationsQueryKey })
 
-      const previousConversations =
-        queryClient.getQueryData<Conversation[]>(conversationsQueryKey)
+      const previousConversations = queryClient.getQueryData<
+        ConversationWithUserState[]
+      >(conversationsQueryKey)
 
-      queryClient.setQueryData<Conversation[]>(
+      queryClient.setQueryData<ConversationWithUserState[]>(
         conversationsQueryKey,
         (conversations = []) =>
-          conversations.filter((conversation) => conversation.id !== conversationId),
+          conversations.filter(
+            (conversation) => conversation.id !== conversationId,
+          ),
       )
 
       return { previousConversations }
@@ -222,10 +231,12 @@ function ConversationView({
       }
     },
     onSuccess: async () => {
-      queryClient.setQueryData<Conversation[]>(
+      queryClient.setQueryData<Channel[]>(
         conversationsQueryKey,
         (conversations = []) =>
-          conversations.filter((conversation) => conversation.id !== conversationId),
+          conversations.filter(
+            (conversation) => conversation.id !== conversationId,
+          ),
       )
       queryClient.removeQueries({
         queryKey: messagesQueryKey(conversationId),
@@ -236,7 +247,9 @@ function ConversationView({
       }
 
       const remainingConversations =
-        queryClient.getQueryData<Conversation[]>(conversationsQueryKey) ?? []
+        queryClient.getQueryData<ConversationWithUserState[]>(
+          conversationsQueryKey,
+        ) ?? []
 
       if (remainingConversations.length > 0) {
         const fallbackConversation = remainingConversations[0]
@@ -273,6 +286,21 @@ function ConversationView({
       e.preventDefault()
       submitMessage()
     }
+  }
+
+  const handleAttachmentButtonClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleAttachmentChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? [])
+    if (files.length === 0) {
+      return
+    }
+
+    setSelectedAttachments((previous) => [...previous, ...files])
+    // Let users re-select the same file in a future pick.
+    event.target.value = ""
   }
 
   const insertEmojiAtCursor = (emoji: string) => {
@@ -467,9 +495,13 @@ function ConversationView({
                         align="end"
                         className="min-w-36"
                       >
-                        <DropdownMenuItem>Reply</DropdownMenuItem>
-                        <DropdownMenuItem>Copy text</DropdownMenuItem>
-                        <DropdownMenuItem>Save for later</DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            navigator.clipboard.writeText(message.content)
+                          }}
+                        >
+                          Copy text
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -492,6 +524,21 @@ function ConversationView({
                 rows={1}
                 className="min-h-0 resize-none border-0 bg-transparent px-4 py-3 shadow-none focus-visible:ring-0"
               />
+              {selectedAttachments.length > 0 ? (
+                <div className="space-y-2 border-t border-border/70 px-3 py-2">
+                  {selectedAttachments.map((attachment, index) => (
+                    <div
+                      key={`${attachment.name}-${attachment.size}-${attachment.lastModified}-${index}`}
+                      className="flex items-center gap-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-2"
+                    >
+                      <FileIcon className="size-4 text-muted-foreground" />
+                      <span className="truncate text-sm">
+                        {attachment.name}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               <div className="flex items-center justify-between border-t border-border/70 px-2 py-2">
                 <div className="flex items-center gap-1">
                   <Button
@@ -500,9 +547,18 @@ function ConversationView({
                     size="icon-sm"
                     className="rounded-full"
                     aria-label="Attach file"
+                    onClick={handleAttachmentButtonClick}
                   >
                     <PlusIcon />
                   </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={handleAttachmentChange}
+                    aria-label="Select files to attach"
+                  />
                   <EmojiPicker
                     onEmojiSelect={insertEmojiAtCursor}
                     trigger={

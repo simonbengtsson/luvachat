@@ -1,12 +1,15 @@
 import { createServerFn } from "@tanstack/react-start"
 import { env } from "cloudflare:workers"
+import { getSessionInfo } from "@luvabase/sdk"
 import { z } from "zod"
-import type { Conversation, Message } from "./schema"
+import type { Channel, Conversation, Message } from "./schema"
 
 export const getConversations = createServerFn({ method: "GET" }).handler(
-  async (): Promise<Conversation[]> => {
+  async (): Promise<Channel[]> => {
+    const session = await getSessionInfo()
+    const userId = session.user?.id?.trim() ?? ""
     const syncObject = env.SyncObject.getByName("workspace")
-    return syncObject.getConversations()
+    return syncObject.getConversations(userId)
   },
 )
 

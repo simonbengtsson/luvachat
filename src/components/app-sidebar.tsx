@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/sidebar"
 import { conversationsQueryKey, conversationsQueryOptions } from "@/core/conversationsQuery"
 import { createConversation as createConversationServerFn } from "@/core/functions"
-import type { Conversation } from "@/core/schema"
+import type { Channel } from "@/core/schema"
 import { getAdminUrl, getMembers, getSessionInfo } from "@luvabase/sdk"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
@@ -86,7 +86,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       if (!trimmedName) {
         return {
           optimisticConversationId: null as string | null,
-          previousConversations: queryClient.getQueryData<Conversation[]>(
+          previousConversations: queryClient.getQueryData<Channel[]>(
             conversationsQueryKey,
           ),
         }
@@ -94,15 +94,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
       await queryClient.cancelQueries({ queryKey: conversationsQueryKey })
       const previousConversations =
-        queryClient.getQueryData<Conversation[]>(conversationsQueryKey)
-      const optimisticConversation: Conversation = {
+        queryClient.getQueryData<Channel[]>(conversationsQueryKey)
+      const optimisticConversation: Channel = {
         id: `optimistic-${Date.now()}`,
         type: "channel",
         name: trimmedName,
         createdAt: new Date().toISOString(),
+        lastViewedAt: null,
       }
 
-      queryClient.setQueryData<Conversation[]>(
+      queryClient.setQueryData<Channel[]>(
         conversationsQueryKey,
         (conversations = []) => [optimisticConversation, ...conversations],
       )
@@ -122,7 +123,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       }
 
       if (context?.optimisticConversationId) {
-        queryClient.setQueryData<Conversation[]>(
+        queryClient.setQueryData<Channel[]>(
           conversationsQueryKey,
           (conversations = []) =>
             conversations.filter(
@@ -133,20 +134,24 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       }
     },
     onSuccess: (conversation, _name, context) => {
-      queryClient.setQueryData<Conversation[]>(
+      queryClient.setQueryData<Channel[]>(
         conversationsQueryKey,
         (conversations = []) => {
+          const createdChannel: Channel = {
+            ...conversation,
+            lastViewedAt: null,
+          }
           const withoutOptimistic = context?.optimisticConversationId
             ? conversations.filter(
                 (item) => item.id !== context.optimisticConversationId,
               )
             : conversations
 
-          if (withoutOptimistic.some((item) => item.id === conversation.id)) {
+          if (withoutOptimistic.some((item) => item.id === createdChannel.id)) {
             return withoutOptimistic
           }
 
-          return [conversation, ...withoutOptimistic]
+          return [createdChannel, ...withoutOptimistic]
         },
       )
     },

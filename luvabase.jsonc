@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/@luvabase/sdk/dist/manifest-schema.json",
+  "name": "luvachat",
+  "description": "A chat application built with Luvabase",
+  "services": [
+    {
+      "type": "durable-object",
+      "name": "SyncObject",
+    },
+    {
+      "type": "r2",
+      "name": "MAIN_BUCKET",
+    },
+  ],
+}

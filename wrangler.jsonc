@@ -4,6 +4,12 @@
   "compatibility_date": "2025-09-02",
   "compatibility_flags": ["nodejs_compat"],
   "main": "src/server.tsx",
+  "r2_buckets": [
+    {
+      "binding": "MAIN_BUCKET",
+      "bucket_name": "luvachatlocal",
+    },
+  ],
   "durable_objects": {
     "bindings": [
       {

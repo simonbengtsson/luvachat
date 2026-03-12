@@ -6,9 +6,11 @@ import { migrate } from "drizzle-orm/durable-sqlite/migrator"
 import { generateId } from "./generateId"
 import { setLuvabaseDevEnvironment } from "./luvabase"
 import {
+  conversationUserStateTable,
   conversationsTable,
   messagesTable,
   type Conversation,
+  type ConversationWithUserState,
   type Message,
 } from "./schema"
 import { handleMessage } from "./serverStore"
@@ -104,15 +106,24 @@ export class SyncObject extends DurableObject {
     return id ?? "unknown"
   }
 
-  async getConversations(): Promise<Conversation[]> {
+  async getConversations(userId: string): Promise<ConversationWithUserState[]> {
+    const normalizedUserId = userId.trim()
     return this.db
       .select({
         id: conversationsTable.id,
         type: conversationsTable.type,
         name: conversationsTable.name,
         createdAt: conversationsTable.createdAt,
+        lastViewedAt: conversationUserStateTable.lastViewedAt,
       })
       .from(conversationsTable)
+      .leftJoin(
+        conversationUserStateTable,
+        and(
+          eq(conversationUserStateTable.conversationId, conversationsTable.id),
+          eq(conversationUserStateTable.userId, normalizedUserId),
+        ),
+      )
       .orderBy(desc(conversationsTable.createdAt))
   }
 
@@ -140,8 +151,15 @@ export class SyncObject extends DurableObject {
       throw new Error("Conversation id is required")
     }
 
-    await this.db.delete(messagesTable).where(eq(messagesTable.conversationId, id))
-    await this.db.delete(conversationsTable).where(eq(conversationsTable.id, id))
+    await this.db
+      .delete(messagesTable)
+      .where(eq(messagesTable.conversationId, id))
+    await this.db
+      .delete(conversationUserStateTable)
+      .where(eq(conversationUserStateTable.conversationId, id))
+    await this.db
+      .delete(conversationsTable)
+      .where(eq(conversationsTable.id, id))
     this.broadcastWorkspaceUpdated()
   }
 
