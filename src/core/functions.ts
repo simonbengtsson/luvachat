@@ -13,6 +13,19 @@ export const getConversations = createServerFn({ method: "GET" }).handler(
   },
 )
 
+export const getConversation = createServerFn({ method: "GET" })
+  .inputValidator(
+    z.object({
+      conversationId: z.string().min(1),
+    }),
+  )
+  .handler(async (ctx): Promise<ConversationWithUserState | null> => {
+    const session = await getSessionInfo()
+    const userId = session.user?.id?.trim() ?? ""
+    const syncObject = env.SyncObject.getByName("workspace")
+    return syncObject.getConversationById(ctx.data.conversationId, userId)
+  })
+
 export const createConversation = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({

@@ -153,6 +153,69 @@ export class SyncObject extends DurableObject {
     return result
   }
 
+  async getConversationById(
+    conversationId: string,
+    userId: string,
+  ): Promise<ConversationWithUserState | null> {
+    const normalizedConversationId = conversationId.trim()
+    const normalizedUserId = userId.trim()
+
+    if (!normalizedConversationId) {
+      throw new Error("Conversation id is required")
+    }
+
+    const conversation = await this.db
+      .select({
+        id: conversationsTable.id,
+        type: conversationsTable.type,
+        name: conversationsTable.name,
+        createdAt: conversationsTable.createdAt,
+      })
+      .from(conversationsTable)
+      .where(eq(conversationsTable.id, normalizedConversationId))
+      .limit(1)
+
+    const currentConversation = conversation[0]
+    if (!currentConversation) {
+      return null
+    }
+
+    const userState = normalizedUserId
+      ? await this.db
+          .select({
+            lastViewedAt: conversationUserStateTable.lastViewedAt,
+          })
+          .from(conversationUserStateTable)
+          .where(
+            and(
+              eq(
+                conversationUserStateTable.conversationId,
+                normalizedConversationId,
+              ),
+              eq(conversationUserStateTable.userId, normalizedUserId),
+            ),
+          )
+          .limit(1)
+      : []
+
+    const lastMessage = await this.db
+      .select({
+        lastMessageAt:
+          sql<string | null>`max(${messagesTable.createdAt})`.as(
+            "last_message_at",
+          ),
+      })
+      .from(messagesTable)
+      .where(eq(messagesTable.conversationId, normalizedConversationId))
+      .limit(1)
+
+    return {
+      ...currentConversation,
+      lastViewedAt: userState[0]?.lastViewedAt ?? null,
+      lastMessageAt: lastMessage[0]?.lastMessageAt ?? null,
+    }
+  }
+
   async createConversation(name: string): Promise<Conversation> {
     const channelName = name.trim()
     if (!channelName) {

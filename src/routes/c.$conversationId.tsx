@@ -10,8 +10,9 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Textarea } from "@/components/ui/textarea"
 import {
+  conversationQueryKey,
+  conversationQueryOptions,
   conversationsQueryKey,
-  conversationsQueryOptions,
 } from "@/core/conversationsQuery"
 import {
   deleteConversation as deleteConversationServerFn,
@@ -101,7 +102,7 @@ function formatMessageTimestamp(value: string) {
 
 function RouteComponent() {
   const { conversationId } = Route.useParams()
-  const { data: conversations = [] } = useQuery(conversationsQueryOptions())
+  const conversationQuery = useQuery(conversationQueryOptions(conversationId))
   const conversationMetaQuery = useQuery({
     queryKey: ["conversation-meta"],
     queryFn: () => getConversationMeta(),
@@ -122,15 +123,12 @@ function RouteComponent() {
   }
 
   const currentUserId = conversationMetaQuery.data.session.user!.id
-  const activeConversation =
-    conversations.find((conversation) => conversation.id === conversationId) ??
-    null
 
   return (
     <ConversationView
       key={conversationId}
       conversationId={conversationId}
-      conversationName={activeConversation?.name ?? null}
+      conversationName={conversationQuery.data?.name ?? null}
       membersById={membersById}
       currentUserId={currentUserId}
     />
@@ -250,6 +248,9 @@ function ConversationView({
       )
       queryClient.removeQueries({
         queryKey: messagesQueryKey(conversationId),
+      })
+      queryClient.removeQueries({
+        queryKey: conversationQueryKey(conversationId),
       })
 
       const remainingConversations =

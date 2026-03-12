@@ -12,7 +12,12 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { conversationsQueryKey, conversationsQueryOptions } from "@/core/conversationsQuery"
+import {
+  conversationQueryKey,
+  conversationsQueryKey,
+  conversationsQueryOptions,
+  seedConversationQueryCache,
+} from "@/core/conversationsQuery"
 import { createConversation as createConversationServerFn } from "@/core/functions"
 import type { ConversationWithUserState } from "@/core/schema"
 import { cn } from "@/lib/utils"
@@ -125,6 +130,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         conversationsQueryKey,
         (conversations = []) => [optimisticConversation, ...conversations],
       )
+      queryClient.setQueryData(
+        conversationQueryKey(optimisticConversation.id),
+        optimisticConversation,
+      )
 
       return {
         optimisticConversationId: optimisticConversation.id,
@@ -137,6 +146,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           conversationsQueryKey,
           context.previousConversations,
         )
+        seedConversationQueryCache(queryClient, context.previousConversations)
+        if (context.optimisticConversationId) {
+          queryClient.removeQueries({
+            queryKey: conversationQueryKey(context.optimisticConversationId),
+          })
+        }
         return
       }
 
@@ -149,6 +164,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 conversation.id !== context.optimisticConversationId,
             ),
         )
+        queryClient.removeQueries({
+          queryKey: conversationQueryKey(context.optimisticConversationId),
+        })
       }
     },
     onSuccess: (conversation, _name, context) => {
@@ -173,6 +191,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           return [createdChannel, ...withoutOptimistic]
         },
       )
+      const createdChannel: ConversationWithUserState = {
+        ...conversation,
+        lastViewedAt: null,
+        lastMessageAt: null,
+      }
+      queryClient.setQueryData(conversationQueryKey(createdChannel.id), createdChannel)
+      if (context?.optimisticConversationId) {
+        queryClient.removeQueries({
+          queryKey: conversationQueryKey(context.optimisticConversationId),
+        })
+      }
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: conversationsQueryKey })
@@ -186,6 +215,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       return podInfo
     },
   })
+
+  React.useEffect(() => {
+    if (!conversationsQuery.data) {
+      return
+    }
+    seedConversationQueryCache(queryClient, conversationsQuery.data)
+  }, [conversationsQuery.data, queryClient])
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
