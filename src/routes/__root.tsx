@@ -1,13 +1,13 @@
-import { TanStackDevtools } from "@tanstack/react-devtools"
-import { QueryClientProvider } from "@tanstack/react-query"
-import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
-import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools"
-
+import { AppCommand } from "@/components/app-command"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { initializeSyncConnection } from "@/core/clientConnection"
 import { queryClient } from "@/core/queryClient"
+import { TanStackDevtools } from "@tanstack/react-devtools"
+import { QueryClientProvider } from "@tanstack/react-query"
+import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
+import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools"
 import { useEffect } from "react"
 import appCss from "../styles.css?url"
 
@@ -59,6 +59,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                 {children}
               </SidebarInset>
             </SidebarProvider>
+            <AppCommand />
           </TooltipProvider>
         </QueryClientProvider>
         <TanStackDevtools

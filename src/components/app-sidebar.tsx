@@ -30,7 +30,7 @@ import {
   Settings2Icon,
 } from "lucide-react"
 import * as React from "react"
-import { AppCommand } from "./app-command"
+import { dispatchOpenAppCommandEvent } from "./app-command.events"
 import { PopupInput } from "./PopupInput"
 import {
   DropdownMenu,
@@ -71,7 +71,6 @@ const getPodInfo = createServerFn({ method: "GET" }).handler(async () => {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { isMobile } = useSidebar()
-  const [isSearchDialogOpen, setIsSearchDialogOpen] = React.useState(false)
   const conversationsQuery = useQuery(conversationsQueryOptions())
 
   const membersQuery = useQuery({
@@ -200,13 +199,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  onClick={() => {
-                    setIsSearchDialogOpen(true)
-                  }}
-                >
+                <SidebarMenuButton onClick={dispatchOpenAppCommandEvent}>
                   <SearchIcon />
                   <span>Search</span>
+                  <span className="ml-auto text-xs text-sidebar-foreground/70">⌘K</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
@@ -279,10 +275,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
-      <AppCommand
-        open={isSearchDialogOpen}
-        onOpenChange={setIsSearchDialogOpen}
-      />
     </Sidebar>
   )
 }
