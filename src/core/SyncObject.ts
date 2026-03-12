@@ -134,6 +134,17 @@ export class SyncObject extends DurableObject {
     return conversation
   }
 
+  async deleteConversation(conversationId: string): Promise<void> {
+    const id = conversationId.trim()
+    if (!id) {
+      throw new Error("Conversation id is required")
+    }
+
+    await this.db.delete(messagesTable).where(eq(messagesTable.conversationId, id))
+    await this.db.delete(conversationsTable).where(eq(conversationsTable.id, id))
+    this.broadcastWorkspaceUpdated()
+  }
+
   async getMessages(
     conversationId: string,
     limit: number = 10,

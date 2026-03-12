@@ -9,9 +9,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Textarea } from "@/components/ui/textarea"
-import { conversationsQueryOptions } from "@/core/conversationsQuery"
-import { sendMessage } from "@/core/functions"
-import { messagesInfiniteQueryOptions } from "@/core/messagesQuery"
+import {
+  conversationsQueryKey,
+  conversationsQueryOptions,
+} from "@/core/conversationsQuery"
+import {
+  deleteConversation as deleteConversationServerFn,
+  sendMessage,
+} from "@/core/functions"
+import { messagesInfiniteQueryOptions, messagesQueryKey } from "@/core/messagesQuery"
+import type { Conversation } from "@/core/schema"
 import { getMembers, getSessionInfo, type Member } from "@luvabase/sdk"
 import {
   useInfiniteQuery,
@@ -19,7 +26,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query"
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
 import {
   EllipsisVerticalIcon,
@@ -131,6 +138,7 @@ function ConversationView({
   membersById: Map<string, Member>
   currentUserId: string
 }) {
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
@@ -181,6 +189,71 @@ function ConversationView({
       setTimeout(() => {
         scrollMessagesToBottom("smooth")
       }, 100)
+    },
+  })
+
+  const deleteConversationMutation = useMutation({
+    mutationFn: () =>
+      deleteConversationServerFn({
+        data: {
+          conversationId,
+        },
+      }),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: conversationsQueryKey })
+
+      const previousConversations =
+        queryClient.getQueryData<Conversation[]>(conversationsQueryKey)
+
+      queryClient.setQueryData<Conversation[]>(
+        conversationsQueryKey,
+        (conversations = []) =>
+          conversations.filter((conversation) => conversation.id !== conversationId),
+      )
+
+      return { previousConversations }
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previousConversations !== undefined) {
+        queryClient.setQueryData(
+          conversationsQueryKey,
+          context.previousConversations,
+        )
+      }
+    },
+    onSuccess: async () => {
+      queryClient.setQueryData<Conversation[]>(
+        conversationsQueryKey,
+        (conversations = []) =>
+          conversations.filter((conversation) => conversation.id !== conversationId),
+      )
+      queryClient.removeQueries({
+        queryKey: messagesQueryKey(conversationId),
+      })
+
+      if (!isActive) {
+        return
+      }
+
+      const remainingConversations =
+        queryClient.getQueryData<Conversation[]>(conversationsQueryKey) ?? []
+
+      if (remainingConversations.length > 0) {
+        const fallbackConversation = remainingConversations[0]
+        if (fallbackConversation) {
+          await navigate({
+            to: "/c/$conversationId",
+            params: { conversationId: fallbackConversation.id } as any,
+            replace: true,
+          })
+          return
+        }
+      }
+
+      await navigate({ to: "/", replace: true })
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: conversationsQueryKey })
     },
   })
 
@@ -311,7 +384,28 @@ function ConversationView({
       className="flex h-full flex-col overflow-hidden"
       style={{ display: isActive ? "flex" : "none" }}
     >
-      <SiteHeader title={"#" + (conversationName ?? conversationId)} />
+      <SiteHeader
+        title={"#" + (conversationName ?? conversationId)}
+        actions={
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground"
+              aria-label="Channel options"
+            >
+              <EllipsisVerticalIcon className="size-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-40">
+              <DropdownMenuItem
+                variant="destructive"
+                disabled={deleteConversationMutation.isPending}
+                onClick={() => deleteConversationMutation.mutate()}
+              >
+                Delete Channel
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        }
+      />
 
       <div className="flex min-h-0 flex-1 flex-col">
         {/* Messages container with native scroll */}
