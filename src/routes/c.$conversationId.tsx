@@ -111,7 +111,12 @@ function RouteComponent() {
       ),
     [conversationMetaQuery.data?.members],
   )
-  const currentUserId = conversationMetaQuery.data?.session.user?.id ?? "user-1"
+
+  if (!conversationMetaQuery.data) {
+    return null
+  }
+
+  const currentUserId = conversationMetaQuery.data.session.user!.id
 
   return (
     <>
