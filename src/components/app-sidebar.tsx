@@ -5,6 +5,7 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -13,12 +14,11 @@ import {
 } from "@/components/ui/sidebar"
 import { createConversation } from "@/core/clientConnection"
 import { conversationsQueryOptions } from "@/core/conversationsQuery"
+import { getMembers, getSessionInfo } from "@luvabase/sdk"
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
+import { createServerFn } from "@tanstack/react-start"
 import {
-  BellIcon,
-  CircleUserRoundIcon,
-  CreditCardIcon,
   EllipsisVerticalIcon,
   ExternalLinkIcon,
   FilesIcon,
@@ -35,10 +35,7 @@ import { PopupInput } from "./PopupInput"
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu"
 import { Skeleton } from "./ui/skeleton"
@@ -49,10 +46,40 @@ function sanitizeChannelName(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]/g, "")
 }
 
+function getFallbackText(value?: string | null) {
+  const source = value?.trim()
+  if (!source) {
+    return "NA"
+  }
+
+  const parts = source.split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) {
+    return `${parts[0]?.[0] ?? ""}${parts[1]?.[0] ?? ""}`.toUpperCase()
+  }
+
+  return source.slice(0, 2).toUpperCase()
+}
+
+const getPodInfo = createServerFn({ method: "GET" }).handler(async () => {
+  const [members, session] = await Promise.all([getMembers(), getSessionInfo()])
+  return {
+    members,
+    session,
+  }
+})
+
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { isMobile } = useSidebar()
   const [isSearchDialogOpen, setIsSearchDialogOpen] = React.useState(false)
   const conversationsQuery = useQuery(conversationsQueryOptions())
+
+  const membersQuery = useQuery({
+    queryKey: ["sidebar-members-session"],
+    queryFn: async () => {
+      const podInfo = await getPodInfo()
+      return podInfo
+    },
+  })
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -71,6 +98,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+          <SidebarGroupLabel>Channels</SidebarGroupLabel>
           <SidebarMenu>
             {conversationsQuery.isLoading ? (
               Array.from({ length: 4 }).map((_, index) => (
@@ -123,6 +151,43 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               />
             </SidebarMenuItem>
           </SidebarMenu>
+
+          <SidebarGroupLabel className="mt-4">Members</SidebarGroupLabel>
+          <SidebarMenu>
+            {membersQuery.isLoading ? (
+              Array.from({ length: 3 }).map((_, index) => (
+                <SidebarMenuItem key={`member-skeleton-${index}`}>
+                  <div className="flex items-center gap-2 px-2 py-2">
+                    <Skeleton className="size-6 rounded-full" />
+                    <Skeleton className="h-4 w-28" />
+                  </div>
+                </SidebarMenuItem>
+              ))
+            ) : membersQuery.data?.members.length === 0 ? (
+              <SidebarMenuItem>
+                <div className="px-2 py-2 text-sm text-muted-foreground">
+                  No members yet
+                </div>
+              </SidebarMenuItem>
+            ) : (
+              membersQuery.data?.members.map((member) => (
+                <SidebarMenuItem key={member.id}>
+                  <div className="flex items-center gap-2 px-2 py-2 text-sm">
+                    <Avatar className="size-6">
+                      <AvatarImage
+                        src={member.imageUrl ?? undefined}
+                        alt={member.name}
+                      />
+                      <AvatarFallback className="text-[10px]">
+                        {getFallbackText(member.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="truncate">{member.name}</span>
+                  </div>
+                </SidebarMenuItem>
+              ))
+            )}
+          </SidebarMenu>
         </SidebarGroup>
         <SidebarGroup className="mt-auto">
           <SidebarGroupContent>
@@ -168,16 +233,29 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   />
                 }
               >
-                <Avatar className="size-8 rounded-lg grayscale">
-                  <AvatarImage src={undefined} alt="Simon" />
-                  <AvatarFallback className="rounded-lg">CN</AvatarFallback>
-                </Avatar>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">Simon</span>
-                  <span className="truncate text-xs text-foreground/70">
-                    simonbengt@gmail.com
-                  </span>
-                </div>
+                {membersQuery.data ? (
+                  <>
+                    <Avatar className="size-8 rounded-lg grayscale">
+                      <AvatarImage
+                        src={
+                          membersQuery.data.session.user!.imageUrl ?? undefined
+                        }
+                        alt={membersQuery.data.session.user!.name}
+                      />
+                      <AvatarFallback className="rounded-lg">
+                        {getFallbackText(membersQuery.data.session.user!.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="grid flex-1 text-left text-sm leading-tight">
+                      <span className="truncate font-medium">
+                        {membersQuery.data.session.user!.name}
+                      </span>
+                      <span className="truncate text-xs text-foreground/70">
+                        {membersQuery.data.session.user!.id}
+                      </span>
+                    </div>
+                  </>
+                ) : null}
                 <EllipsisVerticalIcon className="ml-auto size-4" />
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -186,40 +264,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 align="end"
                 sideOffset={4}
               >
-                <DropdownMenuGroup>
-                  <DropdownMenuLabel className="p-0 font-normal">
-                    <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                      <Avatar className="size-8">
-                        <AvatarImage src={undefined} alt="Simon" />
-                        <AvatarFallback className="rounded-lg">
-                          CN
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="grid flex-1 text-left text-sm leading-tight">
-                        <span className="truncate font-medium">Simon</span>
-                        <span className="truncate text-xs text-muted-foreground">
-                          simonbengt@gmail.com
-                        </span>
-                      </div>
-                    </div>
-                  </DropdownMenuLabel>
-                </DropdownMenuGroup>
-                <DropdownMenuSeparator />
-                <DropdownMenuGroup>
-                  <DropdownMenuItem>
-                    <CircleUserRoundIcon />
-                    Account
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <CreditCardIcon />
-                    Billing
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <BellIcon />
-                    Notifications
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-                <DropdownMenuSeparator />
                 <DropdownMenuItem>
                   <LogOutIcon />
                   Log out

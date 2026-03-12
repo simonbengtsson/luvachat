@@ -17,17 +17,17 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.2.0",
-    "@cloudflare/vite-plugin": "^1.26.1",
+    "@cloudflare/vite-plugin": "^1.27.0",
     "@fontsource-variable/geist": "^5.2.8",
     "@luvabase/cli": "^0.0.1",
-    "@luvabase/sdk": "^0.0.12",
+    "@luvabase/sdk": "^0.0.14",
     "@tailwindcss/vite": "^4.2.1",
-    "@tanstack/react-devtools": "^0.9.10",
+    "@tanstack/react-devtools": "^0.9.13",
     "@tanstack/react-query": "^5.90.21",
-    "@tanstack/react-router": "^1.166.3",
-    "@tanstack/react-router-devtools": "^1.166.3",
-    "@tanstack/react-start": "^1.166.3",
-    "@tanstack/router-plugin": "^1.166.3",
+    "@tanstack/react-router": "^1.166.7",
+    "@tanstack/react-router-devtools": "^1.166.7",
+    "@tanstack/react-start": "^1.166.8",
+    "@tanstack/router-plugin": "^1.166.7",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -36,7 +36,7 @@
     "drizzle-orm": "1.0.0-beta.16-ea816b6",
     "embla-carousel-react": "^8.6.0",
     "input-otp": "^1.4.2",
-    "jotai": "^2.18.0",
+    "jotai": "^2.18.1",
     "lucide-react": "^0.577.0",
     "next-themes": "^0.4.6",
     "react": "^19.2.4",
@@ -44,7 +44,7 @@
     "react-dom": "^19.2.4",
     "react-resizable-panels": "^4.7.2",
     "recharts": "2.15.4",
-    "shadcn": "^4.0.2",
+    "shadcn": "^4.0.5",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.2.1",
@@ -54,8 +54,8 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
-    "@tanstack/devtools-vite": "^0.5.3",
-    "@types/node": "^25.3.5",
+    "@tanstack/devtools-vite": "^0.5.5",
+    "@types/node": "^25.4.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.4",
@@ -63,6 +63,6 @@
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
     "vite-tsconfig-paths": "^6.1.1",
-    "wrangler": "^4.71.0"
+    "wrangler": "^4.72.0"
   }
 }
