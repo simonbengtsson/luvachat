@@ -23,7 +23,7 @@ import type { ConversationWithUserState } from "@/core/schema"
 import { cn } from "@/lib/utils"
 import { getAdminUrl, getMembers, getSessionInfo } from "@luvabase/sdk"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Link } from "@tanstack/react-router"
+import { Link, useMatchRoute } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
 import {
   EllipsisVerticalIcon,
@@ -90,6 +90,7 @@ const getPodInfo = createServerFn({ method: "GET" }).handler(async () => {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { isMobile } = useSidebar()
+  const matchRoute = useMatchRoute()
   const queryClient = useQueryClient()
   const conversationsQuery = useQuery(conversationsQueryOptions())
   const createConversationMutation = useMutation({
@@ -263,6 +264,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 return (
                   <SidebarMenuItem key={conversation.id}>
                     <SidebarMenuButton
+                      isActive={Boolean(
+                        matchRoute({
+                          to: "/c/$conversationId",
+                          params: { conversationId: conversation.id } as any,
+                        }),
+                      )}
                       render={
                         <Link
                           to="/c/$conversationId"
@@ -346,7 +353,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton render={<Link to="/files" />}>
+                <SidebarMenuButton
+                  isActive={Boolean(
+                    matchRoute({
+                      to: "/files",
+                    }),
+                  )}
+                  render={<Link to="/files" />}
+                >
                   <FilesIcon />
                   <span>Files</span>
                 </SidebarMenuButton>
