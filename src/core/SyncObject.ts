@@ -40,9 +40,12 @@ export class SyncObject extends DurableObject {
       return new Response("Expected websocket upgrade request", { status: 426 })
     }
 
-    const clientId = request.headers.get("x-luvabase-user-id")?.trim()
+    const url = new URL(request.url)
+    const clientId =
+      request.headers.get("x-luvabase-user-id")?.trim() ??
+      url.searchParams.get("userId")?.trim()
     if (!clientId) {
-      return new Response("Missing x-luvabase-user-id header", { status: 400 })
+      return new Response("Missing sync client id", { status: 400 })
     }
 
     const [client, server] = Object.values(new WebSocketPair())

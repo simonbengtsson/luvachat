@@ -10,6 +10,10 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Textarea } from "@/components/ui/textarea"
 import {
+  getSyncConnectionStatus,
+  subscribeToSyncConnectionStatus,
+} from "@/core/clientConnection"
+import {
   conversationQueryKey,
   conversationQueryOptions,
   conversationsQueryKey,
@@ -23,8 +27,8 @@ import {
   messagesQueryKey,
 } from "@/core/messagesQuery"
 import { applyMessageCreatedToCache } from "@/core/realtimeCache"
-import { getScrollRestorationKey } from "@/core/scrollRestorationKey"
 import type { ConversationWithUserState } from "@/core/schema"
+import { getScrollRestorationKey } from "@/core/scrollRestorationKey"
 import { getMembers, getSessionInfo, type Member } from "@luvabase/sdk"
 import {
   useInfiniteQuery,
@@ -41,12 +45,19 @@ import { createServerFn } from "@tanstack/react-start"
 import {
   EllipsisVerticalIcon,
   FileIcon,
+  LoaderCircleIcon,
   PlusIcon,
   SendHorizontalIcon,
   Smile,
 } from "lucide-react"
 import type { ChangeEvent, FormEvent, KeyboardEvent } from "react"
-import { useEffect, useMemo, useRef, useState } from "react"
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react"
 
 export const Route = createFileRoute("/c/$conversationId")({
   component: RouteComponent,
@@ -159,6 +170,12 @@ function ConversationView({
     useInfiniteQuery(messagesInfiniteQueryOptions(conversationId))
 
   const messages = data?.messages ?? []
+  const syncConnectionStatus = useSyncExternalStore(
+    subscribeToSyncConnectionStatus,
+    getSyncConnectionStatus,
+    getSyncConnectionStatus,
+  )
+  const isSyncConnected = syncConnectionStatus === "connected"
 
   const [messageContent, setMessageContent] = useState("")
   const [selectedAttachments, setSelectedAttachments] = useState<File[]>([])
@@ -279,7 +296,7 @@ function ConversationView({
   })
 
   const submitMessage = () => {
-    if (messageContent.trim()) {
+    if (isSyncConnected && messageContent.trim()) {
       sendMessageMutation.mutate(messageContent)
     }
   }
@@ -423,12 +440,7 @@ function ConversationView({
 
     observer.observe(loadMoreRef.current)
     return () => observer.disconnect()
-  }, [
-    hasNextPage,
-    isFetchingNextPage,
-    fetchNextPage,
-    isInitialLoadComplete,
-  ])
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, isInitialLoadComplete])
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -534,7 +546,7 @@ function ConversationView({
 
         {/* Fixed input at bottom */}
         <div className="shrink-0 border-t bg-background px-4 py-3">
-          <form onSubmit={handleSubmit} className="flex gap-2">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-2">
             <div className="w-full rounded-2xl border border-border/70 bg-card shadow-sm">
               <Textarea
                 ref={textareaRef}
@@ -602,7 +614,9 @@ function ConversationView({
                   size="icon-sm"
                   className="rounded-full"
                   disabled={
-                    !messageContent.trim() || sendMessageMutation.isPending
+                    !isSyncConnected ||
+                    !messageContent.trim() ||
+                    sendMessageMutation.isPending
                   }
                   aria-label="Send message"
                 >
@@ -610,6 +624,15 @@ function ConversationView({
                 </Button>
               </div>
             </div>
+            {!isSyncConnected ? (
+              <div
+                className="flex items-center gap-1.5 px-1 text-xs text-muted-foreground"
+                aria-live="polite"
+              >
+                <LoaderCircleIcon className="size-3.5 animate-spin" />
+                <span>Not connected, retrying...</span>
+              </div>
+            ) : null}
           </form>
         </div>
       </div>

@@ -4,25 +4,73 @@ import { queryClient } from "./queryClient"
 import { applyMessageCreatedToCache } from "./realtimeCache"
 import { ServerEventSchema, type ClientEvent } from "./sync-events"
 
+export type SyncConnectionStatus =
+  | "disconnected"
+  | "connecting"
+  | "connected"
+  | "reconnecting"
+
 let socket: WebSocket | null = null
 let pingIntervalId: number | null = null
+let reconnectTimeoutId: number | null = null
 let currentClientId: string | null = null
+let hasConnectedOnce = false
+let shouldReconnect = false
+let syncConnectionStatus: SyncConnectionStatus = "disconnected"
+let removeNetworkListeners: (() => void) | null = null
+
+const syncConnectionListeners = new Set<() => void>()
+const RECONNECT_DELAY_MS = 3_000
 
 export function initializeSyncConnection(): () => void {
+  shouldReconnect = true
+  ensureNetworkListeners()
+  connectSocket()
+
+  return () => {
+    shouldReconnect = false
+    clearReconnectTimeout()
+    closeSocket()
+    removeNetworkListeners?.()
+    removeNetworkListeners = null
+    setSyncConnectionStatus("disconnected")
+  }
+}
+
+export function subscribeToSyncConnectionStatus(
+  listener: () => void,
+): () => void {
+  syncConnectionListeners.add(listener)
+  return () => {
+    syncConnectionListeners.delete(listener)
+  }
+}
+
+export function getSyncConnectionStatus(): SyncConnectionStatus {
+  return syncConnectionStatus
+}
+
+function connectSocket(): void {
+  if (!window.navigator.onLine) {
+    setSyncConnectionStatus("reconnecting")
+    scheduleReconnect()
+    return
+  }
+
   if (
     socket &&
     (socket.readyState === WebSocket.CONNECTING ||
       socket.readyState === WebSocket.OPEN)
   ) {
-    return () => {
-      closeSocket()
-    }
+    return
   }
 
+  clearReconnectTimeout()
   const clientId = generateShortId().slice(0, 6)
   const ws = new WebSocket(getSyncUrl(clientId))
   currentClientId = clientId
   socket = ws
+  setSyncConnectionStatus(hasConnectedOnce ? "reconnecting" : "connecting")
 
   ws.addEventListener("open", () => {
     if (socket !== ws) {
@@ -30,6 +78,8 @@ export function initializeSyncConnection(): () => void {
     }
 
     console.log("[sync] websocket connected", { clientId })
+    hasConnectedOnce = true
+    setSyncConnectionStatus("connected")
     startPingInterval(ws, clientId)
   })
 
@@ -94,15 +144,19 @@ export function initializeSyncConnection(): () => void {
       socket = null
       currentClientId = null
     }
+
+    if (shouldReconnect) {
+      setSyncConnectionStatus("reconnecting")
+      scheduleReconnect()
+      return
+    }
+
+    setSyncConnectionStatus("disconnected")
   })
 
   ws.addEventListener("error", () => {
     console.error("[sync] websocket error", { clientId })
   })
-
-  return () => {
-    closeSocket(ws)
-  }
 }
 
 export function createConversation(name: string): void {
@@ -172,6 +226,57 @@ function clearPingInterval(): void {
   pingIntervalId = null
 }
 
+function scheduleReconnect(): void {
+  if (reconnectTimeoutId !== null) {
+    return
+  }
+
+  reconnectTimeoutId = window.setTimeout(() => {
+    reconnectTimeoutId = null
+
+    if (!shouldReconnect) {
+      setSyncConnectionStatus("disconnected")
+      return
+    }
+
+    connectSocket()
+  }, RECONNECT_DELAY_MS)
+}
+
+function clearReconnectTimeout(): void {
+  if (reconnectTimeoutId === null) {
+    return
+  }
+
+  window.clearTimeout(reconnectTimeoutId)
+  reconnectTimeoutId = null
+}
+
+function ensureNetworkListeners(): void {
+  if (removeNetworkListeners) {
+    return
+  }
+
+  const handleOffline = () => {
+    setSyncConnectionStatus("reconnecting")
+    clearReconnectTimeout()
+    closeSocket()
+  }
+
+  const handleOnline = () => {
+    clearReconnectTimeout()
+    connectSocket()
+  }
+
+  window.addEventListener("offline", handleOffline)
+  window.addEventListener("online", handleOnline)
+
+  removeNetworkListeners = () => {
+    window.removeEventListener("offline", handleOffline)
+    window.removeEventListener("online", handleOnline)
+  }
+}
+
 function closeSocket(target = socket): void {
   if (!target) {
     return
@@ -186,5 +291,16 @@ function closeSocket(target = socket): void {
     target.readyState === WebSocket.CONNECTING
   ) {
     target.close(1000, "connection disposed")
+  }
+}
+
+function setSyncConnectionStatus(status: SyncConnectionStatus): void {
+  if (syncConnectionStatus === status) {
+    return
+  }
+
+  syncConnectionStatus = status
+  for (const listener of syncConnectionListeners) {
+    listener()
   }
 }
