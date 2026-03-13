@@ -14,7 +14,10 @@ import {
   type Message,
 } from "./schema"
 import { handleMessage } from "./serverStore"
-import { ClientEventSchema } from "./sync-events"
+import {
+  ClientEventSchema,
+  type ServerEvent,
+} from "./sync-events"
 
 export class SyncObject extends DurableObject {
   private db: ReturnType<typeof drizzle>
@@ -362,13 +365,21 @@ export class SyncObject extends DurableObject {
     }
 
     await this.db.insert(messagesTable).values(message)
+    this.broadcastEvent({
+      type: "messageCreated",
+      message,
+    })
     return message
   }
 
   private broadcastWorkspaceUpdated(): void {
-    const payload = JSON.stringify({
+    this.broadcastEvent({
       type: "workspaceUpdated",
     })
+  }
+
+  private broadcastEvent(event: ServerEvent): void {
+    const payload = JSON.stringify(event)
 
     for (const ws of this.ctx.getWebSockets()) {
       ws.send(payload)

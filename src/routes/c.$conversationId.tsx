@@ -22,6 +22,7 @@ import {
   messagesInfiniteQueryOptions,
   messagesQueryKey,
 } from "@/core/messagesQuery"
+import { applyMessageCreatedToCache } from "@/core/realtimeCache"
 import { getScrollRestorationKey } from "@/core/scrollRestorationKey"
 import type { ConversationWithUserState } from "@/core/schema"
 import { getMembers, getSessionInfo, type Member } from "@luvabase/sdk"
@@ -193,9 +194,9 @@ function ConversationView({
           authorId: currentUserId,
         },
       }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["messages", conversationId],
+    onSuccess: (message) => {
+      applyMessageCreatedToCache(queryClient, message, {
+        markViewed: true,
       })
       setMessageContent("")
       focusComposer()

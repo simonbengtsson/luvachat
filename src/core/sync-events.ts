@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { MessageSchema } from "./schema"
 
 export type ClientEvent = z.infer<typeof ClientEventSchema>
 export const ClientEventSchema = z.discriminatedUnion("type", [
@@ -21,5 +22,9 @@ export const ServerEventSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("workspaceUpdated"),
+  }),
+  z.object({
+    type: z.literal("messageCreated"),
+    message: MessageSchema,
   }),
 ])

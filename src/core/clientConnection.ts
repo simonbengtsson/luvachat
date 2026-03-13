@@ -1,6 +1,7 @@
 import { conversationsQueryKey } from "./conversationsQuery"
 import { generateShortId } from "./generateId"
 import { queryClient } from "./queryClient"
+import { applyMessageCreatedToCache } from "./realtimeCache"
 import { ServerEventSchema, type ClientEvent } from "./sync-events"
 
 let socket: WebSocket | null = null
@@ -71,6 +72,14 @@ export function initializeSyncConnection(): () => void {
 
     if (parsedEvent.data.type === "workspaceUpdated") {
       void queryClient.invalidateQueries({ queryKey: conversationsQueryKey })
+      return
+    }
+
+    if (parsedEvent.data.type === "messageCreated") {
+      applyMessageCreatedToCache(queryClient, parsedEvent.data.message, {
+        markViewed:
+          getActiveConversationId() === parsedEvent.data.message.conversationId,
+      })
     }
   })
 
@@ -126,6 +135,12 @@ function getSyncUrl(clientId: string): string {
   const url = new URL(`${protocol}//${window.location.host}/sync`)
   url.searchParams.set("userId", clientId)
   return url.toString()
+}
+
+function getActiveConversationId(): string | null {
+  const match = window.location.pathname.match(/^\/c\/([^/]+)$/)
+  const activeConversationId = match?.[1]
+  return activeConversationId ? decodeURIComponent(activeConversationId) : null
 }
 
 function startPingInterval(ws: WebSocket, clientId: string): void {

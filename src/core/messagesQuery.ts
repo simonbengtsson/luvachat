@@ -1,8 +1,14 @@
 import { infiniteQueryOptions } from "@tanstack/react-query"
+import type { Message } from "./schema"
 import { getMessages } from "./functions"
 
 export const messagesQueryKey = (conversationId: string) =>
   ["messages", conversationId] as const
+
+export type MessagesPage = {
+  messages: Message[]
+  nextCursor?: string
+}
 
 export function messagesInfiniteQueryOptions(conversationId: string) {
   return infiniteQueryOptions({

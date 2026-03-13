@@ -8,7 +8,7 @@
   "scripts": {
     "d:gen": "drizzle-kit generate",
     "dev": "vite dev --port 3000",
-    "build": "vite build",
+    "create-production": "vite build",
     "preview": "bun run build && vite preview",
     "test": "vitest run",
     "deploy": "bun run build && wrangler deploy",
