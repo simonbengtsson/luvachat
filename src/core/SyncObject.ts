@@ -14,10 +14,7 @@ import {
   type Message,
 } from "./schema"
 import { handleMessage } from "./serverStore"
-import {
-  ClientEventSchema,
-  type ServerEvent,
-} from "./sync-events"
+import { ClientEventSchema, type ServerEvent } from "./sync-events"
 
 export class SyncObject extends DurableObject {
   private db: ReturnType<typeof drizzle>
@@ -206,10 +203,9 @@ export class SyncObject extends DurableObject {
 
     const lastMessage = await this.db
       .select({
-        lastMessageAt:
-          sql<string | null>`max(${messagesTable.createdAt})`.as(
-            "last_message_at",
-          ),
+        lastMessageAt: sql<string | null>`max(${messagesTable.createdAt})`.as(
+          "last_message_at",
+        ),
       })
       .from(messagesTable)
       .where(eq(messagesTable.conversationId, normalizedConversationId))

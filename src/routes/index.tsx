@@ -1,15 +1,20 @@
+import { getConversations } from "@/core/functions"
 import { createFileRoute } from "@tanstack/react-router"
 
-export const Route = createFileRoute("/")({ component: App })
-
-function App() {
-  return (
-    <div className="flex flex-1 flex-col">
-      <div className="@container/main flex flex-1 flex-col gap-2">
-        <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-          <p>Hello World</p>
-        </div>
-      </div>
-    </div>
-  )
-}
+export const Route = createFileRoute("/")({
+  server: {
+    handlers: {
+      GET: async () => {
+        const conversations = await getConversations()
+        const first = conversations.at(0)
+        if (!first) {
+          return new Response("No channels yet")
+        }
+        return new Response("", {
+          status: 302,
+          headers: { Location: `/c/${first.id}` },
+        })
+      },
+    },
+  },
+})

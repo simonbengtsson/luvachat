@@ -106,17 +106,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           optimisticConversationId: null as string | null,
           previousConversations: queryClient.getQueryData<
             ConversationWithUserState[]
-          >(
-            conversationsQueryKey,
-          ),
+          >(conversationsQueryKey),
         }
       }
 
       await queryClient.cancelQueries({ queryKey: conversationsQueryKey })
-      const previousConversations =
-        queryClient.getQueryData<ConversationWithUserState[]>(
-          conversationsQueryKey,
-        )
+      const previousConversations = queryClient.getQueryData<
+        ConversationWithUserState[]
+      >(conversationsQueryKey)
       const optimisticConversation: ConversationWithUserState = {
         id: `optimistic-${Date.now()}`,
         type: "channel",
@@ -196,7 +193,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         lastViewedAt: null,
         lastMessageAt: null,
       }
-      queryClient.setQueryData(conversationQueryKey(createdChannel.id), createdChannel)
+      queryClient.setQueryData(
+        conversationQueryKey(createdChannel.id),
+        createdChannel,
+      )
       if (context?.optimisticConversationId) {
         queryClient.removeQueries({
           queryKey: conversationQueryKey(context.optimisticConversationId),
@@ -271,7 +271,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       }
                     >
                       <HashIcon />
-                      <span className={cn("truncate", hasUnread && "font-semibold")}>
+                      <span
+                        className={cn("truncate", hasUnread && "font-semibold")}
+                      >
                         {conversation.name ?? conversation.id}
                       </span>
                       {hasUnread ? (
@@ -353,7 +355,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <SidebarMenuButton onClick={dispatchOpenAppCommandEvent}>
                   <SearchIcon />
                   <span>Search</span>
-                  <span className="ml-auto text-xs text-sidebar-foreground/70">⌘K</span>
+                  <span className="ml-auto text-xs text-sidebar-foreground/70">
+                    ⌘K
+                  </span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
