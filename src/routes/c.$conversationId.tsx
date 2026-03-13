@@ -544,8 +544,7 @@ function ConversationView({
           </div>
         </div>
 
-        {/* Fixed input at bottom */}
-        <div className="shrink-0 border-t bg-background px-4 py-3">
+        <div className="shrink-0 bg-background px-4 pb-5">
           <form onSubmit={handleSubmit} className="flex flex-col gap-2">
             <div className="w-full rounded-2xl border border-border/70 bg-card shadow-sm">
               <Textarea
