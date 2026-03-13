@@ -26,6 +26,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link, useMatchRoute } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
 import {
+  BellIcon,
   EllipsisVerticalIcon,
   ExternalLinkIcon,
   FilesIcon,
@@ -92,6 +93,33 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { isMobile } = useSidebar()
   const matchRoute = useMatchRoute()
   const queryClient = useQueryClient()
+  const [notificationPermission, setNotificationPermission] = React.useState<
+    NotificationPermission | null
+  >(null)
+
+  React.useEffect(() => {
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      setNotificationPermission(null)
+      return
+    }
+
+    setNotificationPermission(Notification.permission)
+  }, [])
+
+  const handleEnableNotifications = React.useCallback(async () => {
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      console.warn("Notifications are not supported in this browser.")
+      return
+    }
+
+    try {
+      const permission = await Notification.requestPermission()
+      setNotificationPermission(permission)
+      console.info("Notification permission result:", permission)
+    } catch (error) {
+      console.error("Notification permission request failed:", error)
+    }
+  }, [])
   const conversationsQuery = useQuery(conversationsQueryOptions())
   const createConversationMutation = useMutation({
     mutationFn: (name: string) =>
@@ -351,6 +379,27 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarGroup>
         <SidebarGroup className="mt-auto">
           <SidebarGroupContent>
+            {notificationPermission === "default" ? (
+              <section className="px-2 pb-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleEnableNotifications()
+                  }}
+                  className="flex w-full items-start gap-3 rounded-lg border border-sidebar-border/80 px-3 py-3 text-left transition-colors hover:bg-sidebar-accent/30"
+                >
+                  <BellIcon className="mt-0.5 size-4 shrink-0 text-sidebar-foreground/70" />
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-sidebar-foreground">
+                      Enable Notifications
+                    </div>
+                    <p className="mt-1 text-xs leading-5 text-sidebar-foreground/70">
+                      Turn on browser push notifications for new activity.
+                    </p>
+                  </div>
+                </button>
+              </section>
+            ) : null}
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton
