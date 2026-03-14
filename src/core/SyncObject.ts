@@ -1,6 +1,6 @@
 import { migrations } from "@/server/migrations"
 import { DurableObject } from "cloudflare:workers"
-import { and, desc, eq, lt, sql } from "drizzle-orm"
+import { and, asc, desc, eq, inArray, lt, sql } from "drizzle-orm"
 import { drizzle } from "drizzle-orm/durable-sqlite/driver"
 import { migrate } from "drizzle-orm/durable-sqlite/migrator"
 import { generateVAPIDKeys } from "web-push"
@@ -14,16 +14,41 @@ import {
 import {
   conversationUserStateTable,
   conversationsTable,
+  messageAttachmentsTable,
   messagesTable,
   pushSubscriptionsTable,
   type Conversation,
   type ConversationWithUserState,
   type Message,
+  type MessageAttachment,
+  type MessageRecord,
   type PushSubscriptionInput,
   type PushSubscriptionRecord,
 } from "./schema"
 import { handleMessage } from "./serverStore"
 import { ClientEventSchema, type ServerEvent } from "./sync-events"
+
+type AttachmentUploadInput = {
+  fileName: string
+  contentType: string
+  sizeBytes: number
+  bytes: ArrayBuffer
+}
+
+function sanitizeAttachmentFileName(fileName: string): string {
+  const normalized = fileName.trim() || "attachment"
+  const sanitized = normalized
+    .replace(/[^A-Za-z0-9._-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+
+  return sanitized || "attachment"
+}
+
+function normalizeAttachmentContentType(contentType: string): string {
+  const normalized = contentType.trim()
+  return normalized || "application/octet-stream"
+}
 
 export class SyncObject extends DurableObject {
   private db: ReturnType<typeof drizzle>
@@ -276,6 +301,14 @@ export class SyncObject extends DurableObject {
       throw new Error("Conversation id is required")
     }
 
+    const attachmentRows = await this.db
+      .select({
+        storageKey: messageAttachmentsTable.storageKey,
+      })
+      .from(messageAttachmentsTable)
+      .innerJoin(messagesTable, eq(messageAttachmentsTable.messageId, messagesTable.id))
+      .where(eq(messagesTable.conversationId, id))
+
     await this.db
       .delete(messagesTable)
       .where(eq(messagesTable.conversationId, id))
@@ -285,6 +318,9 @@ export class SyncObject extends DurableObject {
     await this.db
       .delete(conversationsTable)
       .where(eq(conversationsTable.id, id))
+    await this.deleteBucketObjects(
+      attachmentRows.map((attachment) => attachment.storageKey),
+    )
     this.broadcastWorkspaceUpdated()
   }
 
@@ -310,10 +346,10 @@ export class SyncObject extends DurableObject {
       .orderBy(desc(messagesTable.createdAt))
       .limit(limit + 1)
 
-    const messages = await query
+    const messageRecords = await query
     const mostRecentMessageCreatedAt = cursor
       ? undefined
-      : messages[0]?.createdAt
+      : messageRecords[0]?.createdAt
 
     if (normalizedUserId && mostRecentMessageCreatedAt) {
       await this.markConversationAsViewed(
@@ -324,15 +360,57 @@ export class SyncObject extends DurableObject {
     }
 
     let nextCursor: string | undefined
-    if (messages.length > limit) {
-      const nextItem = messages.pop()
+    if (messageRecords.length > limit) {
+      const nextItem = messageRecords.pop()
       nextCursor = nextItem?.createdAt
     }
+
+    const messages = await this.enrichMessages(messageRecords)
 
     return {
       messages, // Keep newest first within each page
       nextCursor,
     }
+  }
+
+  private async enrichMessages(messageRecords: MessageRecord[]): Promise<Message[]> {
+    const attachmentsByMessageId = await this.listAttachmentsByMessageIds(
+      messageRecords.map((message) => message.id),
+    )
+
+    return messageRecords.map((message) => ({
+      ...message,
+      attachments: attachmentsByMessageId.get(message.id) ?? [],
+    }))
+  }
+
+  private async listAttachmentsByMessageIds(
+    messageIds: string[],
+  ): Promise<Map<string, MessageAttachment[]>> {
+    if (messageIds.length === 0) {
+      return new Map()
+    }
+
+    const attachments = await this.db
+      .select()
+      .from(messageAttachmentsTable)
+      .where(inArray(messageAttachmentsTable.messageId, messageIds))
+      .orderBy(
+        asc(messageAttachmentsTable.createdAt),
+        asc(messageAttachmentsTable.id),
+      )
+
+    const attachmentsByMessageId = new Map<string, MessageAttachment[]>()
+    for (const attachment of attachments) {
+      const existing = attachmentsByMessageId.get(attachment.messageId)
+      if (existing) {
+        existing.push(attachment)
+      } else {
+        attachmentsByMessageId.set(attachment.messageId, [attachment])
+      }
+    }
+
+    return attachmentsByMessageId
   }
 
   private async markConversationAsViewed(
@@ -387,17 +465,80 @@ export class SyncObject extends DurableObject {
   async sendMessage(
     conversationId: string,
     content: string,
-    authorId: string,
+    attachments: AttachmentUploadInput[],
+    userId: string,
   ): Promise<Message> {
-    const message: Message = {
-      id: crypto.randomUUID(),
-      conversationId,
-      content,
-      authorId,
-      createdAt: new Date().toISOString(),
+    const normalizedConversationId = conversationId.trim()
+    const normalizedUserId = userId.trim()
+    const trimmedContent = content.trim()
+
+    if (!normalizedConversationId) {
+      throw new Error("Conversation id is required")
     }
 
-    await this.db.insert(messagesTable).values(message)
+    if (!normalizedUserId) {
+      throw new Error("User id is required")
+    }
+
+    if (!trimmedContent && attachments.length === 0) {
+      throw new Error("Message content or attachments are required")
+    }
+
+    const createdAt = new Date().toISOString()
+    const messageRecord: MessageRecord = {
+      id: crypto.randomUUID(),
+      conversationId: normalizedConversationId,
+      content: trimmedContent ? content : "",
+      userId: normalizedUserId,
+      createdAt,
+    }
+    const uploadedKeys: string[] = []
+    const attachmentRecords: MessageAttachment[] = []
+
+    try {
+      for (const attachment of attachments) {
+        const attachmentId = crypto.randomUUID()
+        const contentType = normalizeAttachmentContentType(attachment.contentType)
+        const storageKey = `attachments/${attachmentId}-${sanitizeAttachmentFileName(
+          attachment.fileName,
+        )}`
+
+        await this.env.MAIN_BUCKET.put(storageKey, attachment.bytes, {
+          httpMetadata: {
+            contentType,
+          },
+        })
+
+        uploadedKeys.push(storageKey)
+        attachmentRecords.push({
+          id: attachmentId,
+          messageId: messageRecord.id,
+          userId: normalizedUserId,
+          storageKey,
+          fileName: attachment.fileName,
+          contentType,
+          sizeBytes: attachment.sizeBytes,
+          createdAt,
+        })
+      }
+
+      this.db.transaction((tx) => {
+        tx.insert(messagesTable).values(messageRecord).run()
+
+        if (attachmentRecords.length > 0) {
+          tx.insert(messageAttachmentsTable).values(attachmentRecords).run()
+        }
+      })
+    } catch (error) {
+      await this.deleteBucketObjects(uploadedKeys)
+      throw error
+    }
+
+    const message: Message = {
+      ...messageRecord,
+      attachments: attachmentRecords,
+    }
+
     this.broadcastEvent({
       type: "messageCreated",
       message,
@@ -507,6 +648,25 @@ export class SyncObject extends DurableObject {
 
   private async listPushSubscriptions(): Promise<PushSubscriptionRecord[]> {
     return this.db.select().from(pushSubscriptionsTable)
+  }
+
+  private async deleteBucketObjects(storageKeys: string[]): Promise<void> {
+    if (storageKeys.length === 0) {
+      return
+    }
+
+    await Promise.allSettled(
+      storageKeys.map(async (storageKey) => {
+        try {
+          await this.env.MAIN_BUCKET.delete(storageKey)
+        } catch (error) {
+          console.error("[attachments] failed to delete object", {
+            error,
+            storageKey,
+          })
+        }
+      }),
+    )
   }
 
   private async sendPushNotification(

@@ -112,6 +112,14 @@ function formatMessageTimestamp(value: string) {
   }).format(date)
 }
 
+function isImageAttachment(contentType: string) {
+  return contentType.startsWith("image/")
+}
+
+function getAttachmentUrl(storageKey: string) {
+  return `/assets/${storageKey.split("/").map(encodeURIComponent).join("/")}`
+}
+
 function RouteComponent() {
   const { conversationId } = Route.useParams()
   const conversationQuery = useQuery(conversationQueryOptions(conversationId))
@@ -182,6 +190,7 @@ function ConversationView({
   const previousScrollHeightRef = useRef<number>(0)
   const previousMessagesLengthRef = useRef<number>(0)
   const hasInitializedScrollRef = useRef(false)
+  const shouldAutoScrollToBottomRef = useRef(false)
 
   const focusComposer = () => {
     textareaRef.current?.focus({ preventScroll: true })
@@ -197,19 +206,53 @@ function ConversationView({
     })
   }
 
+  const isNearBottom = () => {
+    const container = scrollContainerRef.current
+    if (!container) {
+      return false
+    }
+
+    return (
+      container.scrollHeight - container.scrollTop - container.clientHeight < 120
+    )
+  }
+
+  const ensureLatestMessageIsVisible = (
+    behavior: ScrollBehavior = "auto",
+  ) => {
+    if (!shouldAutoScrollToBottomRef.current && !isNearBottom()) {
+      return
+    }
+
+    requestAnimationFrame(() => {
+      scrollMessagesToBottom(behavior)
+    })
+  }
+
   const sendMessageMutation = useMutation({
-    mutationFn: (content: string) =>
-      sendMessage({
-        data: {
-          conversationId,
-          content,
-        },
-      }),
+    mutationFn: () => {
+      const formData = new FormData()
+      formData.set("conversationId", conversationId)
+      formData.set("content", messageContent)
+
+      for (const attachment of selectedAttachments) {
+        formData.append("attachments", attachment)
+      }
+
+      return sendMessage({
+        data: formData,
+      })
+    },
     onSuccess: (message) => {
       applyMessageCreatedToCache(queryClient, message, {
         markViewed: true,
       })
       setMessageContent("")
+      setSelectedAttachments([])
+      shouldAutoScrollToBottomRef.current = true
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ""
+      }
       focusComposer()
       // Scroll to bottom after sending without affecting page viewport
       setTimeout(() => {
@@ -290,8 +333,8 @@ function ConversationView({
   })
 
   const submitMessage = () => {
-    if (isSyncConnected && messageContent.trim()) {
-      sendMessageMutation.mutate(messageContent)
+    if (isSyncConnected && (messageContent.trim() || selectedAttachments.length)) {
+      sendMessageMutation.mutate()
     }
   }
 
@@ -354,7 +397,9 @@ function ConversationView({
 
     if (typeof scrollRestorationEntry?.scrollY === "number") {
       container.scrollTop = scrollRestorationEntry.scrollY
+      shouldAutoScrollToBottomRef.current = false
     } else if (messages.length > 0) {
+      shouldAutoScrollToBottomRef.current = true
       scrollMessagesToBottom()
     }
 
@@ -367,6 +412,14 @@ function ConversationView({
       setIsInitialLoadComplete(true)
     }, 300)
   }, [data, messages.length, scrollRestorationEntry?.scrollY])
+
+  useEffect(() => {
+    if (!data || messages.length === 0) {
+      return
+    }
+
+    ensureLatestMessageIsVisible()
+  }, [data, messages.length])
 
   // Focus input on route switch without scrolling the page.
   useEffect(() => {
@@ -482,8 +535,8 @@ function ConversationView({
             )}
 
             {messages.map((message) => {
-              const author = membersById.get(message.authorId)
-              const authorName = author?.name ?? message.authorId
+              const author = membersById.get(message.userId)
+              const authorName = author?.name ?? message.userId
 
               return (
                 <div
@@ -508,9 +561,54 @@ function ConversationView({
                         {formatMessageTimestamp(message.createdAt)}
                       </span>
                     </div>
-                    <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                      {message.content}
-                    </div>
+                    {message.content ? (
+                      <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                        {message.content}
+                      </div>
+                    ) : null}
+                    {message.attachments.length > 0 ? (
+                      <div className="overflow-x-auto pt-1 pb-1">
+                        <div className="flex gap-2">
+                          {message.attachments.map((attachment) => {
+                          const attachmentUrl = getAttachmentUrl(
+                            attachment.storageKey,
+                          )
+
+                          if (isImageAttachment(attachment.contentType)) {
+                            return (
+                              <a
+                                key={attachment.id}
+                                href={attachmentUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="block w-32 shrink-0 overflow-hidden rounded-xl border border-border/70 bg-muted/20"
+                              >
+                                <img
+                                  src={attachmentUrl}
+                                  alt={attachment.fileName}
+                                  loading="lazy"
+                                  onLoad={() => ensureLatestMessageIsVisible()}
+                                  className="h-24 w-full object-cover"
+                                />
+                              </a>
+                            )
+                          }
+
+                          return (
+                            <a
+                              key={attachment.id}
+                              href={attachmentUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex h-24 w-24 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-muted/20 hover:bg-muted/40"
+                            >
+                              <FileIcon className="size-5 shrink-0 text-muted-foreground" />
+                            </a>
+                          )
+                        })}
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                   <div className="absolute top-2 right-2 opacity-0 transition-opacity group-hover/message:opacity-100 group-focus-within/message:opacity-100">
                     <DropdownMenu>
@@ -522,13 +620,15 @@ function ConversationView({
                         align="end"
                         className="min-w-36"
                       >
-                        <DropdownMenuItem
-                          onClick={() => {
-                            navigator.clipboard.writeText(message.content)
-                          }}
-                        >
-                          Copy text
-                        </DropdownMenuItem>
+                        {message.content ? (
+                          <DropdownMenuItem
+                            onClick={() => {
+                              navigator.clipboard.writeText(message.content)
+                            }}
+                          >
+                            Copy text
+                          </DropdownMenuItem>
+                        ) : null}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -608,7 +708,8 @@ function ConversationView({
                   className="rounded-full"
                   disabled={
                     !isSyncConnected ||
-                    !messageContent.trim() ||
+                    (!messageContent.trim() &&
+                      selectedAttachments.length === 0) ||
                     sendMessageMutation.isPending
                   }
                   aria-label="Send message"

@@ -9,7 +9,7 @@ export type PushNotificationPayload = {
   conversationId: string
   url: string
   messageId: string
-  authorId: string
+  userId: string
   createdAt: string
 }
 
@@ -39,7 +39,7 @@ export function buildPushNotificationPayload(
     conversationId: message.conversationId,
     url: `/c/${encodeURIComponent(message.conversationId)}`,
     messageId: message.id,
-    authorId: message.authorId,
+    userId: message.userId,
     createdAt: message.createdAt,
   }
 }

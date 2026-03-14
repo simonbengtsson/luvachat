@@ -25,26 +25,33 @@ export const messagesTable = sqliteTable("messages", {
     .references(() => conversationsTable.id),
   content: text("content").notNull(),
   createdAt: text("created_at").notNull(),
-  authorId: text("author_id").notNull(),
+  userId: text("user_id").notNull(),
 })
-export const MessageSchema = createSelectSchema(messagesTable)
-export type Message = z.infer<typeof MessageSchema>
 
 export const messageAttachmentsTable = sqliteTable("message_attachments", {
   id: text("id").primaryKey(),
   messageId: text("message_id")
     .notNull()
     .references(() => messagesTable.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull(),
   storageKey: text("storage_key").notNull(),
   fileName: text("file_name").notNull(),
   contentType: text("content_type").notNull(),
   sizeBytes: integer("size_bytes").notNull(),
   createdAt: text("created_at").notNull(),
 })
+export const MessageRecordSchema = createSelectSchema(messagesTable)
+export type MessageRecord = z.infer<typeof MessageRecordSchema>
+
 export const MessageAttachmentSchema = createSelectSchema(
   messageAttachmentsTable,
 )
 export type MessageAttachment = z.infer<typeof MessageAttachmentSchema>
+
+export const MessageSchema = MessageRecordSchema.extend({
+  attachments: z.array(MessageAttachmentSchema),
+})
+export type Message = z.infer<typeof MessageSchema>
 
 export const pushSubscriptionsTable = sqliteTable("push_subscriptions", {
   endpoint: text("endpoint").primaryKey(),

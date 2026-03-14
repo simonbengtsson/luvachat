@@ -9,6 +9,49 @@ import {
   type Message,
 } from "./schema"
 
+type SendMessageAttachmentInput = {
+  fileName: string
+  contentType: string
+  sizeBytes: number
+  bytes: ArrayBuffer
+}
+
+function getFormDataString(
+  formData: FormData,
+  key: string,
+  fallback: string = "",
+): string {
+  const value = formData.get(key)
+  return typeof value === "string" ? value : fallback
+}
+
+async function parseSendMessageFormData(formData: FormData): Promise<{
+  conversationId: string
+  content: string
+  attachments: SendMessageAttachmentInput[]
+}> {
+  const attachments = await Promise.all(
+    formData.getAll("attachments").map(async (value) => {
+      if (!(value instanceof File)) {
+        throw new Error("Invalid attachment payload.")
+      }
+
+      return {
+        fileName: value.name,
+        contentType: value.type,
+        sizeBytes: value.size,
+        bytes: await value.arrayBuffer(),
+      }
+    }),
+  )
+
+  return {
+    conversationId: getFormDataString(formData, "conversationId"),
+    content: getFormDataString(formData, "content"),
+    attachments,
+  }
+}
+
 export const getConversations = createServerFn({ method: "GET" }).handler(
   async (): Promise<ConversationWithUserState[]> => {
     const session = await getSessionInfo()
@@ -82,12 +125,7 @@ export const getMessages = createServerFn({ method: "GET" })
   )
 
 export const sendMessage = createServerFn({ method: "POST" })
-  .inputValidator(
-    z.object({
-      conversationId: z.string(),
-      content: z.string(),
-    }),
-  )
+  .inputValidator((input: FormData) => input)
   .handler(async (ctx): Promise<Message> => {
     const session = await getSessionInfo()
     const userId = session.user?.id?.trim()
@@ -95,10 +133,13 @@ export const sendMessage = createServerFn({ method: "POST" })
       throw new Error("Authenticated user is required to send a message.")
     }
 
+    const { conversationId, content, attachments } =
+      await parseSendMessageFormData(ctx.data)
     const syncObject = env.SyncObject.getByName("workspace")
     return syncObject.sendMessage(
-      ctx.data.conversationId,
-      ctx.data.content,
+      conversationId,
+      content,
+      attachments,
       userId,
     )
   })

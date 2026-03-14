@@ -436,19 +436,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             ) : null}
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={Boolean(
-                    matchRoute({
-                      to: "/files",
-                    }),
-                  )}
-                  render={<Link to="/files" />}
-                >
-                  <FilesIcon />
-                  <span>Files</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
                 <SidebarMenuButton onClick={dispatchOpenAppCommandEvent}>
                   <SearchIcon />
                   <span>Search</span>
