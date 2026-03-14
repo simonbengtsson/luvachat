@@ -1,4 +1,4 @@
-import { sqliteTable, text } from "drizzle-orm/sqlite-core"
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core"
 import { createSelectSchema } from "drizzle-orm/zod"
 import { z } from "zod"
 
@@ -29,6 +29,22 @@ export const messagesTable = sqliteTable("messages", {
 })
 export const MessageSchema = createSelectSchema(messagesTable)
 export type Message = z.infer<typeof MessageSchema>
+
+export const messageAttachmentsTable = sqliteTable("message_attachments", {
+  id: text("id").primaryKey(),
+  messageId: text("message_id")
+    .notNull()
+    .references(() => messagesTable.id, { onDelete: "cascade" }),
+  storageKey: text("storage_key").notNull(),
+  fileName: text("file_name").notNull(),
+  contentType: text("content_type").notNull(),
+  sizeBytes: integer("size_bytes").notNull(),
+  createdAt: text("created_at").notNull(),
+})
+export const MessageAttachmentSchema = createSelectSchema(
+  messageAttachmentsTable,
+)
+export type MessageAttachment = z.infer<typeof MessageAttachmentSchema>
 
 export const pushSubscriptionsTable = sqliteTable("push_subscriptions", {
   endpoint: text("endpoint").primaryKey(),
