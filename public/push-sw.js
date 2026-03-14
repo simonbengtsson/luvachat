@@ -19,8 +19,8 @@ self.addEventListener("push", (event) => {
         url: payload.url || "/",
       },
       tag: payload.messageId || undefined,
-      badge: "/logo192.png",
-      icon: "/logo192.png",
+      badge: "/apple-touch-icon.png",
+      icon: "/apple-touch-icon.png",
     }),
   )
 })
