@@ -3,15 +3,24 @@ import { DurableObject } from "cloudflare:workers"
 import { and, desc, eq, lt, sql } from "drizzle-orm"
 import { drizzle } from "drizzle-orm/durable-sqlite/driver"
 import { migrate } from "drizzle-orm/durable-sqlite/migrator"
+import { generateVAPIDKeys } from "web-push"
 import { generateId } from "./generateId"
 import { setLuvabaseDevEnvironment } from "./luvabase"
+import {
+  buildPushNotificationPayload,
+  createPushRequestDetails,
+  type VapidDetails,
+} from "./push-server"
 import {
   conversationUserStateTable,
   conversationsTable,
   messagesTable,
+  pushSubscriptionsTable,
   type Conversation,
   type ConversationWithUserState,
   type Message,
+  type PushSubscriptionInput,
+  type PushSubscriptionRecord,
 } from "./schema"
 import { handleMessage } from "./serverStore"
 import { ClientEventSchema, type ServerEvent } from "./sync-events"
@@ -19,6 +28,7 @@ import { ClientEventSchema, type ServerEvent } from "./sync-events"
 export class SyncObject extends DurableObject {
   private db: ReturnType<typeof drizzle>
   private decoder = new TextDecoder()
+  private vapidDetails: VapidDetails | null = null
 
   constructor(state: DurableObjectState, env: Cloudflare.Env) {
     super(state, env)
@@ -28,6 +38,7 @@ export class SyncObject extends DurableObject {
     this.db = drizzle(state.storage)
 
     state.blockConcurrencyWhile(async () => {
+      await this.ensureVapidDetails(state.storage)
       await migrate(this.db, { migrations })
     })
   }
@@ -57,6 +68,29 @@ export class SyncObject extends DurableObject {
       status: 101,
       webSocket: client,
     })
+  }
+
+  private async ensureVapidDetails(
+    storage: DurableObjectStorage,
+  ): Promise<void> {
+    const existing = await storage.get<VapidDetails>("vapidDetails")
+    if (existing) {
+      this.vapidDetails = existing
+      return
+    }
+
+    const keys = generateVAPIDKeys()
+    const newDetails = {
+      subject: `luvachat-contact@luvabase.com`,
+      publicKey: keys.publicKey,
+      privateKey: keys.privateKey,
+    }
+    await storage.put("vapidDetails", newDetails)
+    this.vapidDetails = newDetails
+  }
+
+  async getVapidPublicKey(): Promise<string> {
+    return this.vapidDetails!.publicKey
   }
 
   webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): void {
@@ -368,7 +402,67 @@ export class SyncObject extends DurableObject {
       type: "messageCreated",
       message,
     })
+    this.ctx.waitUntil(this.sendPushNotifications(message))
     return message
+  }
+
+  async savePushSubscription(
+    userId: string,
+    subscription: PushSubscriptionInput,
+  ): Promise<void> {
+    const normalizedUserId = userId.trim()
+    const endpoint = subscription.endpoint.trim()
+
+    if (!normalizedUserId) {
+      throw new Error("User id is required")
+    }
+
+    if (!endpoint) {
+      throw new Error("Push subscription endpoint is required")
+    }
+
+    const now = new Date().toISOString()
+
+    await this.db
+      .insert(pushSubscriptionsTable)
+      .values({
+        endpoint,
+        userId: normalizedUserId,
+        p256dh: subscription.keys.p256dh,
+        auth: subscription.keys.auth,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: pushSubscriptionsTable.endpoint,
+        set: {
+          userId: normalizedUserId,
+          p256dh: subscription.keys.p256dh,
+          auth: subscription.keys.auth,
+          updatedAt: now,
+        },
+      })
+  }
+
+  async deletePushSubscription(
+    userId: string,
+    endpoint: string,
+  ): Promise<void> {
+    const normalizedUserId = userId.trim()
+    const normalizedEndpoint = endpoint.trim()
+
+    if (!normalizedUserId || !normalizedEndpoint) {
+      return
+    }
+
+    await this.db
+      .delete(pushSubscriptionsTable)
+      .where(
+        and(
+          eq(pushSubscriptionsTable.userId, normalizedUserId),
+          eq(pushSubscriptionsTable.endpoint, normalizedEndpoint),
+        ),
+      )
   }
 
   private broadcastWorkspaceUpdated(): void {
@@ -383,5 +477,89 @@ export class SyncObject extends DurableObject {
     for (const ws of this.ctx.getWebSockets()) {
       ws.send(payload)
     }
+  }
+
+  private async sendPushNotifications(message: Message): Promise<void> {
+    const subscriptions = await this.listPushSubscriptions()
+    if (subscriptions.length === 0) {
+      return
+    }
+
+    const conversation = await this.db
+      .select({
+        name: conversationsTable.name,
+      })
+      .from(conversationsTable)
+      .where(eq(conversationsTable.id, message.conversationId))
+      .limit(1)
+
+    const payload = buildPushNotificationPayload(
+      message,
+      conversation[0]?.name ?? null,
+    )
+
+    await Promise.allSettled(
+      subscriptions.map((subscription) =>
+        this.sendPushNotification(subscription, payload),
+      ),
+    )
+  }
+
+  private async listPushSubscriptions(): Promise<PushSubscriptionRecord[]> {
+    return this.db.select().from(pushSubscriptionsTable)
+  }
+
+  private async sendPushNotification(
+    subscription: PushSubscriptionRecord,
+    payload: ReturnType<typeof buildPushNotificationPayload>,
+  ): Promise<void> {
+    const requestDetails = createPushRequestDetails(
+      this.vapidDetails!,
+      subscription,
+      payload,
+    )
+
+    try {
+      const response = await fetch(requestDetails.endpoint, {
+        method: requestDetails.method,
+        headers: requestDetails.headers,
+        body: requestDetails.body,
+      })
+
+      if (response.status === 404 || response.status === 410) {
+        await this.deletePushSubscriptionByEndpoint(subscription.endpoint)
+        console.warn("[push] removed expired subscription", {
+          endpoint: subscription.endpoint,
+          status: response.status,
+        })
+        return
+      }
+
+      if (!response.ok) {
+        console.error("[push] unexpected push response", {
+          endpoint: subscription.endpoint,
+          status: response.status,
+          body: await response.text().catch(() => ""),
+        })
+      }
+    } catch (error) {
+      console.error("[push] failed to send notification", {
+        error,
+        endpoint: subscription.endpoint,
+      })
+    }
+  }
+
+  private async deletePushSubscriptionByEndpoint(
+    endpoint: string,
+  ): Promise<void> {
+    const normalizedEndpoint = endpoint.trim()
+    if (!normalizedEndpoint) {
+      return
+    }
+
+    await this.db
+      .delete(pushSubscriptionsTable)
+      .where(eq(pushSubscriptionsTable.endpoint, normalizedEndpoint))
   }
 }

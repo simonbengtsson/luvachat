@@ -1,8 +1,13 @@
+import { getSessionInfo } from "@luvabase/sdk"
 import { createServerFn } from "@tanstack/react-start"
 import { env } from "cloudflare:workers"
-import { getSessionInfo } from "@luvabase/sdk"
 import { z } from "zod"
-import type { Conversation, ConversationWithUserState, Message } from "./schema"
+import {
+  PushSubscriptionInputSchema,
+  type Conversation,
+  type ConversationWithUserState,
+  type Message,
+} from "./schema"
 
 export const getConversations = createServerFn({ method: "GET" }).handler(
   async (): Promise<ConversationWithUserState[]> => {
@@ -81,10 +86,64 @@ export const sendMessage = createServerFn({ method: "POST" })
     z.object({
       conversationId: z.string(),
       content: z.string(),
-      authorId: z.string(),
     }),
   )
   .handler(async (ctx): Promise<Message> => {
+    const session = await getSessionInfo()
+    const userId = session.user?.id?.trim()
+    if (!userId) {
+      throw new Error("Authenticated user is required to send a message.")
+    }
+
     const syncObject = env.SyncObject.getByName("workspace")
-    return syncObject.sendMessage(ctx.data.conversationId, ctx.data.content, ctx.data.authorId)
+    return syncObject.sendMessage(
+      ctx.data.conversationId,
+      ctx.data.content,
+      userId,
+    )
+  })
+
+export const getPushPublicKey = createServerFn({ method: "GET" }).handler(
+  async (): Promise<{ publicKey: string }> => {
+    const syncObject = env.SyncObject.getByName("workspace")
+    return {
+      publicKey: await syncObject.getVapidPublicKey(),
+    }
+  },
+)
+
+export const savePushSubscription = createServerFn({ method: "POST" })
+  .inputValidator(PushSubscriptionInputSchema)
+  .handler(async (ctx): Promise<{ ok: true }> => {
+    const session = await getSessionInfo()
+    const userId = session.user?.id?.trim()
+    if (!userId) {
+      throw new Error(
+        "Authenticated user is required to save a push subscription.",
+      )
+    }
+
+    const syncObject = env.SyncObject.getByName("workspace")
+    await syncObject.savePushSubscription(userId, ctx.data)
+    return { ok: true }
+  })
+
+export const deletePushSubscription = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      endpoint: z.url(),
+    }),
+  )
+  .handler(async (ctx): Promise<{ ok: true }> => {
+    const session = await getSessionInfo()
+    const userId = session.user?.id?.trim()
+    if (!userId) {
+      throw new Error(
+        "Authenticated user is required to delete a push subscription.",
+      )
+    }
+
+    const syncObject = env.SyncObject.getByName("workspace")
+    await syncObject.deletePushSubscription(userId, ctx.data.endpoint)
+    return { ok: true }
   })

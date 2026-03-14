@@ -18,6 +18,11 @@ import {
   conversationsQueryOptions,
   seedConversationQueryCache,
 } from "@/core/conversationsQuery"
+import {
+  cleanupPushSubscription,
+  supportsPushNotifications,
+  syncPushSubscription,
+} from "@/core/push-client"
 import { createConversation as createConversationServerFn } from "@/core/functions"
 import type { ConversationWithUserState } from "@/core/schema"
 import { cn } from "@/lib/utils"
@@ -96,28 +101,56 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [notificationPermission, setNotificationPermission] = React.useState<
     NotificationPermission | null
   >(null)
+  const [isEnablingNotifications, setIsEnablingNotifications] =
+    React.useState(false)
 
   React.useEffect(() => {
-    if (typeof window === "undefined" || !("Notification" in window)) {
+    if (!supportsPushNotifications()) {
       setNotificationPermission(null)
       return
     }
 
-    setNotificationPermission(Notification.permission)
+    const permission = Notification.permission
+    setNotificationPermission(permission)
+
+    if (permission === "granted") {
+      void syncPushSubscription().catch((error) => {
+        console.error("Failed to sync push subscription:", error)
+      })
+      return
+    }
+
+    if (permission === "denied") {
+      void cleanupPushSubscription().catch((error) => {
+        console.error("Failed to clean up push subscription:", error)
+      })
+    }
   }, [])
 
   const handleEnableNotifications = React.useCallback(async () => {
-    if (typeof window === "undefined" || !("Notification" in window)) {
+    if (!supportsPushNotifications()) {
       console.warn("Notifications are not supported in this browser.")
       return
     }
 
     try {
+      setIsEnablingNotifications(true)
       const permission = await Notification.requestPermission()
       setNotificationPermission(permission)
       console.info("Notification permission result:", permission)
+
+      if (permission === "granted") {
+        await syncPushSubscription()
+        return
+      }
+
+      if (permission === "denied") {
+        await cleanupPushSubscription()
+      }
     } catch (error) {
       console.error("Notification permission request failed:", error)
+    } finally {
+      setIsEnablingNotifications(false)
     }
   }, [])
   const conversationsQuery = useQuery(conversationsQueryOptions())
@@ -383,10 +416,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <section className="px-2 pb-3">
                 <button
                   type="button"
+                  disabled={isEnablingNotifications}
                   onClick={() => {
                     void handleEnableNotifications()
                   }}
-                  className="flex w-full items-start gap-3 rounded-lg border border-sidebar-border/80 px-3 py-3 text-left transition-colors hover:bg-sidebar-accent/30"
+                  className="flex w-full items-start gap-3 rounded-lg border border-sidebar-border/80 px-3 py-3 text-left transition-colors hover:bg-sidebar-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <BellIcon className="mt-0.5 size-4 shrink-0 text-sidebar-foreground/70" />
                   <div className="min-w-0">

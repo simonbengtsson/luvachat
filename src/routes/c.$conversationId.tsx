@@ -134,15 +134,12 @@ function RouteComponent() {
     return null
   }
 
-  const currentUserId = conversationMetaQuery.data.session.user!.id
-
   return (
     <ConversationView
       key={conversationId}
       conversationId={conversationId}
       conversationName={conversationQuery.data?.name ?? null}
       membersById={membersById}
-      currentUserId={currentUserId}
     />
   )
 }
@@ -151,12 +148,10 @@ function ConversationView({
   conversationId,
   conversationName,
   membersById,
-  currentUserId,
 }: {
   conversationId: string
   conversationName: string | null
   membersById: Map<string, Member>
-  currentUserId: string
 }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -208,7 +203,6 @@ function ConversationView({
         data: {
           conversationId,
           content,
-          authorId: currentUserId,
         },
       }),
     onSuccess: (message) => {
