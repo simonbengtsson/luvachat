@@ -205,11 +205,11 @@ function startPingInterval(ws: WebSocket, clientId: string): void {
       return
     }
 
-    sendEvent(ws, clientId, {
-      type: "ping",
-      timestamp: new Date().toISOString(),
-    })
-  }, 5_000)
+    // sendEvent(ws, clientId, {
+    //   type: "ping",
+    //   timestamp: new Date().toISOString(),
+    // })
+  }, 60_000)
 }
 
 function sendEvent(ws: WebSocket, clientId: string, event: ClientEvent): void {

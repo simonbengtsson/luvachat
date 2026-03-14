@@ -73,7 +73,7 @@ export class SyncObject extends DurableObject {
   private async ensureVapidDetails(
     storage: DurableObjectStorage,
   ): Promise<void> {
-    const existing = await storage.get<VapidDetails>("vapidDetails")
+    const existing = await storage.get<VapidDetails>("vapidDetails2")
     if (existing) {
       this.vapidDetails = existing
       return
@@ -81,11 +81,11 @@ export class SyncObject extends DurableObject {
 
     const keys = generateVAPIDKeys()
     const newDetails = {
-      subject: `luvachat-contact@luvabase.com`,
+      subject: `mailto:luvachat-contact@luvabase.com`,
       publicKey: keys.publicKey,
       privateKey: keys.privateKey,
     }
-    await storage.put("vapidDetails", newDetails)
+    await storage.put("vapidDetails2", newDetails)
     this.vapidDetails = newDetails
   }
 
@@ -542,6 +542,12 @@ export class SyncObject extends DurableObject {
           body: await response.text().catch(() => ""),
         })
       }
+
+      console.log("[push] push notification sent", {
+        endpoint: subscription.endpoint,
+        status: response.status,
+        body: await response.text().catch(() => ""),
+      })
     } catch (error) {
       console.error("[push] failed to send notification", {
         error,

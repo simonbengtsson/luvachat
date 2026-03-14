@@ -1,4 +1,5 @@
 self.addEventListener("push", (event) => {
+  console.log("[push] push event", { event })
   if (!event.data) {
     return
   }

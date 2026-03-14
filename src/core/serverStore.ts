@@ -20,7 +20,7 @@ export async function handleMessage(
       timestamp: new Date().toISOString(),
       fromClientId: senderClientId,
     }
-    broadcastEvent(ctx, senderClientId, outboundEvent, getRecipientClientId)
+    //broadcastEvent(ctx, senderClientId, outboundEvent, getRecipientClientId)
     return
   }
 
