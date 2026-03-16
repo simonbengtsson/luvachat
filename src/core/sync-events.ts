@@ -7,10 +7,6 @@ export const ClientEventSchema = z.discriminatedUnion("type", [
     type: z.literal("ping"),
     timestamp: z.string(),
   }),
-  z.object({
-    type: z.literal("createConversation"),
-    name: z.string().min(1),
-  }),
 ])
 
 export type ServerEvent = z.infer<typeof ServerEventSchema>

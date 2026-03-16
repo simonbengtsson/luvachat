@@ -1,6 +1,4 @@
 import type { drizzle } from "drizzle-orm/durable-sqlite/driver"
-import { generateId } from "./generateId"
-import { conversationsTable, type Conversation } from "./schema"
 import type { ClientEvent, ServerEvent } from "./sync-events"
 
 type SyncDb = ReturnType<typeof drizzle>
@@ -24,33 +22,7 @@ export async function handleMessage(
     return
   }
 
-  if (event.type === "createConversation") {
-    const name = event.name.trim()
-    if (!name) {
-      console.warn("[sync] refused createConversation with empty name", {
-        senderClientId,
-      })
-      return
-    }
-
-    const conversation: Conversation = {
-      id: generateId(),
-      type: "channel",
-      name,
-      createdAt: new Date().toISOString(),
-    }
-
-    await db.insert(conversationsTable).values(conversation)
-
-    const outboundEvent: ServerEvent = {
-      type: "workspaceUpdated",
-    }
-    broadcastEvent(ctx, senderClientId, outboundEvent, getRecipientClientId)
-    return
-  }
-
-  const _exhaustive: never = event
-  console.warn("[sync] unhandled event", _exhaustive)
+  console.warn("[sync] unhandled event", event)
 }
 
 function sendEvent(
