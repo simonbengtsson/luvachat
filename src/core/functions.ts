@@ -136,12 +136,7 @@ export const sendMessage = createServerFn({ method: "POST" })
     const { conversationId, content, attachments } =
       await parseSendMessageFormData(ctx.data)
     const syncObject = env.SyncObject.getByName("workspace")
-    return syncObject.sendMessage(
-      conversationId,
-      content,
-      attachments,
-      userId,
-    )
+    return syncObject.sendMessage(conversationId, content, attachments, userId)
   })
 
 export const getPushPublicKey = createServerFn({ method: "GET" }).handler(

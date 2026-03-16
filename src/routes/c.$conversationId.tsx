@@ -213,13 +213,12 @@ function ConversationView({
     }
 
     return (
-      container.scrollHeight - container.scrollTop - container.clientHeight < 120
+      container.scrollHeight - container.scrollTop - container.clientHeight <
+      120
     )
   }
 
-  const ensureLatestMessageIsVisible = (
-    behavior: ScrollBehavior = "auto",
-  ) => {
+  const ensureLatestMessageIsVisible = (behavior: ScrollBehavior = "auto") => {
     if (!shouldAutoScrollToBottomRef.current && !isNearBottom()) {
       return
     }
@@ -333,7 +332,10 @@ function ConversationView({
   })
 
   const submitMessage = () => {
-    if (isSyncConnected && (messageContent.trim() || selectedAttachments.length)) {
+    if (
+      isSyncConnected &&
+      (messageContent.trim() || selectedAttachments.length)
+    ) {
       sendMessageMutation.mutate()
     }
   }
@@ -570,42 +572,44 @@ function ConversationView({
                       <div className="overflow-x-auto pt-1 pb-1">
                         <div className="flex gap-2">
                           {message.attachments.map((attachment) => {
-                          const attachmentUrl = getAttachmentUrl(
-                            attachment.storageKey,
-                          )
+                            const attachmentUrl = getAttachmentUrl(
+                              attachment.storageKey,
+                            )
 
-                          if (isImageAttachment(attachment.contentType)) {
+                            if (isImageAttachment(attachment.contentType)) {
+                              return (
+                                <a
+                                  key={attachment.id}
+                                  href={attachmentUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="block w-32 shrink-0 overflow-hidden rounded-xl border border-border/70 bg-muted/20"
+                                >
+                                  <img
+                                    src={attachmentUrl}
+                                    alt={attachment.fileName}
+                                    loading="lazy"
+                                    onLoad={() =>
+                                      ensureLatestMessageIsVisible()
+                                    }
+                                    className="h-24 w-full object-cover"
+                                  />
+                                </a>
+                              )
+                            }
+
                             return (
                               <a
                                 key={attachment.id}
                                 href={attachmentUrl}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="block w-32 shrink-0 overflow-hidden rounded-xl border border-border/70 bg-muted/20"
+                                className="flex h-24 w-24 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-muted/20 hover:bg-muted/40"
                               >
-                                <img
-                                  src={attachmentUrl}
-                                  alt={attachment.fileName}
-                                  loading="lazy"
-                                  onLoad={() => ensureLatestMessageIsVisible()}
-                                  className="h-24 w-full object-cover"
-                                />
+                                <FileIcon className="size-5 shrink-0 text-muted-foreground" />
                               </a>
                             )
-                          }
-
-                          return (
-                            <a
-                              key={attachment.id}
-                              href={attachmentUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="flex h-24 w-24 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-muted/20 hover:bg-muted/40"
-                            >
-                              <FileIcon className="size-5 shrink-0 text-muted-foreground" />
-                            </a>
-                          )
-                        })}
+                          })}
                         </div>
                       </div>
                     ) : null}

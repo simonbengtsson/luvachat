@@ -98,9 +98,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { isMobile } = useSidebar()
   const matchRoute = useMatchRoute()
   const queryClient = useQueryClient()
-  const [notificationPermission, setNotificationPermission] = React.useState<
-    NotificationPermission | null
-  >(null)
+  const [notificationPermission, setNotificationPermission] =
+    React.useState<NotificationPermission | null>(null)
   const [isEnablingNotifications, setIsEnablingNotifications] =
     React.useState(false)
 

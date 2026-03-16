@@ -1,16 +1,16 @@
-"use client";
+"use client"
 
-import { Smile } from "lucide-react";
+import { Smile } from "lucide-react"
 
-import EmojiPicker from "@/components/shadcnblocks/emoji-picker";
-import { Button } from "@/components/ui/button";
+import EmojiPicker from "@/components/shadcnblocks/emoji-picker"
+import { Button } from "@/components/ui/button"
 
-export const title = "Emoji Picker with Different Button Variants";
+export const title = "Emoji Picker with Different Button Variants"
 
 const EmojiPickerExample = () => {
   const handleEmojiSelect = (emoji: string) => {
-    console.log("Selected emoji:", emoji);
-  };
+    console.log("Selected emoji:", emoji)
+  }
 
   return (
     <div className="space-y-6">
@@ -116,7 +116,7 @@ const EmojiPickerExample = () => {
         />
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default EmojiPickerExample;
+export default EmojiPickerExample

@@ -1,1 +1,5 @@
 src/components/ui
+src/components/shadcnblocks
+worker-configuration.d.ts
+drizzle/*
+routeTree.gen.ts

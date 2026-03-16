@@ -25,6 +25,9 @@ export function seedConversationQueryCache(
   conversations: ConversationWithUserState[],
 ) {
   for (const conversation of conversations) {
-    queryClient.setQueryData(conversationQueryKey(conversation.id), conversation)
+    queryClient.setQueryData(
+      conversationQueryKey(conversation.id),
+      conversation,
+    )
   }
 }

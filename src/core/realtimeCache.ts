@@ -1,19 +1,10 @@
-import type {
-  InfiniteData,
-  QueryClient,
-} from "@tanstack/react-query"
+import type { InfiniteData, QueryClient } from "@tanstack/react-query"
 import {
   conversationQueryKey,
   conversationsQueryKey,
 } from "./conversationsQuery"
-import {
-  messagesQueryKey,
-  type MessagesPage,
-} from "./messagesQuery"
-import type {
-  ConversationWithUserState,
-  Message,
-} from "./schema"
+import { messagesQueryKey, type MessagesPage } from "./messagesQuery"
+import type { ConversationWithUserState, Message } from "./schema"
 
 type MessagesInfiniteData = InfiniteData<MessagesPage, string | undefined>
 

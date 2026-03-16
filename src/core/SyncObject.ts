@@ -306,7 +306,10 @@ export class SyncObject extends DurableObject {
         storageKey: messageAttachmentsTable.storageKey,
       })
       .from(messageAttachmentsTable)
-      .innerJoin(messagesTable, eq(messageAttachmentsTable.messageId, messagesTable.id))
+      .innerJoin(
+        messagesTable,
+        eq(messageAttachmentsTable.messageId, messagesTable.id),
+      )
       .where(eq(messagesTable.conversationId, id))
 
     await this.db
@@ -373,7 +376,9 @@ export class SyncObject extends DurableObject {
     }
   }
 
-  private async enrichMessages(messageRecords: MessageRecord[]): Promise<Message[]> {
+  private async enrichMessages(
+    messageRecords: MessageRecord[],
+  ): Promise<Message[]> {
     const attachmentsByMessageId = await this.listAttachmentsByMessageIds(
       messageRecords.map((message) => message.id),
     )
@@ -498,7 +503,9 @@ export class SyncObject extends DurableObject {
     try {
       for (const attachment of attachments) {
         const attachmentId = crypto.randomUUID()
-        const contentType = normalizeAttachmentContentType(attachment.contentType)
+        const contentType = normalizeAttachmentContentType(
+          attachment.contentType,
+        )
         const storageKey = `attachments/${attachmentId}-${sanitizeAttachmentFileName(
           attachment.fileName,
         )}`
