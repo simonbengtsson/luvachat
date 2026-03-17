@@ -10,48 +10,45 @@ import {
 
 const base = os.$context<{ db: ReturnType<typeof drizzle>; userId: string }>()
 
-export const syncObjectRpcRouter = {
-  getConversations: base.handler(async ({ context }) => {
-    console.log("getConversations", context.userId)
-    const conversationLastMessageSubquery = context.db
-      .select({
-        conversationId: messagesTable.conversationId,
-        lastMessageAt: sql<string>`max(${messagesTable.createdAt})`.as(
-          "last_message_at",
-        ),
-      })
-      .from(messagesTable)
-      .groupBy(messagesTable.conversationId)
-      .as("conversation_last_message")
+const getConversations = base.handler(async ({ context }) => {
+  const conversationLastMessageSubquery = context.db
+    .select({
+      conversationId: messagesTable.conversationId,
+      lastMessageAt: sql<string>`max(${messagesTable.createdAt})`.as(
+        "last_message_at",
+      ),
+    })
+    .from(messagesTable)
+    .groupBy(messagesTable.conversationId)
+    .as("conversation_last_message")
 
-    let result = await context.db
-      .select({
-        id: conversationsTable.id,
-        type: conversationsTable.type,
-        name: conversationsTable.name,
-        createdAt: conversationsTable.createdAt,
-        lastViewedAt: conversationUserStateTable.lastViewedAt,
-        lastMessageAt: conversationLastMessageSubquery.lastMessageAt,
-      })
-      .from(conversationsTable)
-      .leftJoin(
-        conversationUserStateTable,
-        and(
-          eq(conversationUserStateTable.conversationId, conversationsTable.id),
-          eq(conversationUserStateTable.userId, context.userId),
-        ),
-      )
-      .leftJoin(
-        conversationLastMessageSubquery,
-        eq(
-          conversationLastMessageSubquery.conversationId,
-          conversationsTable.id,
-        ),
-      )
-      .orderBy(desc(conversationsTable.createdAt))
+  let result = await context.db
+    .select({
+      id: conversationsTable.id,
+      type: conversationsTable.type,
+      name: conversationsTable.name,
+      createdAt: conversationsTable.createdAt,
+      lastViewedAt: conversationUserStateTable.lastViewedAt,
+      lastMessageAt: conversationLastMessageSubquery.lastMessageAt,
+    })
+    .from(conversationsTable)
+    .leftJoin(
+      conversationUserStateTable,
+      and(
+        eq(conversationUserStateTable.conversationId, conversationsTable.id),
+        eq(conversationUserStateTable.userId, context.userId),
+      ),
+    )
+    .leftJoin(
+      conversationLastMessageSubquery,
+      eq(conversationLastMessageSubquery.conversationId, conversationsTable.id),
+    )
+    .orderBy(desc(conversationsTable.createdAt))
 
-    return result
-  }),
+  return result
+})
+
+export const orpcRouter = {
+  getConversations,
 }
-
-export const orpcHandler = new RPCHandler(syncObjectRpcRouter)
+export const orpcHandler = new RPCHandler(orpcRouter)
