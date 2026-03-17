@@ -8,7 +8,11 @@ import {
   messagesTable,
 } from "./schema"
 
-const base = os.$context<{ db: ReturnType<typeof drizzle>; userId: string }>()
+const base = os.$context<{
+  db: ReturnType<typeof drizzle>
+  userId: string
+  getWebSockets: (tag?: string) => WebSocket[]
+}>()
 
 const getConversations = base.handler(async ({ context }) => {
   const conversationLastMessageSubquery = context.db

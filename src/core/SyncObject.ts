@@ -61,6 +61,7 @@ export class SyncObject extends DurableObject {
       context: {
         db: this.db,
         userId,
+        getWebSockets: this.ctx.getWebSockets,
       },
     })
     if (rpcResponse.matched) {
@@ -71,21 +72,12 @@ export class SyncObject extends DurableObject {
       return new Response("Expected websocket upgrade request", { status: 426 })
     }
 
-    const url = new URL(request.url)
-    const clientId =
-      request.headers.get("x-luvabase-user-id")?.trim() ??
-      url.searchParams.get("userId")?.trim()
-    if (!clientId) {
-      return new Response("Missing sync client id", { status: 400 })
-    }
-
     const [client, server] = Object.values(new WebSocketPair())
-    this.ctx.acceptWebSocket(server, [clientId])
-
-    console.log("[sync] websocket connected", {
-      clientId,
-      connectedClients: this.ctx.getWebSockets().length,
+    server.serializeAttachment({
+      userId,
+      connectedOn: new Date().toISOString(),
     })
+    this.ctx.acceptWebSocket(server)
 
     return new Response(null, {
       status: 101,
