@@ -101,9 +101,9 @@ export class SyncObject extends DurableObject {
     this.ctx.waitUntil(
       handleMessage(
         this.ctx,
-        this.getClientId(ws),
+        this.getUserId(ws),
         parsedEvent.data,
-        (recipientWs) => this.getClientId(recipientWs),
+        (recipientWs) => this.getUserId(recipientWs),
         this.db,
       ),
     )
@@ -111,7 +111,7 @@ export class SyncObject extends DurableObject {
 
   webSocketClose(ws: WebSocket, code: number, reason: string): void {
     console.log("[sync] websocket closed", {
-      clientId: this.getClientId(ws),
+      clientId: this.getUserId(ws),
       code,
       reason,
       connectedClients: this.ctx.getWebSockets().length,
@@ -120,12 +120,12 @@ export class SyncObject extends DurableObject {
 
   webSocketError(ws: WebSocket, error: unknown): void {
     console.error("[sync] websocket error", {
-      clientId: this.getClientId(ws),
+      clientId: this.getUserId(ws),
       error,
     })
   }
 
-  private getClientId(ws: WebSocket): string {
+  private getUserId(ws: WebSocket): string {
     const attachment = ws.deserializeAttachment() as { userId: string } | null
     return attachment?.userId ?? "<unknown user id>"
   }
