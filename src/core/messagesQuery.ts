@@ -1,6 +1,6 @@
 import { infiniteQueryOptions } from "@tanstack/react-query"
+import { orpcClient } from "./orpcClient"
 import type { Message } from "./schema"
-import { getMessages } from "./functions"
 
 export const messagesQueryKey = (conversationId: string) =>
   ["messages", conversationId] as const
@@ -14,12 +14,10 @@ export function messagesInfiniteQueryOptions(conversationId: string) {
   return infiniteQueryOptions({
     queryKey: messagesQueryKey(conversationId),
     queryFn: ({ pageParam }) =>
-      getMessages({
-        data: {
-          conversationId,
-          cursor: pageParam,
-          limit: 10,
-        },
+      orpcClient.getMessages({
+        conversationId,
+        cursor: pageParam,
+        limit: 10,
       }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor,

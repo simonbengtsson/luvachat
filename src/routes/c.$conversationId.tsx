@@ -19,13 +19,10 @@ import {
   conversationsQueryKey,
 } from "@/core/conversationsQuery"
 import {
-  deleteConversation as deleteConversationServerFn,
-  sendMessage,
-} from "@/core/functions"
-import {
   messagesInfiniteQueryOptions,
   messagesQueryKey,
 } from "@/core/messagesQuery"
+import { orpcClient } from "@/core/orpcClient"
 import { applyMessageCreatedToCache } from "@/core/realtimeCache"
 import type { ConversationWithUserState } from "@/core/schema"
 import { getScrollRestorationKey } from "@/core/scrollRestorationKey"
@@ -42,6 +39,7 @@ import {
   useNavigate,
 } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
+import { getRequest } from "@tanstack/react-start/server"
 import {
   EllipsisVerticalIcon,
   FileIcon,
@@ -65,9 +63,10 @@ export const Route = createFileRoute("/c/$conversationId")({
 
 const getConversationMeta = createServerFn({ method: "GET" }).handler(
   async () => {
+    const request = getRequest()
     const [members, session] = await Promise.all([
-      getMembers(),
-      getSessionInfo(),
+      getMembers(request),
+      getSessionInfo(request),
     ])
     return {
       members,
@@ -229,19 +228,12 @@ function ConversationView({
   }
 
   const sendMessageMutation = useMutation({
-    mutationFn: () => {
-      const formData = new FormData()
-      formData.set("conversationId", conversationId)
-      formData.set("content", messageContent)
-
-      for (const attachment of selectedAttachments) {
-        formData.append("attachments", attachment)
-      }
-
-      return sendMessage({
-        data: formData,
-      })
-    },
+    mutationFn: () =>
+      orpcClient.sendMessage({
+        conversationId,
+        content: messageContent,
+        attachments: selectedAttachments,
+      }),
     onSuccess: (message) => {
       applyMessageCreatedToCache(queryClient, message, {
         markViewed: true,
@@ -261,12 +253,7 @@ function ConversationView({
   })
 
   const deleteConversationMutation = useMutation({
-    mutationFn: () =>
-      deleteConversationServerFn({
-        data: {
-          conversationId,
-        },
-      }),
+    mutationFn: () => orpcClient.deleteConversation({ conversationId }),
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: conversationsQueryKey })
 

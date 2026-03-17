@@ -23,13 +23,14 @@ import {
   supportsPushNotifications,
   syncPushSubscription,
 } from "@/core/push-client"
-import { createConversation as createConversationServerFn } from "@/core/functions"
+import { orpcClient } from "@/core/orpcClient"
 import type { ConversationWithUserState } from "@/core/schema"
 import { cn } from "@/lib/utils"
 import { getAdminUrl, getMembers, getSessionInfo } from "@luvabase/sdk"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link, useMatchRoute } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
+import { getRequest } from "@tanstack/react-start/server"
 import {
   BellIcon,
   EllipsisVerticalIcon,
@@ -85,14 +86,21 @@ function hasUnreadMessages(conversation: ConversationWithUserState) {
   return conversation.lastViewedAt < conversation.lastMessageAt
 }
 
-const getPodInfo = createServerFn({ method: "GET" }).handler(async () => {
-  const [members, session] = await Promise.all([getMembers(), getSessionInfo()])
-  return {
-    members,
-    session,
-    adminUrl: getAdminUrl(),
-  }
-})
+const getPodInfo = createServerFn({ method: "GET" }).handler(
+  async () => {
+    const request = getRequest()
+    const [members, session] = await Promise.all([
+      getMembers(request),
+      getSessionInfo(request),
+    ])
+
+    return {
+      members,
+      session,
+      adminUrl: getAdminUrl(),
+    }
+  },
+)
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { isMobile } = useSidebar()
@@ -154,12 +162,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }, [])
   const conversationsQuery = useQuery(conversationsQueryOptions())
   const createConversationMutation = useMutation({
-    mutationFn: (name: string) =>
-      createConversationServerFn({
-        data: {
-          name,
-        },
-      }),
+    mutationFn: (name: string) => orpcClient.createConversation({ name }),
     onMutate: async (name) => {
       const trimmedName = name.trim()
       if (!trimmedName) {

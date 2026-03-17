@@ -1,8 +1,4 @@
-import {
-  deletePushSubscription,
-  getPushPublicKey,
-  savePushSubscription,
-} from "./functions"
+import { orpcClient } from "./orpcClient"
 import type { PushSubscriptionInput } from "./schema"
 
 export const PUSH_SERVICE_WORKER_PATH = "/push-sw.js"
@@ -28,16 +24,14 @@ export async function syncPushSubscription(): Promise<PushSubscription | null> {
   let subscription = await registration.pushManager.getSubscription()
 
   if (!subscription) {
-    const { publicKey } = await getPushPublicKey()
+    const publicKey = await orpcClient.getVapidPublicKey()
     subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToArrayBuffer(publicKey),
     })
   }
 
-  await savePushSubscription({
-    data: serializePushSubscription(subscription),
-  })
+  await orpcClient.savePushSubscription(serializePushSubscription(subscription))
 
   return subscription
 }
@@ -55,10 +49,8 @@ export async function cleanupPushSubscription(): Promise<void> {
   }
 
   try {
-    await deletePushSubscription({
-      data: {
-        endpoint: subscription.endpoint,
-      },
+    await orpcClient.deletePushSubscription({
+      endpoint: subscription.endpoint,
     })
   } catch (error) {
     console.error("Failed to delete stored push subscription:", error)
