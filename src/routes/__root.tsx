@@ -56,6 +56,7 @@ export const Route = createRootRoute({
       },
     ],
   }),
+  errorComponent: ({ error }) => <div>Error: {error.message}</div>,
   shellComponent: RootDocument,
 })
 

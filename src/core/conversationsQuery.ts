@@ -1,6 +1,7 @@
 import { queryOptions, type QueryClient } from "@tanstack/react-query"
+import { getConversation } from "./functions"
+import { orpcClient } from "./orpcClient"
 import type { ConversationWithUserState } from "./schema"
-import { getConversation, getConversations } from "./functions"
 
 export const conversationsQueryKey = ["conversations"] as const
 export const conversationQueryKey = (conversationId: string) =>
@@ -9,7 +10,7 @@ export const conversationQueryKey = (conversationId: string) =>
 export function conversationsQueryOptions() {
   return queryOptions({
     queryKey: conversationsQueryKey,
-    queryFn: () => getConversations(),
+    queryFn: () => orpcClient.getConversations(),
   })
 }
 

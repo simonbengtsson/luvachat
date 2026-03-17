@@ -1,11 +1,11 @@
-import { getConversations } from "@/core/functions"
+import { orpcClient } from "@/core/orpcClient"
 import { createFileRoute } from "@tanstack/react-router"
 
 export const Route = createFileRoute("/")({
   server: {
     handlers: {
       GET: async () => {
-        const conversations = await getConversations()
+        const conversations = await orpcClient.getConversations()
         const first = conversations.at(0)
         if (!first) {
           return new Response("No channels yet")
