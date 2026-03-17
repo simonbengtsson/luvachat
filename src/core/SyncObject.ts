@@ -6,12 +6,9 @@ import { generateVAPIDKeys } from "web-push"
 import { setLuvabaseDevEnvironment } from "./luvabase"
 import { orpcHandler } from "./orpcFunctions"
 import type { VapidDetails } from "./push-server"
-import { handleMessage } from "./serverStore"
-import { ClientEventSchema } from "./sync-events"
 
 export class SyncObject extends DurableObject {
   private db: ReturnType<typeof drizzle>
-  private decoder = new TextDecoder()
   private vapidDetails: VapidDetails | null = null
 
   constructor(state: DurableObjectState, env: Cloudflare.Env) {
@@ -78,35 +75,6 @@ export class SyncObject extends DurableObject {
     }
     await storage.put("vapidDetails2", newDetails)
     this.vapidDetails = newDetails
-  }
-
-  webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): void {
-    const rawMessage =
-      typeof message === "string" ? message : this.decoder.decode(message)
-    let payload: unknown
-
-    try {
-      payload = JSON.parse(rawMessage)
-    } catch {
-      console.warn("[sync] received invalid event payload", rawMessage)
-      return
-    }
-
-    const parsedEvent = ClientEventSchema.safeParse(payload)
-    if (!parsedEvent.success) {
-      console.warn("[sync] received invalid event payload", payload)
-      return
-    }
-
-    this.ctx.waitUntil(
-      handleMessage(
-        this.ctx,
-        this.getUserId(ws),
-        parsedEvent.data,
-        (recipientWs) => this.getUserId(recipientWs),
-        this.db,
-      ),
-    )
   }
 
   webSocketClose(ws: WebSocket, code: number, reason: string): void {
