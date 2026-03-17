@@ -6,6 +6,7 @@ import { migrate } from "drizzle-orm/durable-sqlite/migrator"
 import { generateVAPIDKeys } from "web-push"
 import { generateId } from "./generateId"
 import { setLuvabaseDevEnvironment } from "./luvabase"
+import { orpcHandler } from "./orpcFunctions"
 import {
   buildPushNotificationPayload,
   createPushRequestDetails,
@@ -68,7 +69,14 @@ export class SyncObject extends DurableObject {
     })
   }
 
-  fetch(request: Request): Response {
+  async fetch(request: Request): Promise<Response> {
+    const rpcResponse = await orpcHandler.handle(request, {
+      prefix: "/sync/orpc",
+    })
+    if (rpcResponse.matched) {
+      return rpcResponse.response
+    }
+
     if (request.headers.get("Upgrade") !== "websocket") {
       return new Response("Expected websocket upgrade request", { status: 426 })
     }

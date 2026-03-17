@@ -9,7 +9,7 @@ export default {
   fetch(request: Request, env: Env) {
     const url = new URL(request.url)
 
-    if (url.pathname === "/sync") {
+    if (url.pathname.startsWith("/sync")) {
       const syncObject = env.SyncObject.getByName("workspace")
       const headers = new Headers(request.headers)
       return syncObject.fetch(new Request(request, { headers }))
