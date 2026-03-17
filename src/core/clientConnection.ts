@@ -159,31 +159,6 @@ function connectSocket(): void {
   })
 }
 
-export function createConversation(name: string): void {
-  const ws = socket
-  const clientId = currentClientId
-  const channelName = name.trim()
-
-  if (!channelName) {
-    return
-  }
-
-  if (!ws || ws.readyState !== WebSocket.OPEN || !clientId) {
-    console.warn(
-      "[sync] cannot create conversation while websocket is disconnected",
-      {
-        channelName,
-      },
-    )
-    return
-  }
-
-  sendEvent(ws, clientId, {
-    type: "createConversation",
-    name: channelName,
-  })
-}
-
 function getSyncUrl(clientId: string): string {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
   const url = new URL(`${protocol}//${window.location.host}/sync`)
