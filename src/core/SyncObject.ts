@@ -36,21 +36,6 @@ type AttachmentUploadInput = {
   bytes: ArrayBuffer
 }
 
-function sanitizeAttachmentFileName(fileName: string): string {
-  const normalized = fileName.trim() || "attachment"
-  const sanitized = normalized
-    .replace(/[^A-Za-z0-9._-]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-
-  return sanitized || "attachment"
-}
-
-function normalizeAttachmentContentType(contentType: string): string {
-  const normalized = contentType.trim()
-  return normalized || "application/octet-stream"
-}
-
 export class SyncObject extends DurableObject {
   private db: ReturnType<typeof drizzle>
   private decoder = new TextDecoder()
@@ -70,8 +55,13 @@ export class SyncObject extends DurableObject {
   }
 
   async fetch(request: Request): Promise<Response> {
+    const userId = request.headers.get("x-user-id")!
     const rpcResponse = await orpcHandler.handle(request, {
       prefix: "/sync/orpc",
+      context: {
+        db: this.db,
+        userId,
+      },
     })
     if (rpcResponse.matched) {
       return rpcResponse.response
@@ -743,4 +733,19 @@ export class SyncObject extends DurableObject {
       .delete(pushSubscriptionsTable)
       .where(eq(pushSubscriptionsTable.endpoint, normalizedEndpoint))
   }
+}
+
+function sanitizeAttachmentFileName(fileName: string): string {
+  const normalized = fileName.trim() || "attachment"
+  const sanitized = normalized
+    .replace(/[^A-Za-z0-9._-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+
+  return sanitized || "attachment"
+}
+
+function normalizeAttachmentContentType(contentType: string): string {
+  const normalized = contentType.trim()
+  return normalized || "application/octet-stream"
 }

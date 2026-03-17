@@ -1,15 +1,18 @@
 import { os } from "@orpc/server"
 import { RPCHandler } from "@orpc/server/fetch"
+import type { drizzle } from "drizzle-orm/durable-sqlite/driver"
 import { z } from "zod"
 
+const base = os.$context<{ db: ReturnType<typeof drizzle>; userId: string }>()
+
 const syncObjectRpcRouter = {
-  hello: os
+  hello: base
     .output(
       z.object({
         message: z.string(),
       }),
     )
-    .handler(() => {
+    .handler(({ context }) => {
       return {
         message: "hello world",
       }
