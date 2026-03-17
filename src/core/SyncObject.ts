@@ -126,7 +126,7 @@ export class SyncObject extends DurableObject {
   }
 
   private getClientId(ws: WebSocket): string {
-    const [id] = this.ctx.getTags(ws)
-    return id ?? "unknown"
+    const attachment = ws.deserializeAttachment() as { userId: string } | null
+    return attachment?.userId ?? "<unknown user id>"
   }
 }
