@@ -4,6 +4,10 @@
   "description": "A chat application built with Luvabase",
   "services": [
     {
+      "type": "openrouter",
+      "name": "OPENROUTER",
+    }
+    {
       "type": "durable-object",
       "name": "SyncObject",
     },

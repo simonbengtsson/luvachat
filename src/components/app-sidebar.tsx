@@ -18,12 +18,12 @@ import {
   conversationsQueryOptions,
   seedConversationQueryCache,
 } from "@/core/conversationsQuery"
+import { orpcClient } from "@/core/orpcClient"
 import {
   cleanupPushSubscription,
   supportsPushNotifications,
   syncPushSubscription,
 } from "@/core/push-client"
-import { orpcClient } from "@/core/orpcClient"
 import type { ConversationWithUserState } from "@/core/schema"
 import { cn } from "@/lib/utils"
 import { getAdminUrl, getMembers, getSessionInfo } from "@luvabase/sdk"
@@ -35,7 +35,6 @@ import {
   BellIcon,
   EllipsisVerticalIcon,
   ExternalLinkIcon,
-  FilesIcon,
   HashIcon,
   LogOutIcon,
   MessageCircleIcon,
@@ -86,21 +85,19 @@ function hasUnreadMessages(conversation: ConversationWithUserState) {
   return conversation.lastViewedAt < conversation.lastMessageAt
 }
 
-const getPodInfo = createServerFn({ method: "GET" }).handler(
-  async () => {
-    const request = getRequest()
-    const [members, session] = await Promise.all([
-      getMembers(request),
-      getSessionInfo(request),
-    ])
+const getPodInfo = createServerFn({ method: "GET" }).handler(async () => {
+  const request = getRequest()
+  const [members, session] = await Promise.all([
+    getMembers(request),
+    getSessionInfo(request),
+  ])
 
-    return {
-      members,
-      session,
-      adminUrl: getAdminUrl(),
-    }
-  },
-)
+  return {
+    members,
+    session,
+    adminUrl: getAdminUrl(),
+  }
+})
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { isMobile } = useSidebar()
@@ -437,6 +434,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               </section>
             ) : null}
             <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton render={<Link to="/aichat" />}>
+                  <MessageCircleIcon />
+                  <span>AI Chat</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton onClick={dispatchOpenAppCommandEvent}>
                   <SearchIcon />
