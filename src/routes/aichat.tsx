@@ -1,13 +1,12 @@
+import { AppChatInput, type AppChatInputHandle } from "@/components/app-chat-input"
 import { SiteHeader } from "@/components/site-header"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Textarea } from "@/components/ui/textarea"
 import type { UIMessage } from "@tanstack/ai-client"
 import { fetchServerSentEvents, generateMessageId } from "@tanstack/ai-client"
 import { useChat } from "@tanstack/ai-react"
@@ -16,11 +15,8 @@ import {
   EllipsisVerticalIcon,
   LoaderCircleIcon,
   RotateCcwIcon,
-  SendHorizontalIcon,
-  SquareIcon,
 } from "lucide-react"
-import type { KeyboardEvent } from "react"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef } from "react"
 
 export const Route = createFileRoute("/aichat")({
   component: RouteComponent,
@@ -78,8 +74,7 @@ function getMessageText(message: UIMessage) {
 function RouteComponent() {
   const conversationId = useRef(crypto.randomUUID())
   const initialMessages = useMemo(() => createInitialMessages(), [])
-  const [messageContent, setMessageContent] = useState("")
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const composerRef = useRef<AppChatInputHandle>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const hasInitializedScrollRef = useRef(false)
   const shouldAutoScrollToBottomRef = useRef(false)
@@ -101,7 +96,7 @@ function RouteComponent() {
     })
 
   const focusComposer = () => {
-    textareaRef.current?.focus({ preventScroll: true })
+    composerRef.current?.focus()
   }
 
   const scrollMessagesToBottom = (behavior: ScrollBehavior = "auto") => {
@@ -138,31 +133,22 @@ function RouteComponent() {
     })
   }
 
-  const submitMessage = () => {
-    const content = messageContent.trim()
-    if (!content || isLoading) {
+  const submitMessage = (content: string) => {
+    const trimmedContent = content.trim()
+    if (!trimmedContent || isLoading) {
       return
     }
 
     shouldAutoScrollToBottomRef.current = true
-    setMessageContent("")
-    void sendMessage(content)
+    void sendMessage(trimmedContent)
     focusComposer()
-  }
-
-  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault()
-      submitMessage()
-    }
   }
 
   const resetChat = () => {
     stop()
     setMessages(createInitialMessages())
-    setMessageContent("")
     shouldAutoScrollToBottomRef.current = true
-    focusComposer()
+    composerRef.current?.clear()
   }
 
   useEffect(() => {
@@ -316,41 +302,14 @@ function RouteComponent() {
 
         <div className="shrink-0 bg-background px-4 pb-5">
           <div className="flex flex-col gap-2">
-            <div className="w-full rounded-2xl border border-border/70 bg-card shadow-sm">
-              <Textarea
-                ref={textareaRef}
-                value={messageContent}
-                onChange={(e) => setMessageContent(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Ask anything"
-                rows={1}
-                className="min-h-0 resize-none border-0 bg-transparent px-4 py-3 shadow-none focus-visible:ring-0"
-              />
-              <div className="flex items-center justify-end border-t border-border/70 px-2 py-2">
-                {isLoading ? (
-                  <Button
-                    type="button"
-                    size="icon-sm"
-                    variant="secondary"
-                    className="rounded-full"
-                    onClick={stop}
-                    aria-label="Stop response"
-                  >
-                    <SquareIcon className="size-3.5 fill-current" />
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={submitMessage}
-                    size="icon-sm"
-                    className="rounded-full"
-                    disabled={!messageContent.trim()}
-                    aria-label="Send message"
-                  >
-                    <SendHorizontalIcon />
-                  </Button>
-                )}
-              </div>
-            </div>
+            <AppChatInput
+              ref={composerRef}
+              onSubmit={submitMessage}
+              onStop={stop}
+              isStreaming={isLoading}
+              placeholder="Ask anything"
+              autoFocus
+            />
             {error ? (
               <div className="px-1 text-xs text-destructive" role="alert">
                 {error.message}

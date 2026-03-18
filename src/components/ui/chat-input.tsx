@@ -7,7 +7,7 @@ import type { Editor, JSONContent } from "@tiptap/react";
 import { EditorContent, ReactRenderer, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import type { SuggestionProps } from "@tiptap/suggestion";
-import { ArrowUpIcon, Loader2, PlusIcon } from "lucide-react";
+import { ArrowUpIcon, ListIcon, Loader2, PlusIcon } from "lucide-react";
 
 import {
 	type ComponentProps,
@@ -277,6 +277,23 @@ export function ChatInputEditor({
 					height: 0;
 					pointer-events: none;
 				}
+				.tiptap ul,
+				.tiptap ol {
+					margin: 0.5rem 0;
+					padding-left: 1.25rem;
+				}
+				.tiptap ul {
+					list-style: disc;
+				}
+				.tiptap ol {
+					list-style: decimal;
+				}
+				.tiptap li {
+					margin: 0.125rem 0;
+				}
+				.tiptap li p {
+					display: inline;
+				}
 			`}</style>
 			<EditorContent
 				editor={editor}
@@ -293,11 +310,15 @@ const KeyboardShortcuts = Extension.create({
 	addKeyboardShortcuts() {
 		return {
 			Enter: () => {
+				if (this.editor.isActive("listItem")) {
+					return false;
+				}
 				const onEnter = this.options.getOnEnter?.();
 				if (onEnter) {
 					onEnter();
+					return true;
 				}
-				return true;
+				return false;
 			},
 		};
 	},
@@ -658,6 +679,35 @@ export function ChatInputMentionButton({
 				))}
 			</DropdownMenuContent>
 		</DropdownMenu>
+	);
+}
+
+export function ChatInputBulletListButton({
+	className,
+	...props
+}: ComponentProps<typeof InputGroupButton>) {
+	const { editor, disabled } = useContext(ChatInputContext);
+
+	if (!editor) {
+		return null;
+	}
+
+	return (
+		<InputGroupButton
+			variant={editor.isActive("bulletList") ? "secondary" : "ghost"}
+			size="icon-sm"
+			className={cn("rounded-full shrink-0", className)}
+			aria-label="Toggle bullet list"
+			aria-pressed={editor.isActive("bulletList")}
+			disabled={disabled}
+			onClick={() => {
+				editor.chain().focus().toggleBulletList().run();
+			}}
+			{...props}
+		>
+			<ListIcon className="h-4 w-4" />
+			<span className="sr-only">Toggle bullet list</span>
+		</InputGroupButton>
 	);
 }
 
