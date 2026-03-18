@@ -4,8 +4,6 @@ import { createOpenRouterText } from "@tanstack/ai-openrouter"
 import { createFileRoute } from "@tanstack/react-router"
 import { z } from "zod"
 
-const AI_CHAT_MODEL = "openai/gpt-5-nano"
-
 type AIChatModelMessage = {
   role: "user" | "assistant"
   content: string
@@ -145,7 +143,10 @@ export const Route = createFileRoute("/api/aichat")({
 
         try {
           const stream = chat({
-            adapter: createOpenRouterText(AI_CHAT_MODEL, openRouterService.apiKey),
+            adapter: createOpenRouterText(
+              "openai/gpt-5-nano",
+              openRouterService.apiKey,
+            ),
             systemPrompts: [
               "You are a helpful AI assistant inside the Luvachat app.",
             ],

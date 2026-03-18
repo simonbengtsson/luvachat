@@ -205,6 +205,10 @@ function RouteComponent() {
     focusComposer()
   }, [])
 
+  const lastMessage = messages[messages.length - 1]
+  const showOptimisticAssistantMessage =
+    isLoading && (!lastMessage || lastMessage.role !== "assistant")
+
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <SiteHeader
@@ -283,6 +287,30 @@ function RouteComponent() {
                 </div>
               )
             })}
+            {showOptimisticAssistantMessage ? (
+              <div className="group/message relative flex gap-3 rounded-xl px-2 py-2 hover:bg-muted/40">
+                <Avatar className="mt-0.5 size-9">
+                  <AvatarFallback className="text-xs">AI</AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="flex items-baseline gap-2">
+                    <span className="truncate text-sm font-semibold">
+                      Luvachat AI
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {formatMessageTimestamp(new Date())}
+                    </span>
+                  </div>
+                  <div
+                    className="flex items-center gap-1.5 text-sm text-muted-foreground"
+                    aria-live="polite"
+                  >
+                    <LoaderCircleIcon className="size-3.5 animate-spin" />
+                    <span>Thinking...</span>
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -323,15 +351,6 @@ function RouteComponent() {
                 )}
               </div>
             </div>
-            {isLoading ? (
-              <div
-                className="flex items-center gap-1.5 px-1 text-xs text-muted-foreground"
-                aria-live="polite"
-              >
-                <LoaderCircleIcon className="size-3.5 animate-spin" />
-                <span>Generating response...</span>
-              </div>
-            ) : null}
             {error ? (
               <div className="px-1 text-xs text-destructive" role="alert">
                 {error.message}
