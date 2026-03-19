@@ -14,6 +14,7 @@ import {
   ChatMessageContainer,
   ChatMessageContent,
   ChatMessageHeader,
+  ChatMessageMarkdown,
   ChatMessageTimestamp,
 } from "@/components/ui/chat-message"
 import {
@@ -27,6 +28,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  parseTiptapJson,
+  serializeTiptapContentAsHtml,
+  TiptapContent,
+} from "@/components/ui/tiptap-content"
 import {
   getSyncConnectionStatus,
   subscribeToSyncConnectionStatus,
@@ -51,6 +57,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query"
+import type { JSONContent } from "@tiptap/react"
 import {
   createFileRoute,
   useElementScrollRestoration,
@@ -227,14 +234,17 @@ function ConversationView({
   const sendMessageMutation = useMutation({
     mutationFn: ({
       content,
+      tiptapJson,
       attachments,
     }: {
       content: string
+      tiptapJson: string | null
       attachments: File[]
     }) =>
       orpcClient.sendMessage({
         conversationId,
         content,
+        tiptapJson,
         attachments,
       }),
     onSuccess: (message) => {
@@ -316,7 +326,11 @@ function ConversationView({
     },
   })
 
-  const submitMessage = (content: string, attachments: File[]) => {
+  const submitMessage = (
+    content: string,
+    attachments: File[],
+    tiptapDocument: JSONContent,
+  ) => {
     if (
       !isSyncConnected ||
       sendMessageMutation.isPending ||
@@ -325,7 +339,11 @@ function ConversationView({
       return
     }
 
-    sendMessageMutation.mutate({ content, attachments })
+    sendMessageMutation.mutate({
+      content,
+      tiptapJson: content.trim() ? JSON.stringify(tiptapDocument) : null,
+      attachments,
+    })
   }
 
   // Initialize scroll once: restore prior position if available, otherwise start at bottom.
@@ -489,6 +507,7 @@ function ConversationView({
             {messages.map((message) => {
               const author = membersById.get(message.userId)
               const authorName = author?.name ?? message.userId
+              const tiptapDocument = parseTiptapJson(message.tiptapJson)
 
               return (
                 <ChatMessage key={message.id}>
@@ -508,9 +527,32 @@ function ConversationView({
                     </ChatMessageHeader>
                     <ChatMessageActions>
                       <ChatMessageActionCopy
-                        onClick={() => {
+                        onClick={async () => {
+                          if (message.content && tiptapDocument) {
+                            const html = serializeTiptapContentAsHtml(
+                              tiptapDocument,
+                            )
+
+                            if (
+                              typeof ClipboardItem !== "undefined" &&
+                              navigator.clipboard.write
+                            ) {
+                              await navigator.clipboard.write([
+                                new ClipboardItem({
+                                  "text/plain": new Blob([message.content], {
+                                    type: "text/plain",
+                                  }),
+                                  "text/html": new Blob([html], {
+                                    type: "text/html",
+                                  }),
+                                }),
+                              ])
+                              return
+                            }
+                          }
+
                           if (message.content) {
-                            navigator.clipboard.writeText(message.content)
+                            await navigator.clipboard.writeText(message.content)
                           }
                         }}
                         disabled={!message.content}
@@ -518,11 +560,11 @@ function ConversationView({
                     </ChatMessageActions>
                     {message.content || message.attachments.length > 0 ? (
                       <ChatMessageContent className="px-2 py-0">
-                        {message.content ? (
-                          <div className="whitespace-pre-wrap break-words text-sm leading-relaxed">
-                            {message.content}
-                          </div>
-                        ) : null}
+                        {message.content
+                          ? tiptapDocument
+                            ? <TiptapContent content={tiptapDocument} />
+                            : <ChatMessageMarkdown content={message.content} />
+                          : null}
                         {message.attachments.length > 0 ? (
                           <div className="overflow-x-auto pt-1 pb-1">
                             <div className="flex gap-2">

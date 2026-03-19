@@ -4,7 +4,7 @@ import { z } from "zod"
 
 export const conversationsTable = sqliteTable("conversations", {
   id: text("id").primaryKey(),
-  type: text("type").notNull(),
+  type: text("type").notNull(), // channel
   name: text("name"),
   createdAt: text("created_at").notNull(),
 })
@@ -24,6 +24,7 @@ export const messagesTable = sqliteTable("messages", {
     .notNull()
     .references(() => conversationsTable.id),
   content: text("content").notNull(),
+  tiptapJson: text("tiptap_json"),
   createdAt: text("created_at").notNull(),
   userId: text("user_id").notNull(),
 })

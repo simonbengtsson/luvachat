@@ -27,7 +27,11 @@ export type AppChatInputHandle = {
 }
 
 type AppChatInputProps = {
-  onSubmit: (content: string, attachments: File[]) => void
+  onSubmit: (
+    content: string,
+    attachments: File[],
+    tiptapDocument: JSONContent,
+  ) => void
   onStop?: () => void
   isStreaming?: boolean
   disabled?: boolean
@@ -63,7 +67,7 @@ function serializeChatInputValue(
   }
 
   if (node.type === "text") {
-    return node.text ?? ""
+    return applyMarkdownMarks(node.text ?? "", node)
   }
 
   if (node.type === "hardBreak") {
@@ -108,6 +112,28 @@ function serializeChatInputValue(
   }
 
   return childContent.join("")
+}
+
+function applyMarkdownMarks(text: string, node: JSONContent): string {
+  if (!text) {
+    return text
+  }
+
+  const marks = node.marks ?? []
+  return marks.reduce((current, mark) => {
+    switch (mark.type) {
+      case "bold":
+        return `**${current}**`
+      case "italic":
+        return `*${current}*`
+      case "strike":
+        return `~~${current}~~`
+      case "code":
+        return `\`${current}\``
+      default:
+        return current
+    }
+  }, text)
 }
 
 function serializeBulletListItem(
@@ -337,7 +363,7 @@ export const AppChatInput = forwardRef<AppChatInputHandle, AppChatInputProps>(
         return
       }
 
-      onSubmit(content, selectedAttachments)
+      onSubmit(content, selectedAttachments, value)
       if (clearOnSubmit) {
         clearAndFocus()
       }
@@ -350,6 +376,7 @@ export const AppChatInput = forwardRef<AppChatInputHandle, AppChatInputProps>(
       onSubmit,
       selectedAttachments,
       serializedContent,
+      value,
     ])
 
     const isSendDisabled =

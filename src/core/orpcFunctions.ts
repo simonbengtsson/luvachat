@@ -34,6 +34,25 @@ type AttachmentUploadInput = {
 
 const AttachmentFileSchema = z.custom<File>((value) => value instanceof File)
 
+function normalizeTiptapJson(tiptapJson: string | null | undefined) {
+  if (!tiptapJson) {
+    return null
+  }
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(tiptapJson)
+  } catch {
+    throw new Error("Invalid Tiptap JSON")
+  }
+
+  if (!parsed || typeof parsed !== "object") {
+    throw new Error("Invalid Tiptap JSON")
+  }
+
+  return JSON.stringify(parsed)
+}
+
 type OrpcContext = {
   db: ReturnType<typeof drizzle>
   env: Cloudflare.Env
@@ -284,6 +303,7 @@ const sendMessage = base
     z.object({
       conversationId: z.string().min(1),
       content: z.string(),
+      tiptapJson: z.string().nullable().optional(),
       attachments: z.array(AttachmentFileSchema),
     }),
   )
@@ -315,10 +335,14 @@ const sendMessage = base
     }
 
     const createdAt = new Date().toISOString()
+    const normalizedTiptapJson = normalizeTiptapJson(
+      trimmedContent ? input.tiptapJson : null,
+    )
     const messageRecord: MessageRecord = {
       id: crypto.randomUUID(),
       conversationId: normalizedConversationId,
       content: trimmedContent ? input.content : "",
+      tiptapJson: normalizedTiptapJson,
       userId: normalizedUserId,
       createdAt,
     }
