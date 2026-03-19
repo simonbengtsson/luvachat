@@ -423,6 +423,7 @@ function RouteComponent() {
               onStop={stop}
               isStreaming={isLoading}
               placeholder="Ask anything"
+              attachmentsHelperText="Attachments are selected locally only in AI chat for now."
               autoFocus
             />
             {error ? (

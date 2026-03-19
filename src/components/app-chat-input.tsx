@@ -1,9 +1,10 @@
 "use client"
 
 import type { JSONContent } from "@tiptap/react"
-import { PlusIcon, XIcon } from "lucide-react"
+import { PlusIcon, SmileIcon, XIcon } from "lucide-react"
 import type { ChangeEvent } from "react"
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react"
+import EmojiPicker from "@/components/shadcnblocks/emoji-picker"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -16,6 +17,7 @@ import {
   ChatInputSubmitButton,
   createMentionConfig,
   useChatInput,
+  useChatInputContext,
 } from "@/components/ui/chat-input"
 import { cn } from "@/lib/utils"
 
@@ -25,13 +27,16 @@ export type AppChatInputHandle = {
 }
 
 type AppChatInputProps = {
-  onSubmit: (content: string) => void
+  onSubmit: (content: string, attachments: File[]) => void
   onStop?: () => void
   isStreaming?: boolean
   disabled?: boolean
   autoFocus?: boolean
   placeholder?: string
   className?: string
+  clearOnSubmit?: boolean
+  allowAttachmentsWithoutText?: boolean
+  attachmentsHelperText?: string | null
 }
 
 type DemoMember = {
@@ -172,6 +177,39 @@ function serializeOrderedListItem(
   return lines.join("\n")
 }
 
+function AppChatInputEmojiButton() {
+  const { editor, disabled } = useChatInputContext()
+
+  const handleEmojiSelect = useCallback(
+    (emoji: string) => {
+      if (!editor || disabled) {
+        return
+      }
+
+      editor.chain().focus().insertContent(emoji).run()
+    },
+    [disabled, editor],
+  )
+
+  return (
+    <EmojiPicker
+      onEmojiSelect={handleEmojiSelect}
+      trigger={
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className="rounded-full"
+          aria-label="Add emoji"
+          disabled={disabled}
+        >
+          <SmileIcon className="size-4" />
+        </Button>
+      }
+    />
+  )
+}
+
 export const AppChatInput = forwardRef<AppChatInputHandle, AppChatInputProps>(
   function AppChatInput(
     {
@@ -182,6 +220,9 @@ export const AppChatInput = forwardRef<AppChatInputHandle, AppChatInputProps>(
       autoFocus = false,
       placeholder = "Type a message...",
       className,
+      clearOnSubmit = true,
+      allowAttachmentsWithoutText = false,
+      attachmentsHelperText = null,
     },
     ref,
   ) {
@@ -216,10 +257,18 @@ export const AppChatInput = forwardRef<AppChatInputHandle, AppChatInputProps>(
       })
     }, [])
 
+    const resetAttachments = useCallback(() => {
+      setSelectedAttachments([])
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ""
+      }
+    }, [])
+
     const clearAndFocus = useCallback(() => {
       clear()
+      resetAttachments()
       focus()
-    }, [clear, focus])
+    }, [clear, focus, resetAttachments])
 
     const handleAttachmentButtonClick = useCallback(() => {
       fileInputRef.current?.click()
@@ -279,16 +328,35 @@ export const AppChatInput = forwardRef<AppChatInputHandle, AppChatInputProps>(
 
     const handleSubmit = useCallback(() => {
       const content = serializedContent.trim()
-      if (!content || disabled || isStreaming) {
+      const hasAttachments = selectedAttachments.length > 0
+      if (
+        disabled ||
+        isStreaming ||
+        (!content && (!allowAttachmentsWithoutText || !hasAttachments))
+      ) {
         return
       }
 
-      onSubmit(content)
-      clear()
-      focus()
-    }, [clear, disabled, focus, isStreaming, onSubmit, serializedContent])
+      onSubmit(content, selectedAttachments)
+      if (clearOnSubmit) {
+        clearAndFocus()
+      }
+    }, [
+      allowAttachmentsWithoutText,
+      clearAndFocus,
+      clearOnSubmit,
+      disabled,
+      isStreaming,
+      onSubmit,
+      selectedAttachments,
+      serializedContent,
+    ])
 
-    const isSendDisabled = disabled || (!isStreaming && serializedContent.trim().length === 0)
+    const isSendDisabled =
+      disabled ||
+      (!isStreaming &&
+        serializedContent.trim().length === 0 &&
+        (!allowAttachmentsWithoutText || selectedAttachments.length === 0))
 
     return (
       <div ref={rootRef} className={cn("w-full", className)}>
@@ -349,9 +417,11 @@ export const AppChatInput = forwardRef<AppChatInputHandle, AppChatInputProps>(
                   </div>
                 ))}
               </div>
-              <div className="px-1 pt-1 text-xs text-muted-foreground">
-                Attachments are selected locally only in AI chat for now.
-              </div>
+              {attachmentsHelperText ? (
+                <div className="px-1 pt-1 text-xs text-muted-foreground">
+                  {attachmentsHelperText}
+                </div>
+              ) : null}
             </div>
           ) : null}
           <ChatInputGroupAddon
@@ -377,6 +447,7 @@ export const AppChatInput = forwardRef<AppChatInputHandle, AppChatInputProps>(
                 onChange={handleAttachmentChange}
                 aria-label="Select files to attach"
               />
+              <AppChatInputEmojiButton />
               <ChatInputBulletListButton />
             </div>
             <ChatInputSubmitButton

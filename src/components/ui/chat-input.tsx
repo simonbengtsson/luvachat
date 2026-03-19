@@ -87,6 +87,10 @@ const ChatInputContext = createContext<ChatInputContextType>({
 	setEditor: () => {},
 });
 
+export function useChatInputContext() {
+	return useContext(ChatInputContext);
+}
+
 export function ChatInput({
 	children,
 	className,

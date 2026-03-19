@@ -1,6 +1,8 @@
-import EmojiPicker from "@/components/shadcnblocks/emoji-picker"
+import {
+  AppChatInput,
+  type AppChatInputHandle,
+} from "@/components/app-chat-input"
 import { SiteHeader } from "@/components/site-header"
-import { Button } from "@/components/ui/button"
 import {
   ChatMessage,
   ChatMessageActionCopy,
@@ -25,7 +27,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Textarea } from "@/components/ui/textarea"
 import {
   getSyncConnectionStatus,
   subscribeToSyncConnectionStatus,
@@ -61,18 +62,8 @@ import {
   EllipsisVerticalIcon,
   FileIcon,
   LoaderCircleIcon,
-  PlusIcon,
-  SendHorizontalIcon,
-  Smile,
 } from "lucide-react"
-import type { ChangeEvent, FormEvent, KeyboardEvent } from "react"
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react"
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { useStickToBottom } from "use-stick-to-bottom"
 
 export const Route = createFileRoute("/c/$conversationId")({
@@ -190,11 +181,8 @@ function ConversationView({
   )
   const isSyncConnected = syncConnectionStatus === "connected"
 
-  const [messageContent, setMessageContent] = useState("")
-  const [selectedAttachments, setSelectedAttachments] = useState<File[]>([])
   const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const composerRef = useRef<AppChatInputHandle>(null)
   const loadMoreRef = useRef<HTMLDivElement>(null)
   const previousScrollHeightRef = useRef<number>(0)
   const previousMessagesLengthRef = useRef<number>(0)
@@ -207,7 +195,7 @@ function ConversationView({
   })
 
   const focusComposer = () => {
-    textareaRef.current?.focus({ preventScroll: true })
+    composerRef.current?.focus()
   }
 
   const scrollMessagesToBottom = (behavior: ScrollBehavior = "auto") => {
@@ -237,23 +225,24 @@ function ConversationView({
   }
 
   const sendMessageMutation = useMutation({
-    mutationFn: () =>
+    mutationFn: ({
+      content,
+      attachments,
+    }: {
+      content: string
+      attachments: File[]
+    }) =>
       orpcClient.sendMessage({
         conversationId,
-        content: messageContent,
-        attachments: selectedAttachments,
+        content,
+        attachments,
       }),
     onSuccess: (message) => {
       applyMessageCreatedToCache(queryClient, message, {
         markViewed: true,
       })
-      setMessageContent("")
-      setSelectedAttachments([])
       shouldAutoScrollToBottomRef.current = true
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ""
-      }
-      focusComposer()
+      composerRef.current?.clear()
       // Scroll to bottom after sending without affecting page viewport
       setTimeout(() => {
         scrollMessagesToBottom("smooth")
@@ -327,63 +316,16 @@ function ConversationView({
     },
   })
 
-  const submitMessage = () => {
+  const submitMessage = (content: string, attachments: File[]) => {
     if (
-      isSyncConnected &&
-      (messageContent.trim() || selectedAttachments.length)
+      !isSyncConnected ||
+      sendMessageMutation.isPending ||
+      (!content.trim() && attachments.length === 0)
     ) {
-      sendMessageMutation.mutate()
-    }
-  }
-
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    submitMessage()
-  }
-
-  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault()
-      submitMessage()
-    }
-  }
-
-  const handleAttachmentButtonClick = () => {
-    fileInputRef.current?.click()
-  }
-
-  const handleAttachmentChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files ?? [])
-    if (files.length === 0) {
       return
     }
 
-    setSelectedAttachments((previous) => [...previous, ...files])
-    // Let users re-select the same file in a future pick.
-    event.target.value = ""
-  }
-
-  const insertEmojiAtCursor = (emoji: string) => {
-    const textarea = textareaRef.current
-    if (!textarea) {
-      setMessageContent((previous) => previous + emoji)
-      return
-    }
-
-    const selectionStart = textarea.selectionStart ?? messageContent.length
-    const selectionEnd = textarea.selectionEnd ?? selectionStart
-    const nextCursorPosition = selectionStart + emoji.length
-
-    setMessageContent((previous) => {
-      return (
-        previous.slice(0, selectionStart) + emoji + previous.slice(selectionEnd)
-      )
-    })
-
-    requestAnimationFrame(() => {
-      textarea.focus()
-      textarea.setSelectionRange(nextCursorPosition, nextCursorPosition)
-    })
+    sendMessageMutation.mutate({ content, attachments })
   }
 
   // Initialize scroll once: restore prior position if available, otherwise start at bottom.
@@ -643,85 +585,15 @@ function ConversationView({
         </ChatMessageArea>
 
         <div className="shrink-0 bg-background px-4 pb-5">
-          <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-            <div className="w-full rounded-2xl border border-border/70 bg-card shadow-sm">
-              <Textarea
-                ref={textareaRef}
-                value={messageContent}
-                onChange={(e) => setMessageContent(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Jot something down"
-                rows={1}
-                className="min-h-0 resize-none border-0 bg-transparent px-4 py-3 shadow-none focus-visible:ring-0"
-              />
-              {selectedAttachments.length > 0 ? (
-                <div className="border-t border-border/70 px-3 py-2">
-                  <div className="flex gap-2 overflow-x-auto pb-1">
-                    {selectedAttachments.map((attachment, index) => (
-                      <div
-                        key={`${attachment.name}-${attachment.size}-${attachment.lastModified}-${index}`}
-                        className="flex min-w-[180px] shrink-0 items-center gap-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-2"
-                      >
-                        <FileIcon className="size-4 text-muted-foreground" />
-                        <span className="truncate text-sm">
-                          {attachment.name}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-              <div className="flex items-center justify-between border-t border-border/70 px-2 py-2">
-                <div className="flex items-center gap-1">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    className="rounded-full"
-                    aria-label="Attach file"
-                    onClick={handleAttachmentButtonClick}
-                  >
-                    <PlusIcon />
-                  </Button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    multiple
-                    className="hidden"
-                    onChange={handleAttachmentChange}
-                    aria-label="Select files to attach"
-                  />
-                  <EmojiPicker
-                    onEmojiSelect={insertEmojiAtCursor}
-                    trigger={
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        className="rounded-full"
-                        aria-label="Add emoji"
-                      >
-                        <Smile className="h-4 w-4" />
-                      </Button>
-                    }
-                  />
-                </div>
-                <Button
-                  type="submit"
-                  size="icon-sm"
-                  className="rounded-full"
-                  disabled={
-                    !isSyncConnected ||
-                    (!messageContent.trim() &&
-                      selectedAttachments.length === 0) ||
-                    sendMessageMutation.isPending
-                  }
-                  aria-label="Send message"
-                >
-                  <SendHorizontalIcon />
-                </Button>
-              </div>
-            </div>
+          <div className="flex flex-col gap-2">
+            <AppChatInput
+              ref={composerRef}
+              onSubmit={submitMessage}
+              disabled={!isSyncConnected || sendMessageMutation.isPending}
+              placeholder="Jot something down"
+              clearOnSubmit={false}
+              allowAttachmentsWithoutText
+            />
             {!isSyncConnected ? (
               <div
                 className="flex items-center gap-1.5 px-1 text-xs text-muted-foreground"
@@ -731,7 +603,7 @@ function ConversationView({
                 <span>Not connected, retrying...</span>
               </div>
             ) : null}
-          </form>
+          </div>
         </div>
       </div>
     </div>
