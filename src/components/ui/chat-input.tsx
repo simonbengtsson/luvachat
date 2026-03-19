@@ -172,6 +172,7 @@ export interface ChatInputEditorProps {
 	className?: string;
 	value?: ChatInputValue;
 	onChange?: (value: ChatInputValue) => void;
+	onEditorChange?: (editor: Editor | null) => void;
 }
 
 export function ChatInputEditor({
@@ -181,6 +182,7 @@ export function ChatInputEditor({
 	className,
 	value,
 	onChange,
+	onEditorChange,
 }: ChatInputEditorProps) {
 	const {
 		mentionConfigs,
@@ -262,6 +264,11 @@ export function ChatInputEditor({
 		}
 		return () => setEditor(null);
 	}, [editor, setEditor]);
+
+	useEffect(() => {
+		onEditorChange?.(editor);
+		return () => onEditorChange?.(null);
+	}, [editor, onEditorChange]);
 
 	useEffect(() => {
 		if (

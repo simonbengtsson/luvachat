@@ -130,6 +130,7 @@ function RouteComponent() {
     <ConversationView
       key={conversationId}
       conversationId={conversationId}
+      conversationType={conversationQuery.data?.type ?? null}
       conversationName={conversationQuery.data?.name ?? null}
       membersById={membersById}
     />
@@ -138,10 +139,12 @@ function RouteComponent() {
 
 function ConversationView({
   conversationId,
+  conversationType,
   conversationName,
   membersById,
 }: {
   conversationId: string
+  conversationType: string | null
   conversationName: string | null
   membersById: Map<string, Member>
 }) {
@@ -436,7 +439,11 @@ function ConversationView({
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <SiteHeader
-        title={"#" + (conversationName ?? conversationId)}
+        title={
+          conversationType === "channel"
+            ? "#" + (conversationName ?? conversationId)
+            : (conversationName ?? conversationId)
+        }
         actions={
           <DropdownMenu>
             <DropdownMenuTrigger
@@ -451,7 +458,9 @@ function ConversationView({
                 disabled={deleteConversationMutation.isPending}
                 onClick={() => deleteConversationMutation.mutate()}
               >
-                Delete Channel
+                {conversationType === "channel"
+                  ? "Delete Channel"
+                  : "Delete Conversation"}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

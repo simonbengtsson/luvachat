@@ -29,7 +29,7 @@ import type { ConversationWithUserState } from "@/core/schema"
 import { cn } from "@/lib/utils"
 import { getAdminUrl, getSessionInfo } from "@luvabase/sdk"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Link, useMatchRoute } from "@tanstack/react-router"
+import { Link, useMatchRoute, useNavigate } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
 import {
@@ -98,8 +98,9 @@ const getSession = createServerFn({ method: "GET" }).handler(async () => {
 })
 
 export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
-  const { isMobile } = useSidebar()
+  const { isMobile, setOpenMobile } = useSidebar()
   const matchRoute = useMatchRoute()
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const membersQuery = useWorkspaceMembers()
   const [notificationPermission, setNotificationPermission] =
@@ -279,6 +280,41 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
     seedConversationQueryCache(queryClient, conversationsQuery.data)
   }, [conversationsQuery.data, queryClient])
 
+  const channelConversations =
+    conversationsQuery.data?.filter((conversation) => conversation.type === "channel") ?? []
+
+  async function handleOpenMemberConversation(memberId: string) {
+    try {
+      const existingConversation =
+        await orpcClient.getDirectConversationByMemberIds({
+          memberIds: [memberId],
+        })
+
+      if (isMobile) {
+        setOpenMobile(false)
+      }
+
+      if (existingConversation) {
+        await navigate({
+          to: "/c/$conversationId",
+          params: { conversationId: existingConversation.id } as any,
+        })
+        return
+      }
+    } catch (error) {
+      console.error("Failed to resolve direct conversation", error)
+    }
+
+    if (isMobile) {
+      setOpenMobile(false)
+    }
+
+    await navigate({
+      to: "/new",
+      search: { members: memberId },
+    })
+  }
+
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
@@ -307,14 +343,14 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
                   </div>
                 </SidebarMenuItem>
               ))
-            ) : conversationsQuery.data?.length === 0 ? (
+            ) : channelConversations.length === 0 ? (
               <SidebarMenuItem>
                 <div className="px-2 py-2 text-sm text-muted-foreground">
                   No channels yet
                 </div>
               </SidebarMenuItem>
             ) : (
-              conversationsQuery.data?.map((conversation) => {
+              channelConversations.map((conversation) => {
                 const hasUnread = hasUnreadMessages(conversation)
                 return (
                   <SidebarMenuItem key={conversation.id}>
@@ -388,7 +424,9 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
               membersQuery.data?.map((member) => (
                 <SidebarMenuItem key={member.id}>
                   <SidebarMenuButton
-                    render={<Link to="/new" search={{ members: member.id }} />}
+                    onClick={() => {
+                      void handleOpenMemberConversation(member.id)
+                    }}
                   >
                     <Avatar className="size-5">
                       <AvatarImage

@@ -1,6 +1,6 @@
 "use client"
 
-import type { JSONContent } from "@tiptap/react"
+import type { Editor, JSONContent } from "@tiptap/react"
 import { PlusIcon, SmileIcon, XIcon } from "lucide-react"
 import type { ChangeEvent } from "react"
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react"
@@ -251,6 +251,7 @@ export const AppChatInput = forwardRef<AppChatInputHandle, AppChatInputProps>(
     ref,
   ) {
     const rootRef = useRef<HTMLDivElement>(null)
+    const editorRef = useRef<Editor | null>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
     const [selectedAttachments, setSelectedAttachments] = useState<File[]>([])
     const mentionConfigs = useMemo(
@@ -275,6 +276,11 @@ export const AppChatInput = forwardRef<AppChatInputHandle, AppChatInputProps>(
 
     const focus = useCallback(() => {
       requestAnimationFrame(() => {
+        if (editorRef.current && !editorRef.current.isDestroyed) {
+          editorRef.current.commands.focus("end", { scrollIntoView: false })
+          return
+        }
+
         rootRef.current
           ?.querySelector<HTMLElement>('[contenteditable="true"]')
           ?.focus()
@@ -288,9 +294,17 @@ export const AppChatInput = forwardRef<AppChatInputHandle, AppChatInputProps>(
       }
     }, [])
 
+    const handleEditorChange = useCallback((editor: Editor | null) => {
+      editorRef.current = editor
+    }, [])
+
     const clearAndFocus = useCallback(() => {
-      clear()
       resetAttachments()
+      if (editorRef.current && !editorRef.current.isDestroyed) {
+        editorRef.current.commands.clearContent()
+      } else {
+        clear()
+      }
       focus()
     }, [clear, focus, resetAttachments])
 
@@ -419,6 +433,7 @@ export const AppChatInput = forwardRef<AppChatInputHandle, AppChatInputProps>(
           <ChatInputEditor
             placeholder={`${placeholder} Use @ for people, or start a list with "- "`}
             className="max-h-48 min-h-0 px-4 py-3"
+            onEditorChange={handleEditorChange}
           />
           {selectedAttachments.length > 0 ? (
             <div className="border-t border-border/70 px-3 py-2">

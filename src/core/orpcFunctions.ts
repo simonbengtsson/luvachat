@@ -11,6 +11,7 @@ import {
 } from "./push-server"
 import {
   PushSubscriptionInputSchema,
+  conversationMembersTable,
   conversationUserStateTable,
   conversationsTable,
   messageAttachmentsTable,
@@ -33,6 +34,9 @@ type AttachmentUploadInput = {
 }
 
 const AttachmentFileSchema = z.custom<File>((value) => value instanceof File)
+const DirectConversationMembersInputSchema = z.object({
+  memberIds: z.array(z.string().min(1)).min(1),
+})
 
 function normalizeTiptapJson(tiptapJson: string | null | undefined) {
   if (!tiptapJson) {
@@ -307,102 +311,69 @@ const sendMessage = base
       attachments: z.array(AttachmentFileSchema),
     }),
   )
-  .handler(async ({ context, input }): Promise<Message> => {
-    const normalizedConversationId = input.conversationId.trim()
-    const normalizedUserId = context.userId.trim()
-    const trimmedContent = input.content.trim()
-    const attachments = await Promise.all(
-      input.attachments.map(
-        async (attachment): Promise<AttachmentUploadInput> => ({
-          fileName: attachment.name,
-          contentType: attachment.type,
-          sizeBytes: attachment.size,
-          bytes: await attachment.arrayBuffer(),
-        }),
-      ),
+  .handler(async ({ context, input }): Promise<Message> =>
+    createMessageInConversation(context, input),
+  )
+
+const getDirectConversationByMemberIds = base
+  .input(DirectConversationMembersInputSchema)
+  .handler(async ({ context, input }): Promise<Conversation | null> => {
+    return findDirectConversationByMemberIds(
+      context,
+      context.userId,
+      input.memberIds,
     )
+  })
 
-    if (!normalizedConversationId) {
-      throw new Error("Conversation id is required")
-    }
+const sendDirectMessage = base
+  .input(
+    DirectConversationMembersInputSchema.extend({
+      conversationName: z.string().optional(),
+      content: z.string(),
+      tiptapJson: z.string().nullable().optional(),
+      attachments: z.array(AttachmentFileSchema),
+    }),
+  )
+  .handler(
+    async ({
+      context,
+      input,
+    }): Promise<{
+      conversation: Conversation
+      message: Message
+      createdConversation: boolean
+    }> => {
+      let conversation = await findDirectConversationByMemberIds(
+        context,
+        context.userId,
+        input.memberIds,
+      )
+      let createdConversation = false
 
-    if (!normalizedUserId) {
-      throw new Error("User id is required")
-    }
-
-    if (!trimmedContent && attachments.length === 0) {
-      throw new Error("Message content or attachments are required")
-    }
-
-    const createdAt = new Date().toISOString()
-    const normalizedTiptapJson = normalizeTiptapJson(
-      trimmedContent ? input.tiptapJson : null,
-    )
-    const messageRecord: MessageRecord = {
-      id: crypto.randomUUID(),
-      conversationId: normalizedConversationId,
-      content: trimmedContent ? input.content : "",
-      tiptapJson: normalizedTiptapJson,
-      userId: normalizedUserId,
-      createdAt,
-    }
-    const uploadedKeys: string[] = []
-    const attachmentRecords: MessageAttachment[] = []
-
-    try {
-      for (const attachment of attachments) {
-        const attachmentId = crypto.randomUUID()
-        const contentType = normalizeAttachmentContentType(
-          attachment.contentType,
+      if (!conversation) {
+        conversation = await createDirectConversation(
+          context,
+          context.userId,
+          input.memberIds,
+          input.conversationName,
         )
-        const storageKey = `attachments/${attachmentId}-${sanitizeAttachmentFileName(
-          attachment.fileName,
-        )}`
-
-        await context.env.MAIN_BUCKET.put(storageKey, attachment.bytes, {
-          httpMetadata: {
-            contentType,
-          },
-        })
-
-        uploadedKeys.push(storageKey)
-        attachmentRecords.push({
-          id: attachmentId,
-          messageId: messageRecord.id,
-          userId: normalizedUserId,
-          storageKey,
-          fileName: attachment.fileName,
-          contentType,
-          sizeBytes: attachment.sizeBytes,
-          createdAt,
-        })
+        createdConversation = true
       }
 
-      context.db.transaction((tx) => {
-        tx.insert(messagesTable).values(messageRecord).run()
-
-        if (attachmentRecords.length > 0) {
-          tx.insert(messageAttachmentsTable).values(attachmentRecords).run()
-        }
+      const message = await createMessageInConversation(context, {
+        conversationId: conversation.id,
+        content: input.content,
+        tiptapJson: input.tiptapJson,
+        attachments: input.attachments,
       })
-    } catch (error) {
-      await deleteBucketObjects(context, uploadedKeys)
-      throw error
-    }
 
-    const message: Message = {
-      ...messageRecord,
-      attachments: attachmentRecords,
-    }
-
-    broadcastEvent(context, {
-      type: "messageCreated",
-      message,
-    })
-    context.waitUntil(sendPushNotifications(context, message))
-
-    return message
-  })
+      return {
+        conversation,
+        message,
+        createdConversation,
+      }
+    },
+  )
 
 const getVapidPublicKey = base.handler(async ({ context }): Promise<string> => {
   return context.vapidDetails!.publicKey
@@ -712,6 +683,263 @@ function normalizeAttachmentContentType(contentType: string): string {
   return normalized || "application/octet-stream"
 }
 
+function normalizeDirectConversationMemberIds(
+  memberIds: string[],
+  currentUserId: string,
+) {
+  const normalizedUserId = currentUserId.trim()
+  const normalizedSelectedMemberIds = Array.from(
+    new Set(memberIds.map((memberId) => memberId.trim()).filter(Boolean)),
+  ).sort()
+
+  if (!normalizedUserId) {
+    throw new Error("User id is required")
+  }
+
+  if (normalizedSelectedMemberIds.length === 0) {
+    throw new Error("At least one member is required")
+  }
+
+  return Array.from(
+    new Set([normalizedUserId, ...normalizedSelectedMemberIds]),
+  ).sort()
+}
+
+async function findDirectConversationByMemberIds(
+  context: OrpcContext,
+  currentUserId: string,
+  memberIds: string[],
+): Promise<Conversation | null> {
+  const normalizedCurrentUserId = currentUserId.trim()
+  const participantIds = normalizeDirectConversationMemberIds(
+    memberIds,
+    normalizedCurrentUserId,
+  )
+
+  const candidateConversationIds = await context.db
+    .select({
+      conversationId: conversationMembersTable.conversationId,
+    })
+    .from(conversationMembersTable)
+    .innerJoin(
+      conversationsTable,
+      eq(conversationMembersTable.conversationId, conversationsTable.id),
+    )
+    .where(
+      and(
+        eq(conversationMembersTable.userId, normalizedCurrentUserId),
+        eq(conversationsTable.type, "direct"),
+      ),
+    )
+
+  const conversationIds = candidateConversationIds.map(
+    (conversation) => conversation.conversationId,
+  )
+
+  if (conversationIds.length === 0) {
+    return null
+  }
+
+  const memberRows = await context.db
+    .select({
+      id: conversationsTable.id,
+      type: conversationsTable.type,
+      name: conversationsTable.name,
+      createdAt: conversationsTable.createdAt,
+      userId: conversationMembersTable.userId,
+    })
+    .from(conversationsTable)
+    .innerJoin(
+      conversationMembersTable,
+      eq(conversationsTable.id, conversationMembersTable.conversationId),
+    )
+    .where(
+      and(
+        eq(conversationsTable.type, "direct"),
+        inArray(conversationsTable.id, conversationIds),
+      ),
+    )
+    .orderBy(
+      asc(conversationsTable.createdAt),
+      asc(conversationMembersTable.userId),
+    )
+
+  const participantKey = participantIds.join("\u0000")
+  const conversationsById = new Map<
+    string,
+    { conversation: Conversation; memberIds: string[] }
+  >()
+
+  for (const row of memberRows) {
+    const existingConversation = conversationsById.get(row.id)
+
+    if (existingConversation) {
+      existingConversation.memberIds.push(row.userId)
+      continue
+    }
+
+    conversationsById.set(row.id, {
+      conversation: {
+        id: row.id,
+        type: row.type,
+        name: row.name,
+        createdAt: row.createdAt,
+      },
+      memberIds: [row.userId],
+    })
+  }
+
+  for (const { conversation, memberIds: currentMemberIds } of conversationsById.values()) {
+    if (currentMemberIds.slice().sort().join("\u0000") === participantKey) {
+      return conversation
+    }
+  }
+
+  return null
+}
+
+async function createDirectConversation(
+  context: OrpcContext,
+  currentUserId: string,
+  memberIds: string[],
+  conversationName?: string,
+): Promise<Conversation> {
+  const participantIds = normalizeDirectConversationMemberIds(
+    memberIds,
+    currentUserId,
+  )
+  const createdAt = new Date().toISOString()
+  const conversation: Conversation = {
+    id: generateId(),
+    type: "direct",
+    name: conversationName?.trim() || null,
+    createdAt,
+  }
+
+  context.db.transaction((tx) => {
+    tx.insert(conversationsTable).values(conversation).run()
+    tx.insert(conversationMembersTable)
+      .values(
+        participantIds.map((userId) => ({
+          id: `${userId}_${conversation.id}`,
+          userId,
+          conversationId: conversation.id,
+          joinedAt: createdAt,
+        })),
+      )
+      .run()
+  })
+
+  broadcastWorkspaceUpdated(context)
+
+  return conversation
+}
+
+async function createMessageInConversation(
+  context: OrpcContext,
+  input: {
+    conversationId: string
+    content: string
+    tiptapJson?: string | null
+    attachments: File[]
+  },
+): Promise<Message> {
+  const normalizedConversationId = input.conversationId.trim()
+  const normalizedUserId = context.userId.trim()
+  const trimmedContent = input.content.trim()
+  const attachments = await Promise.all(
+    input.attachments.map(
+      async (attachment): Promise<AttachmentUploadInput> => ({
+        fileName: attachment.name,
+        contentType: attachment.type,
+        sizeBytes: attachment.size,
+        bytes: await attachment.arrayBuffer(),
+      }),
+    ),
+  )
+
+  if (!normalizedConversationId) {
+    throw new Error("Conversation id is required")
+  }
+
+  if (!normalizedUserId) {
+    throw new Error("User id is required")
+  }
+
+  if (!trimmedContent && attachments.length === 0) {
+    throw new Error("Message content or attachments are required")
+  }
+
+  const createdAt = new Date().toISOString()
+  const normalizedTiptapJson = normalizeTiptapJson(
+    trimmedContent ? input.tiptapJson : null,
+  )
+  const messageRecord: MessageRecord = {
+    id: crypto.randomUUID(),
+    conversationId: normalizedConversationId,
+    content: trimmedContent ? input.content : "",
+    tiptapJson: normalizedTiptapJson,
+    userId: normalizedUserId,
+    createdAt,
+  }
+  const uploadedKeys: string[] = []
+  const attachmentRecords: MessageAttachment[] = []
+
+  try {
+    for (const attachment of attachments) {
+      const attachmentId = crypto.randomUUID()
+      const contentType = normalizeAttachmentContentType(
+        attachment.contentType,
+      )
+      const storageKey = `attachments/${attachmentId}-${sanitizeAttachmentFileName(
+        attachment.fileName,
+      )}`
+
+      await context.env.MAIN_BUCKET.put(storageKey, attachment.bytes, {
+        httpMetadata: {
+          contentType,
+        },
+      })
+
+      uploadedKeys.push(storageKey)
+      attachmentRecords.push({
+        id: attachmentId,
+        messageId: messageRecord.id,
+        userId: normalizedUserId,
+        storageKey,
+        fileName: attachment.fileName,
+        contentType,
+        sizeBytes: attachment.sizeBytes,
+        createdAt,
+      })
+    }
+
+    context.db.transaction((tx) => {
+      tx.insert(messagesTable).values(messageRecord).run()
+
+      if (attachmentRecords.length > 0) {
+        tx.insert(messageAttachmentsTable).values(attachmentRecords).run()
+      }
+    })
+  } catch (error) {
+    await deleteBucketObjects(context, uploadedKeys)
+    throw error
+  }
+
+  const message: Message = {
+    ...messageRecord,
+    attachments: attachmentRecords,
+  }
+
+  broadcastEvent(context, {
+    type: "messageCreated",
+    message,
+  })
+  context.waitUntil(sendPushNotifications(context, message))
+
+  return message
+}
+
 export const orpcRouter = {
   getConversations,
   getConversationById,
@@ -719,6 +947,8 @@ export const orpcRouter = {
   deleteConversation,
   getMessages,
   sendMessage,
+  getDirectConversationByMemberIds,
+  sendDirectMessage,
   getVapidPublicKey,
   savePushSubscription,
   deletePushSubscription,
