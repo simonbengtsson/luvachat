@@ -1,6 +1,28 @@
-import { AppChatInput, type AppChatInputHandle } from "@/components/app-chat-input"
+import {
+  AppChatInput,
+  type AppChatInputHandle,
+} from "@/components/app-chat-input"
 import { SiteHeader } from "@/components/site-header"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import {
+  ChatMessage,
+  ChatMessageActionCopy,
+  ChatMessageActions,
+  ChatMessageAuthor,
+  ChatMessageAvatar,
+  ChatMessageAvatarAssistantIcon,
+  ChatMessageAvatarFallback,
+  ChatMessageAvatarUserIcon,
+  ChatMessageContainer,
+  ChatMessageContent,
+  ChatMessageHeader,
+  ChatMessageMarkdown,
+  ChatMessageTimestamp,
+} from "@/components/ui/chat-message"
+import {
+  ChatMessageArea,
+  ChatMessageAreaContent,
+  ChatMessageAreaScrollButton,
+} from "@/components/ui/chat-message-area"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,33 +57,161 @@ function createInitialMessages(): Array<UIMessage> {
         },
       ],
     },
+    {
+      id: generateMessageId(),
+      role: "user",
+      createdAt: new Date(),
+      parts: [
+        {
+          type: "text",
+          content: "Hello, how can I help you today?",
+        },
+      ],
+    },
+    {
+      id: generateMessageId(),
+      role: "assistant",
+      createdAt: new Date(),
+      parts: [
+        {
+          type: "text",
+          content: "I'm here to help you with your questions.",
+        },
+      ],
+    },
+    {
+      id: generateMessageId(),
+      role: "user",
+      createdAt: new Date(),
+      parts: [
+        {
+          type: "text",
+          content: "Hello, how can I help you today?",
+        },
+      ],
+    },
+    {
+      id: generateMessageId(),
+      role: "user",
+      createdAt: new Date(),
+      parts: [
+        {
+          type: "text",
+          content: "Hello, how can I help you today?",
+        },
+      ],
+    },
+    {
+      id: generateMessageId(),
+      role: "user",
+      createdAt: new Date(),
+      parts: [
+        {
+          type: "text",
+          content: "Hello, how can I help you today?",
+        },
+      ],
+    },
+    {
+      id: generateMessageId(),
+      role: "user",
+      createdAt: new Date(),
+      parts: [
+        {
+          type: "text",
+          content: "Hello, how can I help you today?",
+        },
+      ],
+    },
+    {
+      id: generateMessageId(),
+      role: "user",
+      createdAt: new Date(),
+      parts: [
+        {
+          type: "text",
+          content: "Hello, how can I help you today?",
+        },
+      ],
+    },
+    {
+      id: generateMessageId(),
+      role: "user",
+      createdAt: new Date(),
+      parts: [
+        {
+          type: "text",
+          content: "Hello, how can I help you today?",
+        },
+      ],
+    },
+    {
+      id: generateMessageId(),
+      role: "user",
+      createdAt: new Date(),
+      parts: [
+        {
+          type: "text",
+          content: "Hello, how can I help you today?",
+        },
+      ],
+    },
+    {
+      id: generateMessageId(),
+      role: "user",
+      createdAt: new Date(),
+      parts: [
+        {
+          type: "text",
+          content: "Hello, how can I help you today?",
+        },
+      ],
+    },
+    {
+      id: generateMessageId(),
+      role: "user",
+      createdAt: new Date(),
+      parts: [
+        {
+          type: "text",
+          content: "Hello, how can I help you today?",
+        },
+      ],
+    },
+    {
+      id: generateMessageId(),
+      role: "user",
+      createdAt: new Date(),
+      parts: [
+        {
+          type: "text",
+          content: "Hello, how can I help you today?",
+        },
+      ],
+    },
+    {
+      id: generateMessageId(),
+      role: "user",
+      createdAt: new Date(),
+      parts: [
+        {
+          type: "text",
+          content: "Hello, how can I help you today?",
+        },
+      ],
+    },
+    {
+      id: generateMessageId(),
+      role: "user",
+      createdAt: new Date(),
+      parts: [
+        {
+          type: "text",
+          content: "Hello, how can I help you today?",
+        },
+      ],
+    },
   ]
-}
-
-function formatMessageTimestamp(value?: Date | string) {
-  if (!value) {
-    return ""
-  }
-
-  const date = value instanceof Date ? value : new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return ""
-  }
-
-  const now = Date.now()
-  const ageMs = now - date.getTime()
-  const hours24 = 24 * 60 * 60 * 1000
-
-  if (ageMs < hours24) {
-    return new Intl.DateTimeFormat(undefined, {
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(date)
-  }
-
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "full",
-  }).format(date)
 }
 
 function getMessageText(message: UIMessage) {
@@ -75,9 +225,6 @@ function RouteComponent() {
   const conversationId = useRef(crypto.randomUUID())
   const initialMessages = useMemo(() => createInitialMessages(), [])
   const composerRef = useRef<AppChatInputHandle>(null)
-  const scrollContainerRef = useRef<HTMLDivElement>(null)
-  const hasInitializedScrollRef = useRef(false)
-  const shouldAutoScrollToBottomRef = useRef(false)
 
   const { messages, sendMessage, setMessages, stop, isLoading, error } =
     useChat({
@@ -99,47 +246,12 @@ function RouteComponent() {
     composerRef.current?.focus()
   }
 
-  const scrollMessagesToBottom = (behavior: ScrollBehavior = "auto") => {
-    const container = scrollContainerRef.current
-    if (!container) {
-      return
-    }
-
-    container.scrollTo({
-      top: container.scrollHeight,
-      behavior,
-    })
-  }
-
-  const isNearBottom = () => {
-    const container = scrollContainerRef.current
-    if (!container) {
-      return false
-    }
-
-    return (
-      container.scrollHeight - container.scrollTop - container.clientHeight <
-      120
-    )
-  }
-
-  const ensureLatestMessageIsVisible = (behavior: ScrollBehavior = "auto") => {
-    if (!shouldAutoScrollToBottomRef.current && !isNearBottom()) {
-      return
-    }
-
-    requestAnimationFrame(() => {
-      scrollMessagesToBottom(behavior)
-    })
-  }
-
   const submitMessage = (content: string) => {
     const trimmedContent = content.trim()
     if (!trimmedContent || isLoading) {
       return
     }
 
-    shouldAutoScrollToBottomRef.current = true
     void sendMessage(trimmedContent)
     focusComposer()
   }
@@ -147,28 +259,8 @@ function RouteComponent() {
   const resetChat = () => {
     stop()
     setMessages(createInitialMessages())
-    shouldAutoScrollToBottomRef.current = true
     composerRef.current?.clear()
   }
-
-  useEffect(() => {
-    const container = scrollContainerRef.current
-    if (!container || hasInitializedScrollRef.current) {
-      return
-    }
-
-    shouldAutoScrollToBottomRef.current = true
-    scrollMessagesToBottom()
-    hasInitializedScrollRef.current = true
-  }, [messages.length])
-
-  useEffect(() => {
-    if (messages.length === 0) {
-      return
-    }
-
-    ensureLatestMessageIsVisible(isLoading ? "auto" : "smooth")
-  }, [isLoading, messages])
 
   useEffect(() => {
     if (!error) {
@@ -218,15 +310,8 @@ function RouteComponent() {
       />
 
       <div className="flex min-h-0 flex-1 flex-col">
-        <div
-          ref={scrollContainerRef}
-          className="flex-1 overflow-y-auto overscroll-none"
-          style={{
-            WebkitOverflowScrolling: "touch",
-            overscrollBehavior: "contain",
-          }}
-        >
-          <div className="max-w-full space-y-4 px-6 py-4">
+        <ChatMessageArea className="min-h-0 flex-1 overscroll-none">
+          <ChatMessageAreaContent className="max-w-full px-6 py-4">
             {messages.map((message, index) => {
               const messageText = getMessageText(message)
               const isAssistant = message.role === "assistant"
@@ -237,28 +322,41 @@ function RouteComponent() {
                 messageText.length === 0
 
               return (
-                <div
-                  key={message.id}
-                  className="group/message relative flex gap-3 rounded-xl px-2 py-2 hover:bg-muted/40"
-                >
-                  <Avatar className="mt-0.5 size-9">
-                    <AvatarFallback className="text-xs">
-                      {isAssistant ? "AI" : "YU"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <div className="flex items-baseline gap-2">
-                      <span className="truncate text-sm font-semibold">
+                <ChatMessage key={message.id}>
+                  <ChatMessageAvatar className="mt-0.5 size-9">
+                    <ChatMessageAvatarFallback className="text-xs">
+                      {isAssistant ? (
+                        <ChatMessageAvatarAssistantIcon />
+                      ) : (
+                        <ChatMessageAvatarUserIcon />
+                      )}
+                    </ChatMessageAvatarFallback>
+                  </ChatMessageAvatar>
+                  <ChatMessageContainer>
+                    <ChatMessageHeader>
+                      <ChatMessageAuthor>
                         {isAssistant ? "Luvachat AI" : "You"}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {formatMessageTimestamp(message.createdAt)}
-                      </span>
-                    </div>
+                      </ChatMessageAuthor>
+                      {message.createdAt ? (
+                        <ChatMessageTimestamp createdAt={message.createdAt} />
+                      ) : null}
+                    </ChatMessageHeader>
+                    <ChatMessageContent>
+                      <ChatMessageActions>
+                        <ChatMessageActionCopy
+                          onClick={() => {
+                            if (messageText) {
+                              navigator.clipboard.writeText(messageText)
+                            }
+                          }}
+                          disabled={!messageText}
+                        />
+                      </ChatMessageActions>
+                    </ChatMessageContent>
                     {messageText ? (
-                      <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                        {messageText}
-                      </div>
+                      <ChatMessageContent>
+                        <ChatMessageMarkdown content={messageText} />
+                      </ChatMessageContent>
                     ) : null}
                     {isStreamingPlaceholder ? (
                       <div
@@ -269,24 +367,22 @@ function RouteComponent() {
                         <span>Thinking...</span>
                       </div>
                     ) : null}
-                  </div>
-                </div>
+                  </ChatMessageContainer>
+                </ChatMessage>
               )
             })}
             {showOptimisticAssistantMessage ? (
-              <div className="group/message relative flex gap-3 rounded-xl px-2 py-2 hover:bg-muted/40">
-                <Avatar className="mt-0.5 size-9">
-                  <AvatarFallback className="text-xs">AI</AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1 space-y-1">
-                  <div className="flex items-baseline gap-2">
-                    <span className="truncate text-sm font-semibold">
-                      Luvachat AI
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {formatMessageTimestamp(new Date())}
-                    </span>
-                  </div>
+              <ChatMessage>
+                <ChatMessageAvatar className="mt-0.5 size-9">
+                  <ChatMessageAvatarFallback className="text-xs">
+                    <ChatMessageAvatarAssistantIcon />
+                  </ChatMessageAvatarFallback>
+                </ChatMessageAvatar>
+                <ChatMessageContainer>
+                  <ChatMessageHeader>
+                    <ChatMessageAuthor>Luvachat AI</ChatMessageAuthor>
+                    <ChatMessageTimestamp createdAt={new Date()} />
+                  </ChatMessageHeader>
                   <div
                     className="flex items-center gap-1.5 text-sm text-muted-foreground"
                     aria-live="polite"
@@ -294,11 +390,12 @@ function RouteComponent() {
                     <LoaderCircleIcon className="size-3.5 animate-spin" />
                     <span>Thinking...</span>
                   </div>
-                </div>
-              </div>
+                </ChatMessageContainer>
+              </ChatMessage>
             ) : null}
-          </div>
-        </div>
+          </ChatMessageAreaContent>
+          <ChatMessageAreaScrollButton />
+        </ChatMessageArea>
 
         <div className="shrink-0 bg-background px-4 pb-5">
           <div className="flex flex-col gap-2">
