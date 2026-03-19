@@ -1,0 +1,1 @@
+ALTER TABLE `messages` ADD `tiptap_json` text;
