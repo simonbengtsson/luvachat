@@ -92,6 +92,7 @@ const getSession = createServerFn({ method: "GET" }).handler(async () => {
 
   return {
     session,
+    adminUrl: getAdminUrl(),
   }
 })
 
@@ -447,7 +448,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <SidebarMenuButton
                   render={
                     <a
-                      href={getAdminUrl()}
+                      href={sessionQuery.data?.adminUrl ?? ""}
                       target="_blank"
                     />
                   }
