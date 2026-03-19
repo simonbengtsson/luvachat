@@ -393,7 +393,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               membersQuery.data?.members.map((member) => (
                 <SidebarMenuItem key={member.id}>
                   <div className="flex items-center gap-2 px-2 py-2 text-sm">
-                    <Avatar className="size-4">
+                    <Avatar className="size-5">
                       <AvatarImage
                         src={member.imageUrl ?? undefined}
                         alt={member.name}
@@ -481,7 +481,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               >
                 {membersQuery.data ? (
                   <>
-                    <Avatar className="size-8 rounded-lg grayscale">
+                    <Avatar className="size-8 rounded-lg">
                       <AvatarImage
                         src={
                           membersQuery.data.session.user!.imageUrl ?? undefined

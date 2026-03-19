@@ -115,6 +115,21 @@ function getAttachmentUrl(storageKey: string) {
   return `/assets/${storageKey.split("/").map(encodeURIComponent).join("/")}`
 }
 
+function truncateFileNameMiddle(fileName: string, maxLength = 19) {
+  if (fileName.length <= maxLength) {
+    return fileName
+  }
+
+  const separator = "..."
+  const visibleLength = maxLength - separator.length
+  const startLength = Math.ceil(visibleLength / 2)
+  const endLength = Math.floor(visibleLength / 2)
+
+  return `${fileName.slice(0, startLength)}${separator}${fileName.slice(
+    fileName.length - endLength,
+  )}`
+}
+
 function RouteComponent() {
   const { conversationId } = Route.useParams()
   const conversationQuery = useQuery(conversationQueryOptions(conversationId))
@@ -581,7 +596,7 @@ function ConversationView({
                                       href={attachmentUrl}
                                       target="_blank"
                                       rel="noreferrer"
-                                      className="block w-32 shrink-0 overflow-hidden rounded-xl border border-border/70 bg-muted/20"
+                                      className="block w-36 shrink-0 overflow-hidden rounded-xl border border-border/70 bg-muted/20"
                                     >
                                       <img
                                         src={attachmentUrl}
@@ -590,7 +605,7 @@ function ConversationView({
                                         onLoad={() =>
                                           ensureLatestMessageIsVisible()
                                         }
-                                        className="h-24 w-full object-cover"
+                                        className="h-28 w-full object-cover"
                                       />
                                     </a>
                                   )
@@ -602,9 +617,15 @@ function ConversationView({
                                     href={attachmentUrl}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="flex h-24 w-24 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-muted/20 hover:bg-muted/40"
+                                    title={attachment.fileName}
+                                    className="flex h-28 w-36 shrink-0 flex-col items-center justify-center gap-2 rounded-xl border border-border/70 bg-muted/20 p-3 text-center hover:bg-muted/40"
                                   >
                                     <FileIcon className="size-5 shrink-0 text-muted-foreground" />
+                                    <span className="w-full overflow-hidden whitespace-nowrap text-[11px] leading-tight text-muted-foreground">
+                                      {truncateFileNameMiddle(
+                                        attachment.fileName,
+                                      )}
+                                    </span>
                                   </a>
                                 )
                               })}
