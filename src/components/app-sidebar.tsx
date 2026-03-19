@@ -42,8 +42,9 @@ import {
   PlusIcon,
   SearchIcon,
   Settings2Icon,
+  SquarePenIcon,
 } from "lucide-react"
-import * as React from "react"
+import { type ComponentProps, useEffect, useState } from "react"
 import { dispatchOpenAppCommandEvent } from "./app-command.events"
 import { PopupInput } from "./PopupInput"
 import {
@@ -96,17 +97,16 @@ const getSession = createServerFn({ method: "GET" }).handler(async () => {
   }
 })
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   const { isMobile } = useSidebar()
   const matchRoute = useMatchRoute()
   const queryClient = useQueryClient()
   const membersQuery = useWorkspaceMembers()
   const [notificationPermission, setNotificationPermission] =
-    React.useState<NotificationPermission | null>(null)
-  const [isEnablingNotifications, setIsEnablingNotifications] =
-    React.useState(false)
+    useState<NotificationPermission | null>(null)
+  const [isEnablingNotifications, setIsEnablingNotifications] = useState(false)
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!supportsPushNotifications()) {
       setNotificationPermission(null)
       return
@@ -129,7 +129,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     }
   }, [])
 
-  const handleEnableNotifications = React.useCallback(async () => {
+  async function handleEnableNotifications() {
     if (!supportsPushNotifications()) {
       console.warn("Notifications are not supported in this browser.")
       return
@@ -154,7 +154,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     } finally {
       setIsEnablingNotifications(false)
     }
-  }, [])
+  }
   const conversationsQuery = useQuery(conversationsQueryOptions())
   const createConversationMutation = useMutation({
     mutationFn: (name: string) => orpcClient.createConversation({ name }),
@@ -272,7 +272,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     queryFn: () => getSession(),
   })
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!conversationsQuery.data) {
       return
     }
@@ -387,7 +387,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             ) : (
               membersQuery.data?.map((member) => (
                 <SidebarMenuItem key={member.id}>
-                  <div className="flex items-center gap-2 px-2 py-2 text-sm">
+                  <SidebarMenuButton
+                    render={<Link to="/new" search={{ members: member.id }} />}
+                  >
                     <Avatar className="size-5">
                       <AvatarImage
                         src={member.imageUrl ?? undefined}
@@ -398,7 +400,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       </AvatarFallback>
                     </Avatar>
                     <span className="truncate">{member.name}</span>
-                  </div>
+                  </SidebarMenuButton>
                 </SidebarMenuItem>
               ))
             )}
@@ -429,6 +431,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               </section>
             ) : null}
             <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton render={<Link to="/new" search={{}} />}>
+                  <SquarePenIcon />
+                  <span>New message</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton render={<Link to="/aichat" />}>
                   <MessageCircleIcon />
@@ -478,7 +486,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <>
                     <Avatar className="size-8 rounded-lg">
                       <AvatarImage
-                        src={sessionQuery.data.session.user!.imageUrl ?? undefined}
+                        src={
+                          sessionQuery.data.session.user!.imageUrl ?? undefined
+                        }
                         alt={sessionQuery.data.session.user!.name}
                       />
                       <AvatarFallback className="rounded-lg">

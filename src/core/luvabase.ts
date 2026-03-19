@@ -7,7 +7,7 @@ export function setLuvabaseDevEnvironment() {
   }
 
   const user = {
-    id: "123",
+    id: "abc",
     name: "John Doe",
     imageUrl: "https://i.pravatar.cc/150?u=123",
   }
@@ -30,6 +30,13 @@ export function setLuvabaseDevEnvironment() {
     session: {
       user,
     },
-    members: [user],
+    members: [
+      user,
+      {
+        id: "def",
+        name: "Jane Doe",
+        imageUrl: "https://i.pravatar.cc/150?u=456",
+      },
+    ],
   })
 }
