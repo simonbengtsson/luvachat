@@ -42,6 +42,7 @@ import {
   conversationQueryOptions,
   conversationsQueryKey,
 } from "@/core/conversationsQuery"
+import { useWorkspaceMembers } from "@/core/members"
 import {
   messagesInfiniteQueryOptions,
   messagesQueryKey,
@@ -50,7 +51,7 @@ import { orpcClient } from "@/core/orpcClient"
 import { applyMessageCreatedToCache } from "@/core/realtimeCache"
 import type { ConversationWithUserState } from "@/core/schema"
 import { getScrollRestorationKey } from "@/core/scrollRestorationKey"
-import { getMembers, getSessionInfo, type Member } from "@luvabase/sdk"
+import type { Member } from "@luvabase/sdk"
 import {
   useInfiniteQuery,
   useMutation,
@@ -63,8 +64,6 @@ import {
   useElementScrollRestoration,
   useNavigate,
 } from "@tanstack/react-router"
-import { createServerFn } from "@tanstack/react-start"
-import { getRequest } from "@tanstack/react-start/server"
 import {
   EllipsisVerticalIcon,
   FileIcon,
@@ -76,20 +75,6 @@ import { useStickToBottom } from "use-stick-to-bottom"
 export const Route = createFileRoute("/c/$conversationId")({
   component: RouteComponent,
 })
-
-const getConversationMeta = createServerFn({ method: "GET" }).handler(
-  async () => {
-    const request = getRequest()
-    const [members, session] = await Promise.all([
-      getMembers(request),
-      getSessionInfo(request),
-    ])
-    return {
-      members,
-      session,
-    }
-  },
-)
 
 function getInitials(value?: string | null) {
   const name = value?.trim()
@@ -131,24 +116,15 @@ function truncateFileNameMiddle(fileName: string, maxLength = 19) {
 function RouteComponent() {
   const { conversationId } = Route.useParams()
   const conversationQuery = useQuery(conversationQueryOptions(conversationId))
-  const conversationMetaQuery = useQuery({
-    queryKey: ["conversation-meta"],
-    queryFn: () => getConversationMeta(),
-  })
+  const membersQuery = useWorkspaceMembers()
+
   const membersById = useMemo(
     () =>
       new Map<string, Member>(
-        (conversationMetaQuery.data?.members ?? []).map((member) => [
-          member.id,
-          member,
-        ]),
+        (membersQuery.data ?? []).map((member) => [member.id, member]),
       ),
-    [conversationMetaQuery.data?.members],
+    [membersQuery.data],
   )
-
-  if (!conversationMetaQuery.data) {
-    return null
-  }
 
   return (
     <ConversationView

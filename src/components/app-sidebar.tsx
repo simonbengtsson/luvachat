@@ -18,6 +18,7 @@ import {
   conversationsQueryOptions,
   seedConversationQueryCache,
 } from "@/core/conversationsQuery"
+import { useWorkspaceMembers } from "@/core/members"
 import { orpcClient } from "@/core/orpcClient"
 import {
   cleanupPushSubscription,
@@ -26,7 +27,7 @@ import {
 } from "@/core/push-client"
 import type { ConversationWithUserState } from "@/core/schema"
 import { cn } from "@/lib/utils"
-import { getAdminUrl, getMembers, getSessionInfo } from "@luvabase/sdk"
+import { getAdminUrl, getSessionInfo } from "@luvabase/sdk"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link, useMatchRoute } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
@@ -85,17 +86,12 @@ function hasUnreadMessages(conversation: ConversationWithUserState) {
   return conversation.lastViewedAt < conversation.lastMessageAt
 }
 
-const getPodInfo = createServerFn({ method: "GET" }).handler(async () => {
+const getSession = createServerFn({ method: "GET" }).handler(async () => {
   const request = getRequest()
-  const [members, session] = await Promise.all([
-    getMembers(request),
-    getSessionInfo(request),
-  ])
+  const session = await getSessionInfo(request)
 
   return {
-    members,
     session,
-    adminUrl: getAdminUrl(),
   }
 })
 
@@ -103,6 +99,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { isMobile } = useSidebar()
   const matchRoute = useMatchRoute()
   const queryClient = useQueryClient()
+  const membersQuery = useWorkspaceMembers()
   const [notificationPermission, setNotificationPermission] =
     React.useState<NotificationPermission | null>(null)
   const [isEnablingNotifications, setIsEnablingNotifications] =
@@ -269,12 +266,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     },
   })
 
-  const membersQuery = useQuery({
-    queryKey: ["sidebar-members-session"],
-    queryFn: async () => {
-      const podInfo = await getPodInfo()
-      return podInfo
-    },
+  const sessionQuery = useQuery({
+    queryKey: ["sidebar-session"],
+    queryFn: () => getSession(),
   })
 
   React.useEffect(() => {
@@ -383,14 +377,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   </div>
                 </SidebarMenuItem>
               ))
-            ) : membersQuery.data?.members.length === 0 ? (
+            ) : membersQuery.data?.length === 0 ? (
               <SidebarMenuItem>
                 <div className="px-2 py-2 text-sm text-muted-foreground">
                   No members yet
                 </div>
               </SidebarMenuItem>
             ) : (
-              membersQuery.data?.members.map((member) => (
+              membersQuery.data?.map((member) => (
                 <SidebarMenuItem key={member.id}>
                   <div className="flex items-center gap-2 px-2 py-2 text-sm">
                     <Avatar className="size-5">
@@ -453,7 +447,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <SidebarMenuButton
                   render={
                     <a
-                      href={membersQuery.data?.adminUrl ?? ""}
+                      href={getAdminUrl()}
                       target="_blank"
                     />
                   }
@@ -479,25 +473,23 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   />
                 }
               >
-                {membersQuery.data ? (
+                {sessionQuery.data ? (
                   <>
                     <Avatar className="size-8 rounded-lg">
                       <AvatarImage
-                        src={
-                          membersQuery.data.session.user!.imageUrl ?? undefined
-                        }
-                        alt={membersQuery.data.session.user!.name}
+                        src={sessionQuery.data.session.user!.imageUrl ?? undefined}
+                        alt={sessionQuery.data.session.user!.name}
                       />
                       <AvatarFallback className="rounded-lg">
-                        {getFallbackText(membersQuery.data.session.user!.name)}
+                        {getFallbackText(sessionQuery.data.session.user!.name)}
                       </AvatarFallback>
                     </Avatar>
                     <div className="grid flex-1 text-left text-sm leading-tight">
                       <span className="truncate font-medium">
-                        {membersQuery.data.session.user!.name}
+                        {sessionQuery.data.session.user!.name}
                       </span>
                       <span className="truncate text-xs text-foreground/70">
-                        {membersQuery.data.session.user!.id}
+                        {sessionQuery.data.session.user!.id}
                       </span>
                     </div>
                   </>
