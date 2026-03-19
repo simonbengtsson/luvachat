@@ -1,5 +1,5 @@
 import { ChevronDown } from "lucide-react";
-import { type ComponentProps, useCallback } from "react";
+import { type ComponentProps, type ReactNode, useCallback } from "react";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -58,16 +58,42 @@ export function ChatMessageArea({ className, ...props }: ChatMessageAreaProps) {
 	);
 }
 
-type ChatMessageAreaContentProps = ComponentProps<typeof StickToBottom.Content>;
+type ChatMessageAreaContentProps = Omit<
+	ComponentProps<typeof StickToBottom.Content>,
+	"children" | "scrollClassName"
+> & {
+	children?: ReactNode;
+	scrollClassName?: string;
+	scrollRestorationId?: string;
+	scrollStyle?: ComponentProps<"div">["style"];
+};
 
 export function ChatMessageAreaContent({
 	className,
+	scrollClassName,
+	scrollRestorationId,
+	scrollStyle,
 	...props
 }: ChatMessageAreaContentProps) {
+	const { scrollRef, contentRef } = useStickToBottomContext();
+
 	return (
-		<StickToBottom.Content
-			className={cn("max-w-2xl mx-auto w-full min-h-full py-2", className)}
-			{...props}
-		/>
+		<div
+			ref={scrollRef}
+			data-scroll-restoration-id={scrollRestorationId}
+			className={cn("h-full w-full overflow-y-auto", scrollClassName)}
+			style={{
+				height: "100%",
+				width: "100%",
+				scrollbarGutter: "stable both-edges",
+				...scrollStyle,
+			}}
+		>
+			<div
+				{...props}
+				ref={contentRef}
+				className={cn("max-w-2xl mx-auto w-full min-h-full py-2", className)}
+			/>
+		</div>
 	);
 }

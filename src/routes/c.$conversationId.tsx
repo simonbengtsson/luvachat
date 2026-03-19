@@ -1,7 +1,24 @@
 import EmojiPicker from "@/components/shadcnblocks/emoji-picker"
 import { SiteHeader } from "@/components/site-header"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import {
+  ChatMessage,
+  ChatMessageActionCopy,
+  ChatMessageActions,
+  ChatMessageAuthor,
+  ChatMessageAvatar,
+  ChatMessageAvatarFallback,
+  ChatMessageAvatarImage,
+  ChatMessageContainer,
+  ChatMessageContent,
+  ChatMessageHeader,
+  ChatMessageTimestamp,
+} from "@/components/ui/chat-message"
+import {
+  ChatMessageArea,
+  ChatMessageAreaContent,
+  ChatMessageAreaScrollButton,
+} from "@/components/ui/chat-message-area"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -56,6 +73,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react"
+import { useStickToBottom } from "use-stick-to-bottom"
 
 export const Route = createFileRoute("/c/$conversationId")({
   component: RouteComponent,
@@ -87,28 +105,6 @@ function getInitials(value?: string | null) {
   }
 
   return name.slice(0, 2).toUpperCase()
-}
-
-function formatMessageTimestamp(value: string) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return ""
-  }
-
-  const now = Date.now()
-  const ageMs = now - date.getTime()
-  const hours24 = 24 * 60 * 60 * 1000
-
-  if (ageMs < hours24) {
-    return new Intl.DateTimeFormat(undefined, {
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(date)
-  }
-
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "full",
-  }).format(date)
 }
 
 function isImageAttachment(contentType: string) {
@@ -184,29 +180,27 @@ function ConversationView({
   const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const scrollContainerRef = useRef<HTMLDivElement>(null)
   const loadMoreRef = useRef<HTMLDivElement>(null)
   const previousScrollHeightRef = useRef<number>(0)
   const previousMessagesLengthRef = useRef<number>(0)
   const hasInitializedScrollRef = useRef(false)
+  const skipNextAutoScrollRef = useRef(false)
   const shouldAutoScrollToBottomRef = useRef(false)
+  const messageArea = useStickToBottom({
+    initial: false,
+    resize: "smooth",
+  })
 
   const focusComposer = () => {
     textareaRef.current?.focus({ preventScroll: true })
   }
 
   const scrollMessagesToBottom = (behavior: ScrollBehavior = "auto") => {
-    const container = scrollContainerRef.current
-    if (!container) return
-
-    container.scrollTo({
-      top: container.scrollHeight,
-      behavior,
-    })
+    void messageArea.scrollToBottom(behavior)
   }
 
   const isNearBottom = () => {
-    const container = scrollContainerRef.current
+    const container = messageArea.scrollRef.current
     if (!container) {
       return false
     }
@@ -379,13 +373,14 @@ function ConversationView({
 
   // Initialize scroll once: restore prior position if available, otherwise start at bottom.
   useEffect(() => {
-    const container = scrollContainerRef.current
+    const container = messageArea.scrollRef.current
     if (!container || hasInitializedScrollRef.current || !data) {
       return
     }
 
     if (typeof scrollRestorationEntry?.scrollY === "number") {
       container.scrollTop = scrollRestorationEntry.scrollY
+      skipNextAutoScrollRef.current = true
       shouldAutoScrollToBottomRef.current = false
     } else if (messages.length > 0) {
       shouldAutoScrollToBottomRef.current = true
@@ -400,10 +395,15 @@ function ConversationView({
     setTimeout(() => {
       setIsInitialLoadComplete(true)
     }, 300)
-  }, [data, messages.length, scrollRestorationEntry?.scrollY])
+  }, [data, messageArea.scrollRef, messages.length, scrollRestorationEntry?.scrollY])
 
   useEffect(() => {
     if (!data || messages.length === 0) {
+      return
+    }
+
+    if (skipNextAutoScrollRef.current) {
+      skipNextAutoScrollRef.current = false
       return
     }
 
@@ -417,11 +417,11 @@ function ConversationView({
 
   // Preserve scroll position when loading older messages.
   useEffect(() => {
-    if (!scrollContainerRef.current || !isInitialLoadComplete) {
+    const container = messageArea.scrollRef.current
+    if (!container || !isInitialLoadComplete) {
       return
     }
 
-    const container = scrollContainerRef.current
     const currentMessagesLength = messages.length
     const previousMessagesLength = previousMessagesLengthRef.current
 
@@ -440,7 +440,7 @@ function ConversationView({
 
     previousMessagesLengthRef.current = currentMessagesLength
     previousScrollHeightRef.current = container.scrollHeight
-  }, [messages.length, isInitialLoadComplete])
+  }, [isInitialLoadComplete, messageArea.scrollRef, messages.length])
 
   // Refresh sidebar conversation state (read/unread metadata) after message loads.
   useEffect(() => {
@@ -452,7 +452,8 @@ function ConversationView({
 
   // Infinite scroll: load more when scrolling near top.
   useEffect(() => {
-    if (!loadMoreRef.current || !scrollContainerRef.current) return
+    const container = messageArea.scrollRef.current
+    if (!loadMoreRef.current || !container) return
     // Don't set up observer until initial load is done.
     if (!isInitialLoadComplete) return
 
@@ -460,15 +461,12 @@ function ConversationView({
       (entries) => {
         if (entries[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) {
           // Save scroll height before fetching
-          if (scrollContainerRef.current) {
-            previousScrollHeightRef.current =
-              scrollContainerRef.current.scrollHeight
-          }
+          previousScrollHeightRef.current = container.scrollHeight
           fetchNextPage()
         }
       },
       {
-        root: scrollContainerRef.current,
+        root: container,
         rootMargin: "50px",
         threshold: 0,
       },
@@ -476,7 +474,13 @@ function ConversationView({
 
     observer.observe(loadMoreRef.current)
     return () => observer.disconnect()
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage, isInitialLoadComplete])
+  }, [
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isInitialLoadComplete,
+    messageArea.scrollRef,
+  ])
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -504,17 +508,19 @@ function ConversationView({
       />
 
       <div className="flex min-h-0 flex-1 flex-col">
-        {/* Messages container with native scroll */}
-        <div
-          ref={scrollContainerRef}
-          data-scroll-restoration-id={scrollRestorationId}
-          className="flex-1 overflow-y-auto overscroll-none"
-          style={{
-            WebkitOverflowScrolling: "touch",
-            overscrollBehavior: "contain",
-          }}
+        <ChatMessageArea
+          instance={messageArea}
+          className="min-h-0 flex-1"
         >
-          <div className="max-w-full space-y-4 px-6 py-4">
+          <ChatMessageAreaContent
+            scrollRestorationId={scrollRestorationId}
+            scrollClassName="overscroll-none"
+            scrollStyle={{
+              WebkitOverflowScrolling: "touch",
+              overscrollBehavior: "contain",
+            }}
+            className="max-w-full px-6 py-4"
+          >
             {hasNextPage && (
               <div ref={loadMoreRef} className="flex justify-center py-2">
                 <div className="text-sm text-muted-foreground">
@@ -528,106 +534,92 @@ function ConversationView({
               const authorName = author?.name ?? message.userId
 
               return (
-                <div
-                  key={message.id}
-                  className="group/message relative flex gap-3 rounded-xl px-2 py-2 hover:bg-muted/40"
-                >
-                  <Avatar className="mt-0.5 size-9">
-                    <AvatarImage
+                <ChatMessage key={message.id}>
+                  <ChatMessageAvatar className="mt-0.5 size-9">
+                    <ChatMessageAvatarImage
                       src={author?.imageUrl ?? undefined}
                       alt={authorName}
                     />
-                    <AvatarFallback className="text-xs">
+                    <ChatMessageAvatarFallback className="text-xs">
                       {getInitials(authorName)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <div className="flex items-baseline gap-2">
-                      <span className="truncate text-sm font-semibold">
-                        {authorName}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {formatMessageTimestamp(message.createdAt)}
-                      </span>
-                    </div>
-                    {message.content ? (
-                      <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                        {message.content}
-                      </div>
-                    ) : null}
-                    {message.attachments.length > 0 ? (
-                      <div className="overflow-x-auto pt-1 pb-1">
-                        <div className="flex gap-2">
-                          {message.attachments.map((attachment) => {
-                            const attachmentUrl = getAttachmentUrl(
-                              attachment.storageKey,
-                            )
-
-                            if (isImageAttachment(attachment.contentType)) {
-                              return (
-                                <a
-                                  key={attachment.id}
-                                  href={attachmentUrl}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="block w-32 shrink-0 overflow-hidden rounded-xl border border-border/70 bg-muted/20"
-                                >
-                                  <img
-                                    src={attachmentUrl}
-                                    alt={attachment.fileName}
-                                    loading="lazy"
-                                    onLoad={() =>
-                                      ensureLatestMessageIsVisible()
-                                    }
-                                    className="h-24 w-full object-cover"
-                                  />
-                                </a>
-                              )
-                            }
-
-                            return (
-                              <a
-                                key={attachment.id}
-                                href={attachmentUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="flex h-24 w-24 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-muted/20 hover:bg-muted/40"
-                              >
-                                <FileIcon className="size-5 shrink-0 text-muted-foreground" />
-                              </a>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                  <div className="absolute top-2 right-2 opacity-0 transition-opacity group-hover/message:opacity-100 group-focus-within/message:opacity-100">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-background hover:text-foreground">
-                        <EllipsisVerticalIcon className="size-4" />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        side="top"
-                        align="end"
-                        className="min-w-36"
-                      >
+                    </ChatMessageAvatarFallback>
+                  </ChatMessageAvatar>
+                  <ChatMessageContainer>
+                    <ChatMessageHeader>
+                      <ChatMessageAuthor>{authorName}</ChatMessageAuthor>
+                      <ChatMessageTimestamp createdAt={message.createdAt} />
+                    </ChatMessageHeader>
+                    <ChatMessageActions>
+                      <ChatMessageActionCopy
+                        onClick={() => {
+                          if (message.content) {
+                            navigator.clipboard.writeText(message.content)
+                          }
+                        }}
+                        disabled={!message.content}
+                      />
+                    </ChatMessageActions>
+                    {message.content || message.attachments.length > 0 ? (
+                      <ChatMessageContent className="px-2 py-0">
                         {message.content ? (
-                          <DropdownMenuItem
-                            onClick={() => {
-                              navigator.clipboard.writeText(message.content)
-                            }}
-                          >
-                            Copy text
-                          </DropdownMenuItem>
+                          <div className="whitespace-pre-wrap break-words text-sm leading-relaxed">
+                            {message.content}
+                          </div>
                         ) : null}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </div>
+                        {message.attachments.length > 0 ? (
+                          <div className="overflow-x-auto pt-1 pb-1">
+                            <div className="flex gap-2">
+                              {message.attachments.map((attachment) => {
+                                const attachmentUrl = getAttachmentUrl(
+                                  attachment.storageKey,
+                                )
+
+                                if (isImageAttachment(attachment.contentType)) {
+                                  return (
+                                    <a
+                                      key={attachment.id}
+                                      href={attachmentUrl}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="block w-32 shrink-0 overflow-hidden rounded-xl border border-border/70 bg-muted/20"
+                                    >
+                                      <img
+                                        src={attachmentUrl}
+                                        alt={attachment.fileName}
+                                        loading="lazy"
+                                        onLoad={() =>
+                                          ensureLatestMessageIsVisible()
+                                        }
+                                        className="h-24 w-full object-cover"
+                                      />
+                                    </a>
+                                  )
+                                }
+
+                                return (
+                                  <a
+                                    key={attachment.id}
+                                    href={attachmentUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="flex h-24 w-24 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-muted/20 hover:bg-muted/40"
+                                  >
+                                    <FileIcon className="size-5 shrink-0 text-muted-foreground" />
+                                  </a>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        ) : null}
+                      </ChatMessageContent>
+                    ) : null}
+                  </ChatMessageContainer>
+                </ChatMessage>
               )
             })}
-          </div>
-        </div>
+          </ChatMessageAreaContent>
+          <ChatMessageAreaScrollButton />
+        </ChatMessageArea>
 
         <div className="shrink-0 bg-background px-4 pb-5">
           <form onSubmit={handleSubmit} className="flex flex-col gap-2">
