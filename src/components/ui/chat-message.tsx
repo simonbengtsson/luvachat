@@ -55,7 +55,7 @@ function ChatMessageHeader({ className, ...props }: ComponentProps<"div">) {
 function ChatMessageAuthor({ className, ...props }: ComponentProps<"span">) {
 	return (
 		<span
-			className={cn("font-medium text-foreground", className)}
+			className={cn("font-semibold text-foreground", className)}
 			{...props}
 		/>
 	);

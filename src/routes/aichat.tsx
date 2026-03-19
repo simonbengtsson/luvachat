@@ -14,8 +14,13 @@ import {
   ChatMessageAvatarUserIcon,
   ChatMessageContainer,
   ChatMessageContent,
+  ChatMessageFooter,
   ChatMessageHeader,
   ChatMessageMarkdown,
+  ChatMessageThread,
+  ChatMessageThreadAction,
+  ChatMessageThreadReplyCount,
+  ChatMessageThreadTimestamp,
   ChatMessageTimestamp,
 } from "@/components/ui/chat-message"
 import {
@@ -286,6 +291,7 @@ function RouteComponent() {
   const lastMessage = messages[messages.length - 1]
   const showOptimisticAssistantMessage =
     isLoading && (!lastMessage || lastMessage.role !== "assistant")
+  const lastDummyMessageIndex = initialMessages.length - 1
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -315,6 +321,7 @@ function RouteComponent() {
             {messages.map((message, index) => {
               const messageText = getMessageText(message)
               const isAssistant = message.role === "assistant"
+              const showThreadPreview = index === lastDummyMessageIndex
               const isStreamingPlaceholder =
                 isAssistant &&
                 isLoading &&
@@ -341,22 +348,33 @@ function RouteComponent() {
                         <ChatMessageTimestamp createdAt={message.createdAt} />
                       ) : null}
                     </ChatMessageHeader>
-                    <ChatMessageContent>
-                      <ChatMessageActions>
-                        <ChatMessageActionCopy
-                          onClick={() => {
-                            if (messageText) {
-                              navigator.clipboard.writeText(messageText)
-                            }
-                          }}
-                          disabled={!messageText}
-                        />
-                      </ChatMessageActions>
-                    </ChatMessageContent>
+                    <ChatMessageActions>
+                      <ChatMessageActionCopy
+                        onClick={() => {
+                          if (messageText) {
+                            navigator.clipboard.writeText(messageText)
+                          }
+                        }}
+                        disabled={!messageText}
+                      />
+                    </ChatMessageActions>
                     {messageText ? (
-                      <ChatMessageContent>
+                      <ChatMessageContent className="px-2 py-0">
                         <ChatMessageMarkdown content={messageText} />
                       </ChatMessageContent>
+                    ) : null}
+                    {showThreadPreview ? (
+                      <ChatMessageFooter className="px-2 pt-1">
+                        <ChatMessageThread type="button">
+                          <ChatMessageThreadReplyCount>
+                            1 reply
+                          </ChatMessageThreadReplyCount>
+                          <ChatMessageThreadTimestamp
+                            date={message.createdAt ?? new Date()}
+                          />
+                          <ChatMessageThreadAction />
+                        </ChatMessageThread>
+                      </ChatMessageFooter>
                     ) : null}
                     {isStreamingPlaceholder ? (
                       <div
