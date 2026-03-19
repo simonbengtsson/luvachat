@@ -9,20 +9,6 @@ import StarterKit from "@tiptap/starter-kit";
 import type { SuggestionProps } from "@tiptap/suggestion";
 import { ArrowUpIcon, ListIcon, Loader2, PlusIcon } from "lucide-react";
 
-import {
-	type ComponentProps,
-	createContext,
-	forwardRef,
-	type ReactNode,
-	useCallback,
-	useContext,
-	useEffect,
-	useImperativeHandle,
-	useMemo,
-	useRef,
-	useState,
-} from "react";
-import tippy, { type Instance } from "tippy.js";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -37,6 +23,20 @@ import {
 	InputGroupText,
 } from "@/components/ui/input-group";
 import { cn } from "@/lib/utils";
+import {
+	type ComponentProps,
+	createContext,
+	forwardRef,
+	type ReactNode,
+	useCallback,
+	useContext,
+	useEffect,
+	useImperativeHandle,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
+import tippy, { type Instance } from "tippy.js";
 
 export type ChatInputValue = JSONContent;
 
@@ -248,6 +248,9 @@ export function ChatInputEditor({
 			content: effectiveValue,
 			onUpdate,
 			editable: !(disabled || contextDisabled),
+			editorProps: {
+				transformPastedHTML: normalizePastedHtml,
+			},
 			immediatelyRender: false,
 		},
 		[extensions, disabled, contextDisabled],
@@ -332,6 +335,95 @@ const KeyboardShortcuts = Extension.create({
 		};
 	},
 });
+
+function normalizePastedHtml(html: string) {
+	if (!html.trim() || typeof DOMParser === "undefined") {
+		return html;
+	}
+
+	const parser = new DOMParser();
+	const document = parser.parseFromString(html, "text/html");
+
+	for (const element of Array.from(
+		document.body.querySelectorAll<HTMLElement>("*"),
+	)) {
+		normalizePastedElement(element);
+	}
+
+	return document.body.innerHTML;
+}
+
+function normalizePastedElement(element: HTMLElement) {
+	const stringifyType = element
+		.getAttribute("data-stringify-type")
+		?.toLowerCase();
+	const style = element.getAttribute("style")?.toLowerCase() ?? "";
+
+	if (
+		element.tagName === "DIV" &&
+		!element.closest("li") &&
+		!element.closest("blockquote") &&
+		!element.closest("pre")
+	) {
+		replaceElementTag(element, "p");
+		return;
+	}
+
+	if (
+		stringifyType === "bold" ||
+		/font-weight\s*:\s*(bold|[6-9]00)/.test(style)
+	) {
+		wrapElementChildren(element, "strong");
+	}
+
+	if (
+		stringifyType === "italic" ||
+		/font-style\s*:\s*italic/.test(style)
+	) {
+		wrapElementChildren(element, "em");
+	}
+
+	if (
+		stringifyType === "strike" ||
+		/(text-decoration|text-decoration-line)\s*:[^;]*line-through/.test(
+			style,
+		)
+	) {
+		wrapElementChildren(element, "s");
+	}
+
+	if (
+		stringifyType === "code" ||
+		/font-family\s*:[^;]*monospace/.test(style)
+	) {
+		wrapElementChildren(element, "code");
+	}
+}
+
+function replaceElementTag(element: HTMLElement, nextTagName: string) {
+	const replacement = element.ownerDocument.createElement(nextTagName);
+
+	for (const child of Array.from(element.childNodes)) {
+		replacement.appendChild(child);
+	}
+
+	element.replaceWith(replacement);
+}
+
+function wrapElementChildren(element: HTMLElement, wrapperTagName: string) {
+	if (
+		element.childNodes.length === 1 &&
+		element.firstElementChild?.tagName === wrapperTagName.toUpperCase()
+	) {
+		return;
+	}
+
+	const wrapper = element.ownerDocument.createElement(wrapperTagName);
+	for (const child of Array.from(element.childNodes)) {
+		wrapper.appendChild(child);
+	}
+	element.appendChild(wrapper);
+}
 
 export type ChatInputMentionProps<T extends BaseMentionItem = BaseMentionItem> =
 	{

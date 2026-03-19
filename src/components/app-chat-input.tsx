@@ -67,7 +67,7 @@ function serializeChatInputValue(
   }
 
   if (node.type === "text") {
-    return applyMarkdownMarks(node.text ?? "", node)
+    return node.text ?? ""
   }
 
   if (node.type === "hardBreak") {
@@ -97,6 +97,26 @@ function serializeChatInputValue(
       .join("\n")
   }
 
+  if (node.type === "blockquote") {
+    return (node.content ?? [])
+      .map((child) => serializeChatInputValue(child, mentionTriggers, indent))
+      .filter(Boolean)
+      .join("\n")
+  }
+
+  if (node.type === "heading") {
+    return (node.content ?? [])
+      .map((child) => serializeChatInputValue(child, mentionTriggers, indent))
+      .join("")
+      .trim()
+  }
+
+  if (node.type === "codeBlock") {
+    return (node.content ?? [])
+      .map((child) => serializeChatInputValue(child, mentionTriggers, indent))
+      .join("")
+  }
+
   if (node.type === "paragraph") {
     return (node.content ?? [])
       .map((child) => serializeChatInputValue(child, mentionTriggers, indent))
@@ -114,28 +134,6 @@ function serializeChatInputValue(
   return childContent.join("")
 }
 
-function applyMarkdownMarks(text: string, node: JSONContent): string {
-  if (!text) {
-    return text
-  }
-
-  const marks = node.marks ?? []
-  return marks.reduce((current, mark) => {
-    switch (mark.type) {
-      case "bold":
-        return `**${current}**`
-      case "italic":
-        return `*${current}*`
-      case "strike":
-        return `~~${current}~~`
-      case "code":
-        return `\`${current}\``
-      default:
-        return current
-    }
-  }, text)
-}
-
 function serializeBulletListItem(
   node: JSONContent,
   mentionTriggers: Map<string, string>,
@@ -147,7 +145,7 @@ function serializeBulletListItem(
     if (child.type === "paragraph") {
       const text = serializeChatInputValue(child, mentionTriggers, indent).trim()
       if (text) {
-        lines.push(`${" ".repeat(indent)}- ${text}`)
+        lines.push(`${" ".repeat(indent)}• ${text}`)
       }
       continue
     }
@@ -162,7 +160,7 @@ function serializeBulletListItem(
 
     const text = serializeChatInputValue(child, mentionTriggers, indent).trim()
     if (text) {
-      lines.push(`${" ".repeat(indent)}- ${text}`)
+      lines.push(`${" ".repeat(indent)}• ${text}`)
     }
   }
 
