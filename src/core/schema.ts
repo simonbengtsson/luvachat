@@ -18,6 +18,19 @@ export type ConversationWithUserState = z.infer<
   typeof ConversationWithUserState
 >
 
+export const conversationMembersTable = sqliteTable("conversation_members", {
+  id: text("id").primaryKey(), // userId_conversationId
+  userId: text("user_id").notNull(),
+  conversationId: text("conversation_id")
+    .notNull()
+    .references(() => conversationsTable.id),
+  joinedAt: text("joined_at").notNull(),
+})
+export const ConversationMemberSchema = createSelectSchema(
+  conversationMembersTable,
+)
+export type ConversationMember = z.infer<typeof ConversationMemberSchema>
+
 export const messagesTable = sqliteTable("messages", {
   id: text("id").primaryKey(),
   conversationId: text("conversation_id")
