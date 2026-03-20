@@ -1,8 +1,7 @@
 import { overrideEnvironment, type RuntimeService } from "@luvabase/sdk"
 
 export function setLuvabaseDevEnvironment() {
-  // Only override the environment in development
-  if (!import.meta.env.DEV) {
+  if (process.env.luvaEnv) {
     return
   }
 
