@@ -2,8 +2,11 @@ import { overrideEnvironment, type RuntimeService } from "@luvabase/sdk"
 
 export function setLuvabaseDevEnvironment() {
   if (process.env.luvaEnv) {
+    console.log("Using real luvabase env")
     return
   }
+
+  console.log("Using overriden luvabase env")
 
   const user = {
     id: "abc",

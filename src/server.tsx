@@ -1,3 +1,5 @@
+console.log("Server started")
+
 import { getSessionInfo } from "@luvabase/sdk"
 import handler from "@tanstack/react-start/server-entry"
 import { setLuvabaseDevEnvironment } from "./core/luvabase"
