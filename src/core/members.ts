@@ -1,4 +1,4 @@
-import { getMembers, type Member } from "@luvabase/sdk"
+import { getMembers, type Member } from "./luvabase"
 import { useQuery } from "@tanstack/react-query"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"

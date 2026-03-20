@@ -5,13 +5,10 @@ import type { orpcRouter } from "./orpcFunctions"
 
 type SyncObjectRpcClient = RouterClient<typeof orpcRouter>
 
-export let orpcClient: ReturnType<typeof createORPCClient<SyncObjectRpcClient>>
+const baseUrl = process.env.BASE_URL || "https://luvachat2.luvabase.workers.dev"
 
-export function initClient(baseUrl: string) {
-  const url = new URL("/sync/orpc", baseUrl)
-  const link = new RPCLink({
-    url: url.toString(),
-  })
-
-  orpcClient = createORPCClient<SyncObjectRpcClient>(link)
-}
+export let orpcClient = createORPCClient<SyncObjectRpcClient>(
+  new RPCLink({
+    url: new URL("/sync/orpc", baseUrl).toString(),
+  }),
+)

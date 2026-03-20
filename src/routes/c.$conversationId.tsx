@@ -49,6 +49,7 @@ import {
   conversationQueryOptions,
   conversationsQueryKey,
 } from "@/core/conversationsQuery"
+import type { Member } from "@/core/luvabase"
 import { useWorkspaceMembers } from "@/core/members"
 import {
   conversationMessagesQueryKey,
@@ -59,7 +60,6 @@ import { orpcClient } from "@/core/orpcClient"
 import { applyMessageCreatedToCache } from "@/core/realtimeCache"
 import type { ConversationWithUserState } from "@/core/schema"
 import { getScrollRestorationKey } from "@/core/scrollRestorationKey"
-import type { Member } from "@luvabase/sdk"
 import {
   useInfiniteQuery,
   useMutation,

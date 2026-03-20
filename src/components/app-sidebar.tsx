@@ -26,8 +26,8 @@ import {
   syncPushSubscription,
 } from "@/core/push-client"
 import type { ConversationWithUserState } from "@/core/schema"
+import { getAdminUrl, getSession as getLuvaSession } from "@/core/luvabase"
 import { cn } from "@/lib/utils"
-import { getAdminUrl, getSessionInfo } from "@luvabase/sdk"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link, useMatchRoute, useNavigate } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
@@ -133,7 +133,7 @@ function SidebarConversationItem({
 
 const getSession = createServerFn({ method: "GET" }).handler(async () => {
   const request = getRequest()
-  const session = await getSessionInfo(request)
+  const session = await getLuvaSession(request)
 
   return {
     session,

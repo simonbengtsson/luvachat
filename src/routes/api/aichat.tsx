@@ -1,8 +1,8 @@
-import { getLuvaEnv } from "@luvabase/sdk"
 import { chat, toServerSentEventsResponse } from "@tanstack/ai"
 import { createOpenRouterText } from "@tanstack/ai-openrouter"
 import { createFileRoute } from "@tanstack/react-router"
 import { z } from "zod"
+import { getLuvaEnv } from "@/core/luvabase"
 
 type AIChatModelMessage = {
   role: "user" | "assistant"

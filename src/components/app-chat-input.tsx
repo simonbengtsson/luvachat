@@ -1,11 +1,11 @@
 "use client"
 
-import type { Member } from "@luvabase/sdk"
 import type { Editor, JSONContent } from "@tiptap/react"
 import { PlusIcon, SmileIcon, XIcon } from "lucide-react"
 import type { ChangeEvent } from "react"
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react"
 import EmojiPicker from "@/components/shadcnblocks/emoji-picker"
+import type { Member } from "@/core/luvabase"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
