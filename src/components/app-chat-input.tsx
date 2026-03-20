@@ -1,12 +1,12 @@
 "use client"
 
+import type { Member } from "@luvabase/sdk"
 import type { Editor, JSONContent } from "@tiptap/react"
 import { PlusIcon, SmileIcon, XIcon } from "lucide-react"
 import type { ChangeEvent } from "react"
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react"
 import EmojiPicker from "@/components/shadcnblocks/emoji-picker"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   ChatInput,
@@ -38,24 +38,11 @@ type AppChatInputProps = {
   autoFocus?: boolean
   placeholder?: string
   className?: string
+  members?: Member[]
   clearOnSubmit?: boolean
   allowAttachmentsWithoutText?: boolean
   attachmentsHelperText?: string | null
 }
-
-type DemoMember = {
-  id: string
-  name: string
-  image?: string
-  type: string
-}
-
-const demoMembers: DemoMember[] = [
-  { id: "1", name: "Alice", type: "agent" },
-  { id: "2", name: "Bob", type: "user" },
-  { id: "3", name: "Charlie", type: "bot" },
-  { id: "4", name: "Dana", type: "agent" },
-]
 
 function serializeChatInputValue(
   node: JSONContent | undefined,
@@ -201,6 +188,38 @@ function serializeOrderedListItem(
   return lines.join("\n")
 }
 
+function replaceMentionNodesWithText(
+  node: JSONContent | undefined,
+  mentionTriggers: Map<string, string>,
+): JSONContent | undefined {
+  if (!node) {
+    return undefined
+  }
+
+  if (node.type?.endsWith("-mention")) {
+    const mentionType = node.type.slice(0, -8)
+    const trigger = mentionTriggers.get(mentionType) ?? "@"
+    const label = typeof node.attrs?.label === "string" ? node.attrs.label : ""
+
+    return {
+      type: "text",
+      text: label ? `${trigger}${label}` : "",
+      marks: label ? [{ type: "bold" }] : undefined,
+    }
+  }
+
+  if (!node.content) {
+    return node
+  }
+
+  return {
+    ...node,
+    content: node.content
+      .map((child) => replaceMentionNodesWithText(child, mentionTriggers))
+      .filter((child): child is JSONContent => child !== undefined),
+  }
+}
+
 function AppChatInputEmojiButton() {
   const { editor, disabled } = useChatInputContext()
 
@@ -244,6 +263,7 @@ export const AppChatInput = forwardRef<AppChatInputHandle, AppChatInputProps>(
       autoFocus = false,
       placeholder = "Type a message...",
       className,
+      members = [],
       clearOnSubmit = true,
       allowAttachmentsWithoutText = false,
       attachmentsHelperText = null,
@@ -256,23 +276,32 @@ export const AppChatInput = forwardRef<AppChatInputHandle, AppChatInputProps>(
     const [selectedAttachments, setSelectedAttachments] = useState<File[]>([])
     const mentionConfigs = useMemo(
       () => ({
-        member: createMentionConfig<DemoMember>({
+        member: createMentionConfig<Member>({
           type: "member",
           trigger: "@",
-          items: demoMembers,
+          items: members,
         }),
       }),
-      [],
+      [members],
+    )
+    const mentionTriggers = useMemo(
+      () => new Map([[mentionConfigs.member.type, mentionConfigs.member.trigger]]),
+      [mentionConfigs],
     )
     const { value, onChange, clear } = useChatInput({
       mentions: mentionConfigs,
     })
     const serializedContent = useMemo(() => {
-      return serializeChatInputValue(
-        value,
-        new Map([[mentionConfigs.member.type, mentionConfigs.member.trigger]]),
-      )
-    }, [mentionConfigs, value])
+      return serializeChatInputValue(value, mentionTriggers)
+    }, [mentionTriggers, value])
+    const normalizedValue = useMemo(
+      () =>
+        replaceMentionNodesWithText(value, mentionTriggers) ?? {
+          type: "doc",
+          content: [],
+        },
+      [mentionTriggers, value],
+    )
 
     const focus = useCallback(() => {
       requestAnimationFrame(() => {
@@ -375,7 +404,7 @@ export const AppChatInput = forwardRef<AppChatInputHandle, AppChatInputProps>(
         return
       }
 
-      onSubmit(content, selectedAttachments, value)
+      onSubmit(content, selectedAttachments, normalizedValue)
       if (clearOnSubmit) {
         clearAndFocus()
       }
@@ -386,9 +415,9 @@ export const AppChatInput = forwardRef<AppChatInputHandle, AppChatInputProps>(
       disabled,
       isStreaming,
       onSubmit,
+      normalizedValue,
       selectedAttachments,
       serializedContent,
-      value,
     ])
 
     const isSendDisabled =
@@ -415,7 +444,7 @@ export const AppChatInput = forwardRef<AppChatInputHandle, AppChatInputProps>(
             {(item) => (
               <>
                 <Avatar className="h-6 w-6">
-                  <AvatarImage src={item.image} alt={item.name} />
+                  <AvatarImage src={item.imageUrl ?? undefined} alt={item.name} />
                   <AvatarFallback>{item.name[0]?.toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <span
@@ -424,9 +453,6 @@ export const AppChatInput = forwardRef<AppChatInputHandle, AppChatInputProps>(
                 >
                   {item.name}
                 </span>
-                <Badge variant="outline" className="ml-auto">
-                  {item.type}
-                </Badge>
               </>
             )}
           </ChatInputMention>

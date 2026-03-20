@@ -94,13 +94,9 @@ function renderTextNode(node: JSONContent, key: string) {
 function renderMention(node: JSONContent, key: string) {
   const label = typeof node.attrs?.label === "string" ? node.attrs.label : ""
   return (
-    <span
-      key={key}
-      className="rounded-sm bg-primary px-2 py-0.5 text-primary-foreground"
-      title={label}
-    >
+    <strong key={key} className="font-semibold" title={label}>
       @{label}
-    </span>
+    </strong>
   )
 }
 
@@ -219,7 +215,7 @@ function serializeNodeAsHtml(node: JSONContent): string {
       if (node.type?.endsWith("-mention")) {
         const label =
           typeof node.attrs?.label === "string" ? node.attrs.label : ""
-        return `<span data-mention="true">@${escapeHtml(label)}</span>`
+        return `<strong data-mention="true">@${escapeHtml(label)}</strong>`
       }
 
       return serializeNodesAsHtml(node.content ?? [])

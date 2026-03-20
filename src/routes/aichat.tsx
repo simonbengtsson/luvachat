@@ -34,6 +34,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { useWorkspaceMembers } from "@/core/members"
 import type { UIMessage } from "@tanstack/ai-client"
 import { fetchServerSentEvents, generateMessageId } from "@tanstack/ai-client"
 import { useChat } from "@tanstack/ai-react"
@@ -230,6 +231,8 @@ function RouteComponent() {
   const conversationId = useRef(crypto.randomUUID())
   const initialMessages = useMemo(() => createInitialMessages(), [])
   const composerRef = useRef<AppChatInputHandle>(null)
+  const membersQuery = useWorkspaceMembers()
+  const members = membersQuery.data ?? []
 
   const { messages, sendMessage, setMessages, stop, isLoading, error } =
     useChat({
@@ -420,6 +423,7 @@ function RouteComponent() {
             <AppChatInput
               ref={composerRef}
               onSubmit={submitMessage}
+              members={members}
               onStop={stop}
               isStreaming={isLoading}
               placeholder="Ask anything"

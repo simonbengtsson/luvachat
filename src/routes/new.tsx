@@ -369,6 +369,7 @@ function RouteComponent() {
               ref={composerRef}
               autoFocus={selectedMemberIds.length > 0}
               onSubmit={submitMessage}
+              members={members}
               disabled={
                 !isSyncConnected ||
                 sendDirectMessageMutation.isPending ||

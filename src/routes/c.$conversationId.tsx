@@ -117,13 +117,12 @@ function RouteComponent() {
   const { conversationId } = Route.useParams()
   const conversationQuery = useQuery(conversationQueryOptions(conversationId))
   const membersQuery = useWorkspaceMembers()
+  const members = membersQuery.data ?? []
 
   const membersById = useMemo(
     () =>
-      new Map<string, Member>(
-        (membersQuery.data ?? []).map((member) => [member.id, member]),
-      ),
-    [membersQuery.data],
+      new Map<string, Member>(members.map((member) => [member.id, member])),
+    [members],
   )
 
   return (
@@ -132,6 +131,7 @@ function RouteComponent() {
       conversationId={conversationId}
       conversationType={conversationQuery.data?.type ?? null}
       conversationName={conversationQuery.data?.name ?? null}
+      members={members}
       membersById={membersById}
     />
   )
@@ -141,11 +141,13 @@ function ConversationView({
   conversationId,
   conversationType,
   conversationName,
+  members,
   membersById,
 }: {
   conversationId: string
   conversationType: string | null
   conversationName: string | null
+  members: Member[]
   membersById: Map<string, Member>
 }) {
   const navigate = useNavigate()
@@ -616,6 +618,7 @@ function ConversationView({
             <AppChatInput
               ref={composerRef}
               onSubmit={submitMessage}
+              members={members}
               disabled={!isSyncConnected || sendMessageMutation.isPending}
               placeholder="Jot something down"
               clearOnSubmit={false}
