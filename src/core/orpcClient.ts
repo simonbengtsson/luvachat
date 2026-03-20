@@ -7,6 +7,8 @@ type SyncObjectRpcClient = RouterClient<typeof orpcRouter>
 
 const baseUrl = process.env.BASE_URL || "https://luvachat2.luvabase.workers.dev"
 
+console.log("ORPC baseUrl", new URL("/sync/orpc", baseUrl).toString())
+
 export let orpcClient = createORPCClient<SyncObjectRpcClient>(
   new RPCLink({
     url: new URL("/sync/orpc", baseUrl).toString(),

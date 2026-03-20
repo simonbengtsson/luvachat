@@ -3,7 +3,6 @@ import { DurableObject } from "cloudflare:workers"
 import { drizzle } from "drizzle-orm/durable-sqlite/driver"
 import { migrate } from "drizzle-orm/durable-sqlite/migrator"
 import { generateVAPIDKeys } from "web-push"
-import { setLuvabaseDevEnvironment } from "./luvabase"
 import { orpcHandler } from "./orpcFunctions"
 import type { VapidDetails } from "./push-server"
 
@@ -13,8 +12,6 @@ export class SyncObject extends DurableObject {
 
   constructor(state: DurableObjectState, env: Cloudflare.Env) {
     super(state, env)
-
-    setLuvabaseDevEnvironment()
 
     this.db = drizzle(state.storage)
 
@@ -26,6 +23,7 @@ export class SyncObject extends DurableObject {
 
   async fetch(request: Request): Promise<Response> {
     const userId = request.headers.get("x-user-id")!
+    console.log("SyncObject fetch", userId)
     const rpcResponse = await orpcHandler.handle(request, {
       prefix: "/sync/orpc",
       context: {
