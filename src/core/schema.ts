@@ -1,4 +1,9 @@
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core"
+import {
+  integer,
+  type AnySQLiteColumn,
+  sqliteTable,
+  text,
+} from "drizzle-orm/sqlite-core"
 import { createSelectSchema } from "drizzle-orm/zod"
 import { z } from "zod"
 
@@ -36,6 +41,12 @@ export const messagesTable = sqliteTable("messages", {
   conversationId: text("conversation_id")
     .notNull()
     .references(() => conversationsTable.id),
+  parentMessageId: text("parent_message_id").references(
+    (): AnySQLiteColumn => messagesTable.id,
+    {
+      onDelete: "cascade",
+    },
+  ),
   content: text("content").notNull(),
   tiptapJson: text("tiptap_json"),
   createdAt: text("created_at").notNull(),
@@ -76,6 +87,7 @@ export type MessageMention = z.infer<typeof MessageMentionSchema>
 
 export const MessageSchema = MessageRecordSchema.extend({
   attachments: z.array(MessageAttachmentSchema),
+  mentions: z.array(MessageMentionSchema),
 })
 export type Message = z.infer<typeof MessageSchema>
 

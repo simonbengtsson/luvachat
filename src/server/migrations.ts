@@ -6,6 +6,7 @@ import tranquilJamieBraddock from "../../drizzle/20260314213435_tranquil_jamie_b
 import niceVanceAstro from "../../drizzle/20260319174619_nice_vance_astro/migration.sql?raw"
 import bitterSunfire from "../../drizzle/20260319205902_bitter_sunfire/migration.sql?raw"
 import meanHardball from "../../drizzle/20260320074112_mean_hardball/migration.sql?raw"
+import mistyVertigo from "../../drizzle/20260320083708_misty_vertigo/migration.sql?raw"
 
 export const migrations = {
   "20260308112408_pretty_silver_fox": prettySilverFox,
@@ -16,4 +17,5 @@ export const migrations = {
   "20260319174619_nice_vance_astro": niceVanceAstro,
   "20260319205902_bitter_sunfire": bitterSunfire,
   "20260320074112_mean_hardball": meanHardball,
+  "20260320083708_misty_vertigo": mistyVertigo,
 }

@@ -1,0 +1,1 @@
+ALTER TABLE `messages` ADD `parent_message_id` text REFERENCES messages(id);
