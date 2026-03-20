@@ -142,12 +142,14 @@ code {
     @apply font-sans;
     overflow: hidden;
     height: 100%;
-    overscroll-behavior: none;
+    overscroll-behavior-x: auto;
+    overscroll-behavior-y: none;
   }
   body {
     @apply bg-background text-foreground;
     overflow: hidden;
     height: 100%;
-    overscroll-behavior: none;
+    overscroll-behavior-x: auto;
+    overscroll-behavior-y: none;
   }
 }
