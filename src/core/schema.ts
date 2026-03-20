@@ -54,6 +54,15 @@ export const messageAttachmentsTable = sqliteTable("message_attachments", {
   sizeBytes: integer("size_bytes").notNull(),
   createdAt: text("created_at").notNull(),
 })
+export const messageMentionsTable = sqliteTable("message_mentions", {
+  id: text("id").primaryKey(),
+  messageId: text("message_id")
+    .notNull()
+    .references(() => messagesTable.id, { onDelete: "cascade" }),
+  type: text("type").notNull(), // user | everyone | here
+  mentionedUserId: text("mentioned_user_id"),
+  createdAt: text("created_at").notNull(),
+})
 export const MessageRecordSchema = createSelectSchema(messagesTable)
 export type MessageRecord = z.infer<typeof MessageRecordSchema>
 
@@ -61,6 +70,9 @@ export const MessageAttachmentSchema = createSelectSchema(
   messageAttachmentsTable,
 )
 export type MessageAttachment = z.infer<typeof MessageAttachmentSchema>
+
+export const MessageMentionSchema = createSelectSchema(messageMentionsTable)
+export type MessageMention = z.infer<typeof MessageMentionSchema>
 
 export const MessageSchema = MessageRecordSchema.extend({
   attachments: z.array(MessageAttachmentSchema),
