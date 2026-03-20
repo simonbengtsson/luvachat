@@ -188,38 +188,6 @@ function serializeOrderedListItem(
   return lines.join("\n")
 }
 
-function replaceMentionNodesWithText(
-  node: JSONContent | undefined,
-  mentionTriggers: Map<string, string>,
-): JSONContent | undefined {
-  if (!node) {
-    return undefined
-  }
-
-  if (node.type?.endsWith("-mention")) {
-    const mentionType = node.type.slice(0, -8)
-    const trigger = mentionTriggers.get(mentionType) ?? "@"
-    const label = typeof node.attrs?.label === "string" ? node.attrs.label : ""
-
-    return {
-      type: "text",
-      text: label ? `${trigger}${label}` : "",
-      marks: label ? [{ type: "bold" }] : undefined,
-    }
-  }
-
-  if (!node.content) {
-    return node
-  }
-
-  return {
-    ...node,
-    content: node.content
-      .map((child) => replaceMentionNodesWithText(child, mentionTriggers))
-      .filter((child): child is JSONContent => child !== undefined),
-  }
-}
-
 function AppChatInputEmojiButton() {
   const { editor, disabled } = useChatInputContext()
 
@@ -294,14 +262,6 @@ export const AppChatInput = forwardRef<AppChatInputHandle, AppChatInputProps>(
     const serializedContent = useMemo(() => {
       return serializeChatInputValue(value, mentionTriggers)
     }, [mentionTriggers, value])
-    const normalizedValue = useMemo(
-      () =>
-        replaceMentionNodesWithText(value, mentionTriggers) ?? {
-          type: "doc",
-          content: [],
-        },
-      [mentionTriggers, value],
-    )
 
     const focus = useCallback(() => {
       requestAnimationFrame(() => {
@@ -404,7 +364,7 @@ export const AppChatInput = forwardRef<AppChatInputHandle, AppChatInputProps>(
         return
       }
 
-      onSubmit(content, selectedAttachments, normalizedValue)
+      onSubmit(content, selectedAttachments, value)
       if (clearOnSubmit) {
         clearAndFocus()
       }
@@ -415,9 +375,9 @@ export const AppChatInput = forwardRef<AppChatInputHandle, AppChatInputProps>(
       disabled,
       isStreaming,
       onSubmit,
-      normalizedValue,
       selectedAttachments,
       serializedContent,
+      value,
     ])
 
     const isSendDisabled =

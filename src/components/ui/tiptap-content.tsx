@@ -1,5 +1,7 @@
 import type { JSONContent } from "@tiptap/react"
-import type { ReactNode } from "react"
+import { useCallback, type ReactNode } from "react"
+import { useNavigate } from "@tanstack/react-router"
+import { orpcClient } from "@/core/orpcClient"
 import { cn } from "@/lib/utils"
 
 type TiptapContentProps = {
@@ -29,6 +31,34 @@ export function parseTiptapJson(
 }
 
 export function TiptapContent({ content, className }: TiptapContentProps) {
+  const navigate = useNavigate()
+  const openMemberConversation = useCallback(
+    async (memberId: string) => {
+      try {
+        const existingConversation =
+          await orpcClient.getDirectConversationByMemberIds({
+            memberIds: [memberId],
+          })
+
+        if (existingConversation) {
+          await navigate({
+            to: "/c/$conversationId",
+            params: { conversationId: existingConversation.id } as any,
+          })
+          return
+        }
+      } catch (error) {
+        console.error("Failed to resolve direct conversation", error)
+      }
+
+      await navigate({
+        to: "/new",
+        search: { members: memberId },
+      })
+    },
+    [navigate],
+  )
+
   return (
     <div
       className={cn(
@@ -36,7 +66,7 @@ export function TiptapContent({ content, className }: TiptapContentProps) {
         className,
       )}
     >
-      {renderNodes(content.content ?? [], "root")}
+      {renderNodes(content.content ?? [], "root", openMemberConversation)}
     </div>
   )
 }
@@ -45,26 +75,56 @@ export function serializeTiptapContentAsHtml(content: JSONContent): string {
   return serializeNodesAsHtml(content.content ?? [])
 }
 
-function renderNodes(nodes: JSONContent[], path: string): ReactNode[] {
-  return nodes.map((node, index) => renderNode(node, `${path}-${index}`))
+function renderNodes(
+  nodes: JSONContent[],
+  path: string,
+  openMemberConversation: (memberId: string) => Promise<void>,
+): ReactNode[] {
+  return nodes.map((node, index) =>
+    renderNode(node, `${path}-${index}`, openMemberConversation),
+  )
 }
 
-function renderNode(node: JSONContent, key: string): ReactNode {
+function renderNode(
+  node: JSONContent,
+  key: string,
+  openMemberConversation: (memberId: string) => Promise<void>,
+): ReactNode {
   switch (node.type) {
     case "paragraph":
-      return <p key={key}>{renderInlineContent(node.content ?? [], key)}</p>
+      return (
+        <p key={key}>
+          {renderInlineContent(node.content ?? [], key, openMemberConversation)}
+        </p>
+      )
     case "text":
-      return renderTextNode(node, key)
+      return renderTextNode(node, key, openMemberConversation)
     case "hardBreak":
       return <br key={key} />
     case "bulletList":
-      return <ul key={key}>{renderNodes(node.content ?? [], key)}</ul>
+      return (
+        <ul key={key}>
+          {renderNodes(node.content ?? [], key, openMemberConversation)}
+        </ul>
+      )
     case "orderedList":
-      return <ol key={key}>{renderNodes(node.content ?? [], key)}</ol>
+      return (
+        <ol key={key}>
+          {renderNodes(node.content ?? [], key, openMemberConversation)}
+        </ol>
+      )
     case "listItem":
-      return <li key={key}>{renderNodes(node.content ?? [], key)}</li>
+      return (
+        <li key={key}>
+          {renderNodes(node.content ?? [], key, openMemberConversation)}
+        </li>
+      )
     case "blockquote":
-      return <blockquote key={key}>{renderNodes(node.content ?? [], key)}</blockquote>
+      return (
+        <blockquote key={key}>
+          {renderNodes(node.content ?? [], key, openMemberConversation)}
+        </blockquote>
+      )
     case "codeBlock":
       return (
         <pre key={key}>
@@ -72,27 +132,62 @@ function renderNode(node: JSONContent, key: string): ReactNode {
         </pre>
       )
     case "heading":
-      return renderHeading(node, key)
+      return renderHeading(node, key, openMemberConversation)
     default:
       if (node.type?.endsWith("-mention")) {
-        return renderMention(node, key)
+        return renderMention(node, key, openMemberConversation)
       }
 
-      return <span key={key}>{renderNodes(node.content ?? [], key)}</span>
+      return (
+        <span key={key}>
+          {renderNodes(node.content ?? [], key, openMemberConversation)}
+        </span>
+      )
   }
 }
 
-function renderInlineContent(nodes: JSONContent[], path: string) {
-  return nodes.map((node, index) => renderNode(node, `${path}-inline-${index}`))
+function renderInlineContent(
+  nodes: JSONContent[],
+  path: string,
+  openMemberConversation: (memberId: string) => Promise<void>,
+) {
+  return nodes.map((node, index) =>
+    renderNode(node, `${path}-inline-${index}`, openMemberConversation),
+  )
 }
 
-function renderTextNode(node: JSONContent, key: string) {
+function renderTextNode(
+  node: JSONContent,
+  key: string,
+  openMemberConversation: (memberId: string) => Promise<void>,
+) {
   const text = node.text ?? ""
-  return applyMarks(text, node.marks, key)
+  return applyMarks(text, node.marks, key, openMemberConversation)
 }
 
-function renderMention(node: JSONContent, key: string) {
+function renderMention(
+  node: JSONContent,
+  key: string,
+  openMemberConversation: (memberId: string) => Promise<void>,
+) {
+  const id = typeof node.attrs?.id === "string" ? node.attrs.id : ""
   const label = typeof node.attrs?.label === "string" ? node.attrs.label : ""
+
+  if (id && label) {
+    return (
+      <MentionConversationLink
+        key={key}
+        href={`/new?members=${encodeURIComponent(id)}`}
+        memberId={id}
+        onOpen={openMemberConversation}
+        className="rounded-sm bg-primary px-2 py-0.5 font-medium text-primary-foreground no-underline hover:no-underline"
+        title={label}
+      >
+        @{label}
+      </MentionConversationLink>
+    )
+  }
+
   return (
     <strong key={key} className="font-semibold" title={label}>
       @{label}
@@ -100,9 +195,17 @@ function renderMention(node: JSONContent, key: string) {
   )
 }
 
-function renderHeading(node: JSONContent, key: string) {
+function renderHeading(
+  node: JSONContent,
+  key: string,
+  openMemberConversation: (memberId: string) => Promise<void>,
+) {
   const level = getHeadingLevel(node)
-  const children = renderInlineContent(node.content ?? [], key)
+  const children = renderInlineContent(
+    node.content ?? [],
+    key,
+    openMemberConversation,
+  )
 
   if (level === 1) {
     return (
@@ -155,6 +258,7 @@ function applyMarks(
   content: ReactNode,
   marks: JSONContent["marks"],
   keyPrefix: string,
+  openMemberConversation: (memberId: string) => Promise<void>,
 ): ReactNode {
   return (marks ?? []).reduce<ReactNode>((current, mark, index) => {
     const key = `${keyPrefix}-mark-${index}`
@@ -169,6 +273,23 @@ function applyMarks(
       case "code":
         return <code key={key}>{current}</code>
       case "link":
+        if (typeof mark.attrs?.memberId === "string") {
+          return (
+            <MentionConversationLink
+              key={key}
+              href={
+                typeof mark.attrs?.href === "string"
+                  ? mark.attrs.href
+                  : `/new?members=${encodeURIComponent(mark.attrs.memberId)}`
+              }
+              memberId={mark.attrs.memberId}
+              onOpen={openMemberConversation}
+            >
+              {current}
+            </MentionConversationLink>
+          )
+        }
+
         return (
           <a
             key={key}
@@ -183,6 +304,39 @@ function applyMarks(
         return current
     }
   }, content)
+}
+
+function MentionConversationLink({
+  children,
+  href,
+  memberId,
+  onOpen,
+  className,
+  title,
+}: {
+  children: ReactNode
+  href: string
+  memberId: string
+  onOpen: (memberId: string) => Promise<void>
+  className?: string
+  title?: string
+}) {
+  return (
+    <a
+      href={href}
+      className={cn(
+        "font-semibold text-foreground underline underline-offset-4",
+        className,
+      )}
+      title={title}
+      onClick={(event) => {
+        event.preventDefault()
+        void onOpen(memberId)
+      }}
+    >
+      {children}
+    </a>
+  )
 }
 
 function serializeNodesAsHtml(nodes: JSONContent[]) {
@@ -213,9 +367,13 @@ function serializeNodeAsHtml(node: JSONContent): string {
     }
     default:
       if (node.type?.endsWith("-mention")) {
+        const id = typeof node.attrs?.id === "string" ? node.attrs.id : ""
         const label =
           typeof node.attrs?.label === "string" ? node.attrs.label : ""
-        return `<strong data-mention="true">@${escapeHtml(label)}</strong>`
+        const href = id ? `/new?members=${encodeURIComponent(id)}` : ""
+        return href
+          ? `<a data-mention="true" href="${escapeHtmlAttribute(href)}"><strong>@${escapeHtml(label)}</strong></a>`
+          : `<strong data-mention="true">@${escapeHtml(label)}</strong>`
       }
 
       return serializeNodesAsHtml(node.content ?? [])
