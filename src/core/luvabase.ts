@@ -45,5 +45,6 @@ export function setLuvabaseDevEnvironment() {
         imageUrl: "https://i.pravatar.cc/150?u=ghi",
       },
     ],
+    pods: [],
   })
 }

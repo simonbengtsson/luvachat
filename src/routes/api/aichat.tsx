@@ -1,4 +1,4 @@
-import { getLunaEnv } from "@luvabase/sdk"
+import { getLuvaEnv } from "@luvabase/sdk"
 import { chat, toServerSentEventsResponse } from "@tanstack/ai"
 import { createOpenRouterText } from "@tanstack/ai-openrouter"
 import { createFileRoute } from "@tanstack/react-router"
@@ -103,7 +103,7 @@ export const Route = createFileRoute("/api/aichat")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const openRouterService = getLunaEnv().services.OPENROUTER
+        const openRouterService = getLuvaEnv().services.OPENROUTER
         if (!openRouterService || openRouterService.type !== "openrouter") {
           return new Response(
             JSON.stringify({ error: "OPENROUTER not configured" }),

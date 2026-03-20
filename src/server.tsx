@@ -12,6 +12,7 @@ setLuvabaseDevEnvironment()
 export default {
   async fetch(request: Request, env: Env) {
     const url = new URL(request.url)
+    setLuvabaseDevEnvironment()
     initClient(url.toString())
 
     console.log("Request url", url.toString())
