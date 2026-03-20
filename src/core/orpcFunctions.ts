@@ -15,12 +15,14 @@ import {
   conversationUserStateTable,
   conversationsTable,
   messageAttachmentsTable,
+  messageMentionsTable,
   messagesTable,
   pushSubscriptionsTable,
   type Conversation,
   type ConversationWithUserState,
   type Message,
   type MessageAttachment,
+  type MessageMention,
   type MessageRecord,
   type PushSubscriptionRecord,
 } from "./schema"
@@ -444,14 +446,20 @@ async function enrichMessages(
   context: OrpcContext,
   messageRecords: MessageRecord[],
 ): Promise<Message[]> {
+  const messageIds = messageRecords.map((message) => message.id)
   const attachmentsByMessageId = await listAttachmentsByMessageIds(
     context,
-    messageRecords.map((message) => message.id),
+    messageIds,
+  )
+  const mentionsByMessageId = await listMentionsByMessageIds(
+    context,
+    messageIds,
   )
 
   return messageRecords.map((message) => ({
     ...message,
     attachments: attachmentsByMessageId.get(message.id) ?? [],
+    mentions: mentionsByMessageId.get(message.id) ?? [],
   }))
 }
 
@@ -483,6 +491,92 @@ async function listAttachmentsByMessageIds(
   }
 
   return attachmentsByMessageId
+}
+
+async function listMentionsByMessageIds(
+  context: OrpcContext,
+  messageIds: string[],
+): Promise<Map<string, MessageMention[]>> {
+  if (messageIds.length === 0) {
+    return new Map()
+  }
+
+  const mentions = await context.db
+    .select()
+    .from(messageMentionsTable)
+    .where(inArray(messageMentionsTable.messageId, messageIds))
+    .orderBy(asc(messageMentionsTable.createdAt), asc(messageMentionsTable.id))
+
+  const mentionsByMessageId = new Map<string, MessageMention[]>()
+  for (const mention of mentions) {
+    const existing = mentionsByMessageId.get(mention.messageId)
+    if (existing) {
+      existing.push(mention)
+    } else {
+      mentionsByMessageId.set(mention.messageId, [mention])
+    }
+  }
+
+  return mentionsByMessageId
+}
+
+function extractMessageMentions(
+  tiptapJson: string | null | undefined,
+  messageId: string,
+  createdAt: string,
+): MessageMention[] {
+  if (!tiptapJson) {
+    return []
+  }
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(tiptapJson)
+  } catch {
+    return []
+  }
+
+  const mentionedUserIds = new Set<string>()
+  collectMentionedUserIds(parsed, mentionedUserIds)
+
+  return Array.from(mentionedUserIds).map((mentionedUserId) => ({
+    id: crypto.randomUUID(),
+    messageId,
+    type: "user",
+    mentionedUserId,
+    createdAt,
+  }))
+}
+
+function collectMentionedUserIds(node: unknown, mentionedUserIds: Set<string>) {
+  if (!node || typeof node !== "object") {
+    return
+  }
+
+  const contentNode = node as {
+    type?: unknown
+    attrs?: { id?: unknown }
+    content?: unknown
+  }
+
+  if (contentNode.type === "member-mention") {
+    const mentionedUserId =
+      typeof contentNode.attrs?.id === "string"
+        ? contentNode.attrs.id.trim()
+        : ""
+
+    if (mentionedUserId) {
+      mentionedUserIds.add(mentionedUserId)
+    }
+  }
+
+  if (!Array.isArray(contentNode.content)) {
+    return
+  }
+
+  for (const child of contentNode.content) {
+    collectMentionedUserIds(child, mentionedUserIds)
+  }
 }
 
 async function markConversationAsViewed(
@@ -890,6 +984,11 @@ async function createMessageInConversation(
   }
   const uploadedKeys: string[] = []
   const attachmentRecords: MessageAttachment[] = []
+  const mentionRecords = extractMessageMentions(
+    normalizedTiptapJson,
+    messageRecord.id,
+    createdAt,
+  )
 
   try {
     for (const attachment of attachments) {
@@ -926,6 +1025,10 @@ async function createMessageInConversation(
       if (attachmentRecords.length > 0) {
         tx.insert(messageAttachmentsTable).values(attachmentRecords).run()
       }
+
+      if (mentionRecords.length > 0) {
+        tx.insert(messageMentionsTable).values(mentionRecords).run()
+      }
     })
   } catch (error) {
     await deleteBucketObjects(context, uploadedKeys)
@@ -935,7 +1038,15 @@ async function createMessageInConversation(
   const message: Message = {
     ...messageRecord,
     attachments: attachmentRecords,
+    mentions: mentionRecords,
   }
+
+  await markConversationAsViewed(
+    context,
+    normalizedConversationId,
+    normalizedUserId,
+    createdAt,
+  )
 
   broadcastEvent(context, {
     type: "messageCreated",
