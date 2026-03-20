@@ -15,6 +15,7 @@ function shouldUseLuvabase() {
 export async function getSession(
   request: Request,
 ): Promise<Session & { user: Member }> {
+  console.log("getSession", shouldUseLuvabase())
   if (shouldUseLuvabase()) {
     const session = await getSdkSessionInfo(request)
     if (!session.user) {
@@ -35,6 +36,7 @@ export async function getSession(
 }
 
 export async function getMembers(request: Request): Promise<Member[]> {
+  console.log("getMembers", shouldUseLuvabase())
   if (shouldUseLuvabase()) {
     return getSdkMembers(request)
   }
@@ -56,6 +58,7 @@ export async function getMembers(request: Request): Promise<Member[]> {
 }
 
 export function getLuvaEnv(): LuvaEnv {
+  console.log("getLuvaEnv", shouldUseLuvabase())
   if (shouldUseLuvabase()) {
     return getSdkLuvaEnv()
   }
@@ -77,6 +80,7 @@ export function getLuvaEnv(): LuvaEnv {
 }
 
 export function getAdminUrl(): string {
+  console.log("getAdminUrl", shouldUseLuvabase())
   if (shouldUseLuvabase()) {
     return getSdkAdminUrl()
   }
