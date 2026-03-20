@@ -318,7 +318,7 @@ const sendMessage = base
 const getDirectConversationByMemberIds = base
   .input(DirectConversationMembersInputSchema)
   .handler(async ({ context, input }): Promise<Conversation | null> => {
-    return findDirectConversationByMemberIds(
+    return findParticipantConversationByMemberIds(
       context,
       context.userId,
       input.memberIds,
@@ -343,7 +343,7 @@ const sendDirectMessage = base
       message: Message
       createdConversation: boolean
     }> => {
-      let conversation = await findDirectConversationByMemberIds(
+      let conversation = await findParticipantConversationByMemberIds(
         context,
         context.userId,
         input.memberIds,
@@ -705,7 +705,11 @@ function normalizeDirectConversationMemberIds(
   ).sort()
 }
 
-async function findDirectConversationByMemberIds(
+function getParticipantConversationType(participantIds: string[]) {
+  return participantIds.length > 2 ? "group" : "direct"
+}
+
+async function findParticipantConversationByMemberIds(
   context: OrpcContext,
   currentUserId: string,
   memberIds: string[],
@@ -715,6 +719,7 @@ async function findDirectConversationByMemberIds(
     memberIds,
     normalizedCurrentUserId,
   )
+  const conversationType = getParticipantConversationType(participantIds)
 
   const candidateConversationIds = await context.db
     .select({
@@ -728,7 +733,7 @@ async function findDirectConversationByMemberIds(
     .where(
       and(
         eq(conversationMembersTable.userId, normalizedCurrentUserId),
-        eq(conversationsTable.type, "direct"),
+        eq(conversationsTable.type, conversationType),
       ),
     )
 
@@ -755,7 +760,7 @@ async function findDirectConversationByMemberIds(
     )
     .where(
       and(
-        eq(conversationsTable.type, "direct"),
+        eq(conversationsTable.type, conversationType),
         inArray(conversationsTable.id, conversationIds),
       ),
     )
@@ -808,10 +813,11 @@ async function createDirectConversation(
     memberIds,
     currentUserId,
   )
+  const conversationType = getParticipantConversationType(participantIds)
   const createdAt = new Date().toISOString()
   const conversation: Conversation = {
     id: generateId(),
-    type: "direct",
+    type: conversationType,
     name: conversationName?.trim() || null,
     createdAt,
   }

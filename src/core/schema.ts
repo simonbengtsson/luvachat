@@ -4,7 +4,7 @@ import { z } from "zod"
 
 export const conversationsTable = sqliteTable("conversations", {
   id: text("id").primaryKey(),
-  type: text("type").notNull(), // channel
+  type: text("type").notNull(), // channel | direct | group
   name: text("name"),
   createdAt: text("created_at").notNull(),
 })

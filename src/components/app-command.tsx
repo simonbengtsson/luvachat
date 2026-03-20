@@ -10,7 +10,7 @@ import {
 import { conversationsQueryOptions } from "@/core/conversationsQuery"
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
-import { HashIcon } from "lucide-react"
+import { HashIcon, MessageCircleIcon, UsersIcon } from "lucide-react"
 import * as React from "react"
 import {
   dispatchOpenAppCommandEvent,
@@ -47,18 +47,30 @@ export function AppCommand() {
     }
   }, [])
 
+  const getConversationIcon = (type: string) => {
+    if (type === "channel") {
+      return <HashIcon />
+    }
+
+    if (type === "group") {
+      return <UsersIcon />
+    }
+
+    return <MessageCircleIcon />
+  }
+
   return (
     <CommandDialog
       open={open}
       onOpenChange={setOpen}
       title="Search"
-      description="Jump to a channel"
+      description="Jump to a conversation"
     >
       <Command className="rounded-none border-0">
-        <CommandInput placeholder="Search channels..." />
+        <CommandInput placeholder="Search conversations..." />
         <CommandList>
-          <CommandEmpty>No channels found.</CommandEmpty>
-          <CommandGroup heading="Channels">
+          <CommandEmpty>No conversations found.</CommandEmpty>
+          <CommandGroup heading="Conversations">
             {conversationsQuery.data?.map((conversation) => (
               <CommandItem
                 key={conversation.id}
@@ -71,7 +83,7 @@ export function AppCommand() {
                   setOpen(false)
                 }}
               >
-                <HashIcon />
+                {getConversationIcon(conversation.type)}
                 {conversation.name ?? conversation.id}
               </CommandItem>
             ))}

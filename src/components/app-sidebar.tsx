@@ -37,12 +37,14 @@ import {
   EllipsisVerticalIcon,
   ExternalLinkIcon,
   HashIcon,
+  type LucideIcon,
   LogOutIcon,
   MessageCircleIcon,
   PlusIcon,
   SearchIcon,
   Settings2Icon,
   SquarePenIcon,
+  UsersIcon,
 } from "lucide-react"
 import { type ComponentProps, useEffect, useState } from "react"
 import { dispatchOpenAppCommandEvent } from "./app-command.events"
@@ -85,6 +87,48 @@ function hasUnreadMessages(conversation: ConversationWithUserState) {
   }
 
   return conversation.lastViewedAt < conversation.lastMessageAt
+}
+
+function SidebarConversationItem({
+  conversation,
+  icon: Icon,
+  matchRoute,
+}: {
+  conversation: ConversationWithUserState
+  icon: LucideIcon
+  matchRoute: ReturnType<typeof useMatchRoute>
+}) {
+  const hasUnread = hasUnreadMessages(conversation)
+
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        isActive={Boolean(
+          matchRoute({
+            to: "/c/$conversationId",
+            params: { conversationId: conversation.id } as any,
+          }),
+        )}
+        render={
+          <Link
+            to="/c/$conversationId"
+            params={{ conversationId: conversation.id } as any}
+          />
+        }
+      >
+        <Icon />
+        <span className={cn("truncate", hasUnread && "font-semibold")}>
+          {conversation.name ?? conversation.id}
+        </span>
+        {hasUnread ? (
+          <span
+            aria-hidden
+            className="ml-auto size-2 rounded-full bg-sidebar-foreground"
+          />
+        ) : null}
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  )
 }
 
 const getSession = createServerFn({ method: "GET" }).handler(async () => {
@@ -282,6 +326,10 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
 
   const channelConversations =
     conversationsQuery.data?.filter((conversation) => conversation.type === "channel") ?? []
+  const directConversations =
+    conversationsQuery.data?.filter((conversation) => conversation.type === "direct") ?? []
+  const groupConversations =
+    conversationsQuery.data?.filter((conversation) => conversation.type === "group") ?? []
 
   async function handleOpenMemberConversation(memberId: string) {
     try {
@@ -350,40 +398,14 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
                 </div>
               </SidebarMenuItem>
             ) : (
-              channelConversations.map((conversation) => {
-                const hasUnread = hasUnreadMessages(conversation)
-                return (
-                  <SidebarMenuItem key={conversation.id}>
-                    <SidebarMenuButton
-                      isActive={Boolean(
-                        matchRoute({
-                          to: "/c/$conversationId",
-                          params: { conversationId: conversation.id } as any,
-                        }),
-                      )}
-                      render={
-                        <Link
-                          to="/c/$conversationId"
-                          params={{ conversationId: conversation.id } as any}
-                        />
-                      }
-                    >
-                      <HashIcon />
-                      <span
-                        className={cn("truncate", hasUnread && "font-semibold")}
-                      >
-                        {conversation.name ?? conversation.id}
-                      </span>
-                      {hasUnread ? (
-                        <span
-                          aria-hidden
-                          className="ml-auto size-2 rounded-full bg-sidebar-foreground"
-                        />
-                      ) : null}
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )
-              })
+              channelConversations.map((conversation) => (
+                <SidebarConversationItem
+                  key={conversation.id}
+                  conversation={conversation}
+                  icon={HashIcon}
+                  matchRoute={matchRoute}
+                />
+              ))
             )}
             <SidebarMenuItem>
               <PopupInput
@@ -402,6 +424,49 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
               />
             </SidebarMenuItem>
           </SidebarMenu>
+
+          {conversationsQuery.isLoading || directConversations.length > 0 ? (
+            <>
+              <SidebarGroupLabel className="mt-4">Created</SidebarGroupLabel>
+              <SidebarMenu>
+                {conversationsQuery.isLoading ? (
+                  Array.from({ length: 3 }).map((_, index) => (
+                    <SidebarMenuItem key={`created-conversation-skeleton-${index}`}>
+                      <div className="flex items-center gap-2 px-2 py-2">
+                        <Skeleton className="size-4 rounded-sm" />
+                        <Skeleton className="h-4 w-28" />
+                      </div>
+                    </SidebarMenuItem>
+                  ))
+                ) : (
+                  directConversations.map((conversation) => (
+                    <SidebarConversationItem
+                      key={conversation.id}
+                      conversation={conversation}
+                      icon={MessageCircleIcon}
+                      matchRoute={matchRoute}
+                    />
+                  ))
+                )}
+              </SidebarMenu>
+            </>
+          ) : null}
+
+          {groupConversations.length > 0 ? (
+            <>
+              <SidebarGroupLabel className="mt-4">Groups</SidebarGroupLabel>
+              <SidebarMenu>
+                {groupConversations.map((conversation) => (
+                  <SidebarConversationItem
+                    key={conversation.id}
+                    conversation={conversation}
+                    icon={UsersIcon}
+                    matchRoute={matchRoute}
+                  />
+                ))}
+              </SidebarMenu>
+            </>
+          ) : null}
 
           <SidebarGroupLabel className="mt-4">Members</SidebarGroupLabel>
           <SidebarMenu>
