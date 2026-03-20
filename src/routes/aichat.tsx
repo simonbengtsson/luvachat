@@ -14,13 +14,8 @@ import {
   ChatMessageAvatarUserIcon,
   ChatMessageContainer,
   ChatMessageContent,
-  ChatMessageFooter,
   ChatMessageHeader,
   ChatMessageMarkdown,
-  ChatMessageThread,
-  ChatMessageThreadAction,
-  ChatMessageThreadReplyCount,
-  ChatMessageThreadTimestamp,
   ChatMessageTimestamp,
 } from "@/components/ui/chat-message"
 import {
@@ -55,160 +50,6 @@ function createInitialMessages(): Array<UIMessage> {
     {
       id: generateMessageId(),
       role: "assistant",
-      createdAt: new Date(),
-      parts: [
-        {
-          type: "text",
-          content: "Hello, how can I help you today?",
-        },
-      ],
-    },
-    {
-      id: generateMessageId(),
-      role: "user",
-      createdAt: new Date(),
-      parts: [
-        {
-          type: "text",
-          content: "Hello, how can I help you today?",
-        },
-      ],
-    },
-    {
-      id: generateMessageId(),
-      role: "assistant",
-      createdAt: new Date(),
-      parts: [
-        {
-          type: "text",
-          content: "I'm here to help you with your questions.",
-        },
-      ],
-    },
-    {
-      id: generateMessageId(),
-      role: "user",
-      createdAt: new Date(),
-      parts: [
-        {
-          type: "text",
-          content: "Hello, how can I help you today?",
-        },
-      ],
-    },
-    {
-      id: generateMessageId(),
-      role: "user",
-      createdAt: new Date(),
-      parts: [
-        {
-          type: "text",
-          content: "Hello, how can I help you today?",
-        },
-      ],
-    },
-    {
-      id: generateMessageId(),
-      role: "user",
-      createdAt: new Date(),
-      parts: [
-        {
-          type: "text",
-          content: "Hello, how can I help you today?",
-        },
-      ],
-    },
-    {
-      id: generateMessageId(),
-      role: "user",
-      createdAt: new Date(),
-      parts: [
-        {
-          type: "text",
-          content: "Hello, how can I help you today?",
-        },
-      ],
-    },
-    {
-      id: generateMessageId(),
-      role: "user",
-      createdAt: new Date(),
-      parts: [
-        {
-          type: "text",
-          content: "Hello, how can I help you today?",
-        },
-      ],
-    },
-    {
-      id: generateMessageId(),
-      role: "user",
-      createdAt: new Date(),
-      parts: [
-        {
-          type: "text",
-          content: "Hello, how can I help you today?",
-        },
-      ],
-    },
-    {
-      id: generateMessageId(),
-      role: "user",
-      createdAt: new Date(),
-      parts: [
-        {
-          type: "text",
-          content: "Hello, how can I help you today?",
-        },
-      ],
-    },
-    {
-      id: generateMessageId(),
-      role: "user",
-      createdAt: new Date(),
-      parts: [
-        {
-          type: "text",
-          content: "Hello, how can I help you today?",
-        },
-      ],
-    },
-    {
-      id: generateMessageId(),
-      role: "user",
-      createdAt: new Date(),
-      parts: [
-        {
-          type: "text",
-          content: "Hello, how can I help you today?",
-        },
-      ],
-    },
-    {
-      id: generateMessageId(),
-      role: "user",
-      createdAt: new Date(),
-      parts: [
-        {
-          type: "text",
-          content: "Hello, how can I help you today?",
-        },
-      ],
-    },
-    {
-      id: generateMessageId(),
-      role: "user",
-      createdAt: new Date(),
-      parts: [
-        {
-          type: "text",
-          content: "Hello, how can I help you today?",
-        },
-      ],
-    },
-    {
-      id: generateMessageId(),
-      role: "user",
       createdAt: new Date(),
       parts: [
         {
@@ -294,7 +135,6 @@ function RouteComponent() {
   const lastMessage = messages[messages.length - 1]
   const showOptimisticAssistantMessage =
     isLoading && (!lastMessage || lastMessage.role !== "assistant")
-  const lastDummyMessageIndex = initialMessages.length - 1
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -324,7 +164,6 @@ function RouteComponent() {
             {messages.map((message, index) => {
               const messageText = getMessageText(message)
               const isAssistant = message.role === "assistant"
-              const showThreadPreview = index === lastDummyMessageIndex
               const isStreamingPlaceholder =
                 isAssistant &&
                 isLoading &&
@@ -366,19 +205,7 @@ function RouteComponent() {
                         <ChatMessageMarkdown content={messageText} />
                       </ChatMessageContent>
                     ) : null}
-                    {showThreadPreview ? (
-                      <ChatMessageFooter className="px-2 pt-1">
-                        <ChatMessageThread type="button">
-                          <ChatMessageThreadReplyCount>
-                            1 reply
-                          </ChatMessageThreadReplyCount>
-                          <ChatMessageThreadTimestamp
-                            date={message.createdAt ?? new Date()}
-                          />
-                          <ChatMessageThreadAction />
-                        </ChatMessageThread>
-                      </ChatMessageFooter>
-                    ) : null}
+
                     {isStreamingPlaceholder ? (
                       <div
                         className="flex items-center gap-1.5 text-sm text-muted-foreground"

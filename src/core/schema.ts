@@ -88,6 +88,8 @@ export type MessageMention = z.infer<typeof MessageMentionSchema>
 export const MessageSchema = MessageRecordSchema.extend({
   attachments: z.array(MessageAttachmentSchema),
   mentions: z.array(MessageMentionSchema),
+  threadReplyCount: z.number().int().nonnegative().default(0),
+  threadLastReplyAt: z.string().nullable().default(null),
 })
 export type Message = z.infer<typeof MessageSchema>
 

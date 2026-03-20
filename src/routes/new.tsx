@@ -383,11 +383,7 @@ function RouteComponent() {
               clearOnSubmit={false}
               allowAttachmentsWithoutText
             />
-            {selectedMemberIds.length === 0 ? (
-              <div className="px-1 text-xs text-muted-foreground">
-                Choose at least one member to start a conversation.
-              </div>
-            ) : !isSyncConnected ? (
+            {selectedMemberIds.length > 0 && !isSyncConnected ? (
               <div
                 className="flex items-center gap-1.5 px-1 text-xs text-muted-foreground"
                 aria-live="polite"

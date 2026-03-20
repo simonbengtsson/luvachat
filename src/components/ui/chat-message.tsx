@@ -109,7 +109,7 @@ function ChatMessageFooter({ className, ...props }: ComponentProps<"div">) {
 	return (
 		<div
 			className={cn(
-				"mt-1 flex items-center gap-2 px-2 text-xs text-muted-foreground",
+				"mt-0 flex items-center gap-2 px-2 text-xs text-muted-foreground",
 				className,
 			)}
 			{...props}
@@ -219,7 +219,7 @@ function ChatMessageThread({
 		<Button
 			variant="ghost"
 			className={cn(
-				"group/button flex h-auto w-full border border-none items-center justify-start gap-2 px-2 py-1.5 transition-all",
+				"group/button -ml-1 flex h-auto w-full border border-none items-center justify-start gap-2 px-2 py-1.5 transition-all",
 				"hover:border-input hover:bg-background hover:shadow-sm",
 				className,
 			)}

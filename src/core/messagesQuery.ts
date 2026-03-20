@@ -1,9 +1,14 @@
-import { infiniteQueryOptions } from "@tanstack/react-query"
+import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query"
 import { orpcClient } from "./orpcClient"
 import type { Message } from "./schema"
 
-export const messagesQueryKey = (conversationId: string) =>
+export const conversationMessagesQueryKey = (conversationId: string) =>
   ["messages", conversationId] as const
+
+export const messagesQueryKey = (
+  conversationId: string,
+  threadMessageId?: string | null,
+) => ["messages", conversationId, threadMessageId ?? null] as const
 
 export type MessagesPage = {
   messages: Message[]
@@ -27,5 +32,22 @@ export function messagesInfiniteQueryOptions(conversationId: string) {
       // Flatten all pages and reverse to get oldest → newest (newest at bottom)
       messages: data.pages.flatMap((page) => page.messages).reverse(),
     }),
+  })
+}
+
+export function threadMessagesQueryOptions(
+  conversationId: string,
+  threadMessageId: string,
+) {
+  return queryOptions({
+    queryKey: messagesQueryKey(conversationId, threadMessageId),
+    queryFn: async () => {
+      const data = await orpcClient.getMessages({
+        conversationId,
+        threadMessageId,
+      })
+
+      return [...data.messages].reverse()
+    },
   })
 }

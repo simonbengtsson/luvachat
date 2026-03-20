@@ -1,6 +1,17 @@
 import { os } from "@orpc/server"
 import { RPCHandler } from "@orpc/server/fetch"
-import { and, asc, desc, eq, inArray, lt, sql } from "drizzle-orm"
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  lt,
+  or,
+  sql,
+} from "drizzle-orm"
 import type { drizzle } from "drizzle-orm/durable-sqlite/driver"
 import { z } from "zod"
 import { generateId } from "./generateId"
@@ -33,6 +44,11 @@ type AttachmentUploadInput = {
   contentType: string
   sizeBytes: number
   bytes: ArrayBuffer
+}
+
+type MessageListRecord = MessageRecord & {
+  threadReplyCount: number
+  threadLastReplyAt: string | null
 }
 
 const AttachmentFileSchema = z.custom<File>((value) => value instanceof File)
@@ -246,6 +262,7 @@ const getMessages = base
   .input(
     z.object({
       conversationId: z.string(),
+      threadMessageId: z.string().optional(),
       cursor: z.string().optional(),
       limit: z.number().optional(),
     }),
@@ -260,22 +277,95 @@ const getMessages = base
     }> => {
       const normalizedConversationId = input.conversationId.trim()
       const normalizedUserId = context.userId.trim()
+      const normalizedThreadMessageId = input.threadMessageId
       const limit = input.limit ?? 10
-      const query = context.db
-        .select()
-        .from(messagesTable)
-        .where(
-          input.cursor
-            ? and(
-                eq(messagesTable.conversationId, normalizedConversationId),
-                lt(messagesTable.createdAt, input.cursor),
-              )
-            : eq(messagesTable.conversationId, normalizedConversationId),
-        )
-        .orderBy(desc(messagesTable.createdAt))
-        .limit(limit + 1)
 
-      const messageRecords = await query
+      const threadSummarySubquery = context.db
+        .select({
+          parentMessageId: messagesTable.parentMessageId,
+          threadReplyCount: sql<number>`count(*)`.as("thread_reply_count"),
+          threadLastReplyAt: sql<string>`max(${messagesTable.createdAt})`.as(
+            "thread_last_reply_at",
+          ),
+        })
+        .from(messagesTable)
+        .where(isNotNull(messagesTable.parentMessageId))
+        .groupBy(messagesTable.parentMessageId)
+        .as("message_thread_summary")
+
+      let nextCursor: string | undefined
+      let messageRecords: MessageListRecord[]
+
+      if (normalizedThreadMessageId) {
+        messageRecords = await context.db
+          .select({
+            id: messagesTable.id,
+            conversationId: messagesTable.conversationId,
+            parentMessageId: messagesTable.parentMessageId,
+            content: messagesTable.content,
+            tiptapJson: messagesTable.tiptapJson,
+            createdAt: messagesTable.createdAt,
+            userId: messagesTable.userId,
+            threadReplyCount:
+              sql<number>`coalesce(${threadSummarySubquery.threadReplyCount}, 0)`.as(
+                "thread_reply_count",
+              ),
+            threadLastReplyAt: threadSummarySubquery.threadLastReplyAt,
+          })
+          .from(messagesTable)
+          .leftJoin(
+            threadSummarySubquery,
+            eq(threadSummarySubquery.parentMessageId, messagesTable.id),
+          )
+          .where(
+            and(
+              eq(messagesTable.conversationId, normalizedConversationId),
+              or(
+                eq(messagesTable.id, normalizedThreadMessageId),
+                eq(messagesTable.parentMessageId, normalizedThreadMessageId),
+              ),
+            ),
+          )
+          .orderBy(desc(messagesTable.createdAt))
+      } else {
+        messageRecords = await context.db
+          .select({
+            id: messagesTable.id,
+            conversationId: messagesTable.conversationId,
+            parentMessageId: messagesTable.parentMessageId,
+            content: messagesTable.content,
+            tiptapJson: messagesTable.tiptapJson,
+            createdAt: messagesTable.createdAt,
+            userId: messagesTable.userId,
+            threadReplyCount:
+              sql<number>`coalesce(${threadSummarySubquery.threadReplyCount}, 0)`.as(
+                "thread_reply_count",
+              ),
+            threadLastReplyAt: threadSummarySubquery.threadLastReplyAt,
+          })
+          .from(messagesTable)
+          .leftJoin(
+            threadSummarySubquery,
+            eq(threadSummarySubquery.parentMessageId, messagesTable.id),
+          )
+          .where(
+            and(
+              eq(messagesTable.conversationId, normalizedConversationId),
+              isNull(messagesTable.parentMessageId),
+              input.cursor
+                ? lt(messagesTable.createdAt, input.cursor)
+                : undefined,
+            ),
+          )
+          .orderBy(desc(messagesTable.createdAt))
+          .limit(limit + 1)
+
+        if (messageRecords.length > limit) {
+          const nextItem = messageRecords.pop()
+          nextCursor = nextItem?.createdAt
+        }
+      }
+
       const mostRecentMessageCreatedAt = input.cursor
         ? undefined
         : messageRecords[0]?.createdAt
@@ -287,12 +377,6 @@ const getMessages = base
           normalizedUserId,
           mostRecentMessageCreatedAt,
         )
-      }
-
-      let nextCursor: string | undefined
-      if (messageRecords.length > limit) {
-        const nextItem = messageRecords.pop()
-        nextCursor = nextItem?.createdAt
       }
 
       const messages = await enrichMessages(context, messageRecords)
@@ -308,6 +392,7 @@ const sendMessage = base
   .input(
     z.object({
       conversationId: z.string().min(1),
+      parentMessageId: z.string().optional(),
       content: z.string(),
       tiptapJson: z.string().nullable().optional(),
       attachments: z.array(AttachmentFileSchema),
@@ -444,7 +529,7 @@ const deletePushSubscription = base
 
 async function enrichMessages(
   context: OrpcContext,
-  messageRecords: MessageRecord[],
+  messageRecords: MessageListRecord[],
 ): Promise<Message[]> {
   const messageIds = messageRecords.map((message) => message.id)
   const attachmentsByMessageId = await listAttachmentsByMessageIds(
@@ -939,6 +1024,7 @@ async function createMessageInConversation(
   context: OrpcContext,
   input: {
     conversationId: string
+    parentMessageId?: string
     content: string
     tiptapJson?: string | null
     attachments: File[]
@@ -946,6 +1032,7 @@ async function createMessageInConversation(
 ): Promise<Message> {
   const normalizedConversationId = input.conversationId.trim()
   const normalizedUserId = context.userId.trim()
+  const normalizedParentMessageId = input.parentMessageId
   const trimmedContent = input.content.trim()
   const attachments = await Promise.all(
     input.attachments.map(
@@ -974,9 +1061,34 @@ async function createMessageInConversation(
   const normalizedTiptapJson = normalizeTiptapJson(
     trimmedContent ? input.tiptapJson : null,
   )
+  let parentMessageId: string | null = null
+
+  if (normalizedParentMessageId) {
+    const parentMessage = await context.db
+      .select({
+        id: messagesTable.id,
+        conversationId: messagesTable.conversationId,
+        parentMessageId: messagesTable.parentMessageId,
+      })
+      .from(messagesTable)
+      .where(eq(messagesTable.id, normalizedParentMessageId))
+      .limit(1)
+
+    if (parentMessage[0]?.conversationId !== normalizedConversationId) {
+      throw new Error("Thread message is invalid")
+    }
+
+    if (parentMessage[0].parentMessageId) {
+      throw new Error("Nested threads are not allowed")
+    }
+
+    parentMessageId = parentMessage[0].id
+  }
+
   const messageRecord: MessageRecord = {
     id: crypto.randomUUID(),
     conversationId: normalizedConversationId,
+    parentMessageId,
     content: trimmedContent ? input.content : "",
     tiptapJson: normalizedTiptapJson,
     userId: normalizedUserId,
@@ -1039,6 +1151,8 @@ async function createMessageInConversation(
     ...messageRecord,
     attachments: attachmentRecords,
     mentions: mentionRecords,
+    threadReplyCount: 0,
+    threadLastReplyAt: null,
   }
 
   await markConversationAsViewed(

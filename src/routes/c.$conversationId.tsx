@@ -5,6 +5,7 @@ import {
 import { SiteHeader } from "@/components/site-header"
 import {
   ChatMessage,
+  ChatMessageAction,
   ChatMessageActionCopy,
   ChatMessageActions,
   ChatMessageAuthor,
@@ -13,8 +14,13 @@ import {
   ChatMessageAvatarImage,
   ChatMessageContainer,
   ChatMessageContent,
+  ChatMessageFooter,
   ChatMessageHeader,
   ChatMessageMarkdown,
+  ChatMessageThread,
+  ChatMessageThreadAction,
+  ChatMessageThreadReplyCount,
+  ChatMessageThreadTimestamp,
   ChatMessageTimestamp,
 } from "@/components/ui/chat-message"
 import {
@@ -22,6 +28,7 @@ import {
   ChatMessageAreaContent,
   ChatMessageAreaScrollButton,
 } from "@/components/ui/chat-message-area"
+import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,8 +51,9 @@ import {
 } from "@/core/conversationsQuery"
 import { useWorkspaceMembers } from "@/core/members"
 import {
+  conversationMessagesQueryKey,
   messagesInfiniteQueryOptions,
-  messagesQueryKey,
+  threadMessagesQueryOptions,
 } from "@/core/messagesQuery"
 import { orpcClient } from "@/core/orpcClient"
 import { applyMessageCreatedToCache } from "@/core/realtimeCache"
@@ -65,14 +73,22 @@ import {
   useNavigate,
 } from "@tanstack/react-router"
 import {
+  ArrowLeftIcon,
   EllipsisVerticalIcon,
   FileIcon,
   LoaderCircleIcon,
+  MessageSquareReplyIcon,
 } from "lucide-react"
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { useStickToBottom } from "use-stick-to-bottom"
+import { z } from "zod"
+
+const conversationSearchSchema = z.object({
+  thread: z.string().optional(),
+})
 
 export const Route = createFileRoute("/c/$conversationId")({
+  validateSearch: conversationSearchSchema,
   component: RouteComponent,
 })
 
@@ -115,9 +131,11 @@ function truncateFileNameMiddle(fileName: string, maxLength = 19) {
 
 function RouteComponent() {
   const { conversationId } = Route.useParams()
+  const search = Route.useSearch()
   const conversationQuery = useQuery(conversationQueryOptions(conversationId))
   const membersQuery = useWorkspaceMembers()
   const members = membersQuery.data ?? []
+  const threadMessageId = search.thread || undefined
 
   const membersById = useMemo(
     () =>
@@ -127,10 +145,11 @@ function RouteComponent() {
 
   return (
     <ConversationView
-      key={conversationId}
+      key={`${conversationId}:${threadMessageId ?? "root"}`}
       conversationId={conversationId}
       conversationType={conversationQuery.data?.type ?? null}
       conversationName={conversationQuery.data?.name ?? null}
+      threadMessageId={threadMessageId}
       members={members}
       membersById={membersById}
     />
@@ -141,27 +160,46 @@ function ConversationView({
   conversationId,
   conversationType,
   conversationName,
+  threadMessageId,
   members,
   membersById,
 }: {
   conversationId: string
   conversationType: string | null
   conversationName: string | null
+  threadMessageId?: string
   members: Member[]
   membersById: Map<string, Member>
 }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const scrollRestorationId = `conversation-messages-${conversationId}`
+  const isThreadView = !!threadMessageId
+  const scrollRestorationId = `conversation-messages-${conversationId}-${threadMessageId ?? "root"}`
   const scrollRestorationEntry = useElementScrollRestoration({
     id: scrollRestorationId,
     getKey: getScrollRestorationKey,
   })
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useInfiniteQuery(messagesInfiniteQueryOptions(conversationId))
+  const {
+    data: rootMessagesData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    ...messagesInfiniteQueryOptions(conversationId),
+    enabled: !isThreadView,
+  })
+  const threadMessagesQuery = useQuery({
+    ...threadMessagesQueryOptions(conversationId, threadMessageId ?? ""),
+    enabled: isThreadView,
+  })
 
-  const messages = data?.messages ?? []
+  const messages = isThreadView
+    ? (threadMessagesQuery.data ?? [])
+    : (rootMessagesData?.messages ?? [])
+  const hasLoadedMessages = isThreadView
+    ? threadMessagesQuery.isSuccess
+    : !!rootMessagesData
   const syncConnectionStatus = useSyncExternalStore(
     subscribeToSyncConnectionStatus,
     getSyncConnectionStatus,
@@ -224,6 +262,7 @@ function ConversationView({
     }) =>
       orpcClient.sendMessage({
         conversationId,
+        parentMessageId: threadMessageId,
         content,
         tiptapJson,
         attachments,
@@ -277,7 +316,7 @@ function ConversationView({
           ),
       )
       queryClient.removeQueries({
-        queryKey: messagesQueryKey(conversationId),
+        queryKey: conversationMessagesQueryKey(conversationId),
       })
       queryClient.removeQueries({
         queryKey: conversationQueryKey(conversationId),
@@ -327,10 +366,26 @@ function ConversationView({
     })
   }
 
+  const openThread = (messageId: string) => {
+    navigate({
+      to: "/c/$conversationId",
+      params: { conversationId } as any,
+      search: { thread: messageId },
+    })
+  }
+
+  const closeThread = () => {
+    navigate({
+      to: "/c/$conversationId",
+      params: { conversationId } as any,
+      search: {},
+    })
+  }
+
   // Initialize scroll once: restore prior position if available, otherwise start at bottom.
   useEffect(() => {
     const container = messageArea.scrollRef.current
-    if (!container || hasInitializedScrollRef.current || !data) {
+    if (!container || hasInitializedScrollRef.current || !hasLoadedMessages) {
       return
     }
 
@@ -351,10 +406,15 @@ function ConversationView({
     setTimeout(() => {
       setIsInitialLoadComplete(true)
     }, 300)
-  }, [data, messageArea.scrollRef, messages.length, scrollRestorationEntry?.scrollY])
+  }, [
+    hasLoadedMessages,
+    messageArea.scrollRef,
+    messages.length,
+    scrollRestorationEntry?.scrollY,
+  ])
 
   useEffect(() => {
-    if (!data || messages.length === 0) {
+    if (!hasLoadedMessages || messages.length === 0) {
       return
     }
 
@@ -364,7 +424,7 @@ function ConversationView({
     }
 
     ensureLatestMessageIsVisible()
-  }, [data, messages.length])
+  }, [hasLoadedMessages, messages.length])
 
   // Focus input on route switch without scrolling the page.
   useEffect(() => {
@@ -400,15 +460,16 @@ function ConversationView({
 
   // Refresh sidebar conversation state (read/unread metadata) after message loads.
   useEffect(() => {
-    if (!data) {
+    if (!hasLoadedMessages) {
       return
     }
     void queryClient.invalidateQueries({ queryKey: conversationsQueryKey })
-  }, [data, queryClient])
+  }, [hasLoadedMessages, queryClient])
 
   // Infinite scroll: load more when scrolling near top.
   useEffect(() => {
     const container = messageArea.scrollRef.current
+    if (isThreadView) return
     if (!loadMoreRef.current || !container) return
     // Don't set up observer until initial load is done.
     if (!isInitialLoadComplete) return
@@ -433,18 +494,32 @@ function ConversationView({
   }, [
     fetchNextPage,
     hasNextPage,
+    isThreadView,
     isFetchingNextPage,
     isInitialLoadComplete,
     messageArea.scrollRef,
   ])
 
+  const threadRootMessage = threadMessageId
+    ? (messages.find((message) => message.id === threadMessageId) ?? null)
+    : null
+  const threadRootTiptapDocument = threadRootMessage
+    ? parseTiptapJson(threadRootMessage.tiptapJson)
+    : null
+  const displayedMessages =
+    isThreadView && threadMessageId
+      ? messages.filter((message) => message.id !== threadMessageId)
+      : messages
+
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <SiteHeader
         title={
-          conversationType === "channel"
-            ? "#" + (conversationName ?? conversationId)
-            : (conversationName ?? conversationId)
+          `${isThreadView ? "Thread: " : ""}${
+            conversationType === "channel"
+              ? "#" + (conversationName ?? conversationId)
+              : (conversationName ?? conversationId)
+          }`
         }
         actions={
           <DropdownMenu>
@@ -483,7 +558,7 @@ function ConversationView({
             }}
             className="max-w-full px-6 py-4"
           >
-            {hasNextPage && (
+            {!isThreadView && hasNextPage && (
               <div ref={loadMoreRef} className="flex justify-center py-2">
                 <div className="text-sm text-muted-foreground">
                   {isFetchingNextPage ? "Loading..." : "Scroll up for more"}
@@ -491,10 +566,129 @@ function ConversationView({
               </div>
             )}
 
-            {messages.map((message) => {
+            {isThreadView && hasLoadedMessages && !threadRootMessage ? (
+              <div className="rounded-2xl border border-dashed border-border/70 px-4 py-6 text-sm text-muted-foreground">
+                Thread not found.
+              </div>
+            ) : null}
+
+            {isThreadView && threadRootMessage ? (
+              <div className="mb-5 space-y-3">
+                <div>
+                  <Button variant="ghost" size="sm" onClick={closeThread}>
+                    <ArrowLeftIcon className="size-4" />
+                    All messages
+                  </Button>
+                </div>
+                <ChatMessage className="rounded-xl border border-border/70 bg-muted/20">
+                  <ChatMessageAvatar className="mt-0.5 size-9">
+                    <ChatMessageAvatarImage
+                      src={
+                        membersById.get(threadRootMessage.userId)?.imageUrl ??
+                        undefined
+                      }
+                      alt={
+                        membersById.get(threadRootMessage.userId)?.name ??
+                        threadRootMessage.userId
+                      }
+                    />
+                    <ChatMessageAvatarFallback className="text-xs">
+                      {getInitials(
+                        membersById.get(threadRootMessage.userId)?.name ??
+                          threadRootMessage.userId,
+                      )}
+                    </ChatMessageAvatarFallback>
+                  </ChatMessageAvatar>
+                  <ChatMessageContainer>
+                    <ChatMessageHeader>
+                      <ChatMessageAuthor>
+                        {membersById.get(threadRootMessage.userId)?.name ??
+                          threadRootMessage.userId}
+                      </ChatMessageAuthor>
+                      <ChatMessageTimestamp
+                        createdAt={threadRootMessage.createdAt}
+                      />
+                    </ChatMessageHeader>
+                    {threadRootMessage.content ||
+                    threadRootMessage.attachments.length > 0 ? (
+                      <ChatMessageContent className="px-2 py-0">
+                        {threadRootMessage.content
+                          ? threadRootTiptapDocument
+                            ? (
+                                <TiptapContent content={threadRootTiptapDocument} />
+                              )
+                            : (
+                                <ChatMessageMarkdown
+                                  content={threadRootMessage.content}
+                                />
+                              )
+                          : null}
+                        {threadRootMessage.attachments.length > 0 ? (
+                          <div className="overflow-x-auto pt-1 pb-1">
+                            <div className="flex gap-2">
+                              {threadRootMessage.attachments.map((attachment) => {
+                                const attachmentUrl = getAttachmentUrl(
+                                  attachment.storageKey,
+                                )
+
+                                if (isImageAttachment(attachment.contentType)) {
+                                  return (
+                                    <a
+                                      key={attachment.id}
+                                      href={attachmentUrl}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="block w-36 shrink-0 overflow-hidden rounded-xl border border-border/70 bg-muted/20"
+                                    >
+                                      <img
+                                        src={attachmentUrl}
+                                        alt={attachment.fileName}
+                                        loading="lazy"
+                                        onLoad={() =>
+                                          ensureLatestMessageIsVisible()
+                                        }
+                                        className="h-28 w-full object-cover"
+                                      />
+                                    </a>
+                                  )
+                                }
+
+                                return (
+                                  <a
+                                    key={attachment.id}
+                                    href={attachmentUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    title={attachment.fileName}
+                                    className="flex h-28 w-36 shrink-0 flex-col items-center justify-center gap-2 rounded-xl border border-border/70 bg-muted/20 p-3 text-center hover:bg-muted/40"
+                                  >
+                                    <FileIcon className="size-5 shrink-0 text-muted-foreground" />
+                                    <span className="w-full overflow-hidden whitespace-nowrap text-[11px] leading-tight text-muted-foreground">
+                                      {truncateFileNameMiddle(
+                                        attachment.fileName,
+                                      )}
+                                    </span>
+                                  </a>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        ) : null}
+                      </ChatMessageContent>
+                    ) : null}
+                  </ChatMessageContainer>
+                </ChatMessage>
+              </div>
+            ) : null}
+
+            {displayedMessages.map((message) => {
               const author = membersById.get(message.userId)
               const authorName = author?.name ?? message.userId
               const tiptapDocument = parseTiptapJson(message.tiptapJson)
+              const threadReplyLabel =
+                message.threadReplyCount === 1
+                  ? "1 reply"
+                  : `${message.threadReplyCount} replies`
 
               return (
                 <ChatMessage key={message.id}>
@@ -513,6 +707,14 @@ function ConversationView({
                       <ChatMessageTimestamp createdAt={message.createdAt} />
                     </ChatMessageHeader>
                     <ChatMessageActions>
+                      {!message.parentMessageId ? (
+                        <ChatMessageAction
+                          label="Open thread"
+                          onClick={() => openThread(message.id)}
+                        >
+                          <MessageSquareReplyIcon className="size-4" />
+                        </ChatMessageAction>
+                      ) : null}
                       <ChatMessageActionCopy
                         onClick={async () => {
                           if (message.content && tiptapDocument) {
@@ -605,6 +807,24 @@ function ConversationView({
                         ) : null}
                       </ChatMessageContent>
                     ) : null}
+                    {!message.parentMessageId && message.threadReplyCount > 0 ? (
+                      <ChatMessageFooter className="px-2 pt-0">
+                        <ChatMessageThread
+                          type="button"
+                          onClick={() => openThread(message.id)}
+                        >
+                          <ChatMessageThreadReplyCount>
+                            {threadReplyLabel}
+                          </ChatMessageThreadReplyCount>
+                          {message.threadLastReplyAt ? (
+                            <ChatMessageThreadTimestamp
+                              date={message.threadLastReplyAt}
+                            />
+                          ) : null}
+                          <ChatMessageThreadAction />
+                        </ChatMessageThread>
+                      </ChatMessageFooter>
+                    ) : null}
                   </ChatMessageContainer>
                 </ChatMessage>
               )
@@ -620,7 +840,9 @@ function ConversationView({
               onSubmit={submitMessage}
               members={members}
               disabled={!isSyncConnected || sendMessageMutation.isPending}
-              placeholder="Jot something down"
+              placeholder={
+                isThreadView ? "Reply in thread" : "Jot something down"
+              }
               clearOnSubmit={false}
               allowAttachmentsWithoutText
             />

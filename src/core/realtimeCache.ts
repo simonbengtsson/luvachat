@@ -3,7 +3,11 @@ import {
   conversationQueryKey,
   conversationsQueryKey,
 } from "./conversationsQuery"
-import { messagesQueryKey, type MessagesPage } from "./messagesQuery"
+import {
+  conversationMessagesQueryKey,
+  messagesQueryKey,
+  type MessagesPage,
+} from "./messagesQuery"
 import type { ConversationWithUserState, Message } from "./schema"
 
 type MessagesInfiniteData = InfiniteData<MessagesPage, string | undefined>
@@ -13,7 +17,15 @@ export function applyMessageCreatedToCache(
   message: Message,
   options?: { markViewed?: boolean },
 ): void {
-  upsertMessageInConversationCache(queryClient, message)
+  if (message.parentMessageId) {
+    upsertMessageInThreadCache(queryClient, message)
+    void queryClient.invalidateQueries({
+      queryKey: conversationMessagesQueryKey(message.conversationId),
+    })
+  } else {
+    upsertMessageInConversationCache(queryClient, message)
+  }
+
   updateConversationMetadata(queryClient, message, options?.markViewed ?? false)
 }
 
@@ -50,6 +62,28 @@ function upsertMessageInConversationCache(
           ...pagesWithoutMessage.slice(1),
         ],
       }
+    },
+  )
+}
+
+function upsertMessageInThreadCache(
+  queryClient: QueryClient,
+  message: Message,
+): void {
+  if (!message.parentMessageId) {
+    return
+  }
+
+  queryClient.setQueryData<Message[]>(
+    messagesQueryKey(message.conversationId, message.parentMessageId),
+    (existing) => {
+      if (!existing) {
+        return existing
+      }
+
+      return [...existing.filter((item) => item.id !== message.id), message].sort(
+        (left, right) => left.createdAt.localeCompare(right.createdAt),
+      )
     },
   )
 }
