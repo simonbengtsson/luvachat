@@ -50,7 +50,10 @@ type ChatMessageAreaProps = ComponentProps<typeof StickToBottom>;
 export function ChatMessageArea({ className, ...props }: ChatMessageAreaProps) {
 	return (
 		<StickToBottom
-			className={cn("flex-1 relative h-full overflow-y-auto", className)}
+			className={cn(
+				"relative flex-1 h-full overflow-x-hidden overflow-y-auto",
+				className,
+			)}
 			resize="smooth"
 			initial="smooth"
 			{...props}
@@ -81,7 +84,10 @@ export function ChatMessageAreaContent({
 		<div
 			ref={scrollRef}
 			data-scroll-restoration-id={scrollRestorationId}
-			className={cn("h-full w-full overflow-y-auto", scrollClassName)}
+			className={cn(
+				"h-full w-full overflow-x-hidden overflow-y-auto",
+				scrollClassName,
+			)}
 			style={{
 				height: "100%",
 				width: "100%",

@@ -476,10 +476,10 @@ function ConversationView({
         >
           <ChatMessageAreaContent
             scrollRestorationId={scrollRestorationId}
-            scrollClassName="overscroll-none"
             scrollStyle={{
               WebkitOverflowScrolling: "touch",
-              overscrollBehavior: "contain",
+              overscrollBehaviorX: "auto",
+              overscrollBehaviorY: "contain",
             }}
             className="max-w-full px-6 py-4"
           >

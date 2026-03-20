@@ -319,7 +319,7 @@ function RouteComponent() {
       />
 
       <div className="flex min-h-0 flex-1 flex-col">
-        <ChatMessageArea className="min-h-0 flex-1 overscroll-none">
+        <ChatMessageArea className="min-h-0 flex-1">
           <ChatMessageAreaContent className="max-w-full px-6 py-4">
             {messages.map((message, index) => {
               const messageText = getMessageText(message)
