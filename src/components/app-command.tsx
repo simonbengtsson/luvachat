@@ -1,4 +1,9 @@
 import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar"
+import {
   Command,
   CommandDialog,
   CommandEmpty,
@@ -7,8 +12,9 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command"
-import { conversationsQueryOptions } from "@/core/conversationsQuery"
-import { useQuery } from "@tanstack/react-query"
+import { useConversations } from "@/core/conversationsQuery"
+import { useWorkspaceMembers } from "@/core/members"
+import { orpcClient } from "@/core/orpcClient"
 import { useNavigate } from "@tanstack/react-router"
 import { HashIcon, MessageCircleIcon, UsersIcon } from "lucide-react"
 import * as React from "react"
@@ -20,7 +26,8 @@ import {
 export function AppCommand() {
   const [open, setOpen] = React.useState(false)
   const navigate = useNavigate()
-  const conversationsQuery = useQuery(conversationsQueryOptions())
+  const conversationsQuery = useConversations()
+  const membersQuery = useWorkspaceMembers()
 
   React.useEffect(() => {
     const handleOpen = () => {
@@ -59,6 +66,47 @@ export function AppCommand() {
     return <MessageCircleIcon />
   }
 
+  const searchableConversations =
+    conversationsQuery.data?.filter((conversation) => conversation.type !== "direct") ?? []
+
+  const getFallbackText = (value?: string | null) => {
+    const source = value?.trim()
+    if (!source) {
+      return "NA"
+    }
+
+    const parts = source.split(/\s+/).filter(Boolean)
+    if (parts.length >= 2) {
+      return `${parts[0]?.[0] ?? ""}${parts[1]?.[0] ?? ""}`.toUpperCase()
+    }
+
+    return source.slice(0, 2).toUpperCase()
+  }
+
+  async function handleOpenMemberConversation(memberId: string) {
+    try {
+      const existingConversation =
+        await orpcClient.getDirectConversationByMemberIds({
+          memberIds: [memberId],
+        })
+
+      if (existingConversation) {
+        await navigate({
+          to: "/c/$conversationId",
+          params: { conversationId: existingConversation.id } as any,
+        })
+        return
+      }
+    } catch (error) {
+      console.error("Failed to resolve direct conversation", error)
+    }
+
+    await navigate({
+      to: "/new",
+      search: { members: memberId },
+    })
+  }
+
   return (
     <CommandDialog
       open={open}
@@ -67,11 +115,11 @@ export function AppCommand() {
       description="Jump to a conversation"
     >
       <Command className="rounded-none border-0">
-        <CommandInput placeholder="Search conversations..." />
+        <CommandInput placeholder="Search conversations or members..." />
         <CommandList>
-          <CommandEmpty>No conversations found.</CommandEmpty>
+          <CommandEmpty>No conversations or members found.</CommandEmpty>
           <CommandGroup heading="Conversations">
-            {conversationsQuery.data?.map((conversation) => (
+            {searchableConversations.map((conversation) => (
               <CommandItem
                 key={conversation.id}
                 value={`${conversation.name ?? ""} ${conversation.id}`}
@@ -85,6 +133,29 @@ export function AppCommand() {
               >
                 {getConversationIcon(conversation.type)}
                 {conversation.name ?? conversation.id}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+          <CommandGroup heading="Members">
+            {membersQuery.data?.map((member) => (
+              <CommandItem
+                key={member.id}
+                value={`${member.name} ${member.id}`}
+                onSelect={() => {
+                  setOpen(false)
+                  void handleOpenMemberConversation(member.id)
+                }}
+              >
+                <Avatar className="size-5">
+                  <AvatarImage
+                    src={member.imageUrl ?? undefined}
+                    alt={member.name}
+                  />
+                  <AvatarFallback className="text-[10px]">
+                    {getFallbackText(member.name)}
+                  </AvatarFallback>
+                </Avatar>
+                {member.name}
               </CommandItem>
             ))}
           </CommandGroup>

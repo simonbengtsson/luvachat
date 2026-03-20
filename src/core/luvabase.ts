@@ -34,8 +34,13 @@ export function setLuvabaseDevEnvironment() {
       user,
       {
         id: "def",
-        name: "Jane Doe",
-        imageUrl: "https://i.pravatar.cc/150?u=456",
+        name: "Charlie Smith",
+        imageUrl: "https://i.pravatar.cc/150?u=def",
+      },
+      {
+        id: "ghi",
+        name: "David Johnson",
+        imageUrl: "https://i.pravatar.cc/150?u=ghi",
       },
     ],
   })

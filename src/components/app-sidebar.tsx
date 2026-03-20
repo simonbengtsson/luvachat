@@ -15,8 +15,8 @@ import {
 import {
   conversationQueryKey,
   conversationsQueryKey,
-  conversationsQueryOptions,
   seedConversationQueryCache,
+  useConversations,
 } from "@/core/conversationsQuery"
 import { useWorkspaceMembers } from "@/core/members"
 import { orpcClient } from "@/core/orpcClient"
@@ -200,7 +200,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
       setIsEnablingNotifications(false)
     }
   }
-  const conversationsQuery = useQuery(conversationsQueryOptions())
+  const conversationsQuery = useConversations()
   const createConversationMutation = useMutation({
     mutationFn: (name: string) => orpcClient.createConversation({ name }),
     onMutate: async (name) => {
@@ -326,8 +326,6 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
 
   const channelConversations =
     conversationsQuery.data?.filter((conversation) => conversation.type === "channel") ?? []
-  const directConversations =
-    conversationsQuery.data?.filter((conversation) => conversation.type === "direct") ?? []
   const groupConversations =
     conversationsQuery.data?.filter((conversation) => conversation.type === "group") ?? []
 
@@ -424,33 +422,6 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
               />
             </SidebarMenuItem>
           </SidebarMenu>
-
-          {conversationsQuery.isLoading || directConversations.length > 0 ? (
-            <>
-              <SidebarGroupLabel className="mt-4">Created</SidebarGroupLabel>
-              <SidebarMenu>
-                {conversationsQuery.isLoading ? (
-                  Array.from({ length: 3 }).map((_, index) => (
-                    <SidebarMenuItem key={`created-conversation-skeleton-${index}`}>
-                      <div className="flex items-center gap-2 px-2 py-2">
-                        <Skeleton className="size-4 rounded-sm" />
-                        <Skeleton className="h-4 w-28" />
-                      </div>
-                    </SidebarMenuItem>
-                  ))
-                ) : (
-                  directConversations.map((conversation) => (
-                    <SidebarConversationItem
-                      key={conversation.id}
-                      conversation={conversation}
-                      icon={MessageCircleIcon}
-                      matchRoute={matchRoute}
-                    />
-                  ))
-                )}
-              </SidebarMenu>
-            </>
-          ) : null}
 
           {groupConversations.length > 0 ? (
             <>
