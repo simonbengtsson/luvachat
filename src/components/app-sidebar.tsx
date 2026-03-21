@@ -18,6 +18,11 @@ import {
   seedConversationQueryCache,
   useConversations,
 } from "@/core/conversationsQuery"
+import {
+  type Member,
+  getAdminUrl,
+  getSession as getLuvaSession,
+} from "@/core/luvabase"
 import { useWorkspaceMembers } from "@/core/members"
 import { orpcClient } from "@/core/orpcClient"
 import {
@@ -26,7 +31,6 @@ import {
   syncPushSubscription,
 } from "@/core/push-client"
 import type { ConversationWithUserState } from "@/core/schema"
-import { getAdminUrl, getSession as getLuvaSession } from "@/core/luvabase"
 import { cn } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link, useMatchRoute, useNavigate } from "@tanstack/react-router"
@@ -37,8 +41,8 @@ import {
   EllipsisVerticalIcon,
   ExternalLinkIcon,
   HashIcon,
-  type LucideIcon,
   LogOutIcon,
+  type LucideIcon,
   MessageCircleIcon,
   PlusIcon,
   SearchIcon,
@@ -48,6 +52,7 @@ import {
 } from "lucide-react"
 import { type ComponentProps, useEffect, useState } from "react"
 import { dispatchOpenAppCommandEvent } from "./app-command.events"
+import { AppSidebarLoader } from "./app-sidebar-loader"
 import { PopupInput } from "./PopupInput"
 import {
   DropdownMenu,
@@ -55,7 +60,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu"
-import { Skeleton } from "./ui/skeleton"
 
 const CHANNEL_NAME_PLACEHOLDER = "Channel name"
 
@@ -91,12 +95,8 @@ function hasUnreadMessages(conversation: ConversationWithUserState) {
 
 function getDirectConversationMemberId(
   conversation: ConversationWithUserState,
-  currentUserId?: string,
+  currentUserId: string,
 ) {
-  if (!currentUserId) {
-    return null
-  }
-
   return (
     conversation.memberIds.find((memberId) => memberId !== currentUserId) ??
     null
@@ -105,10 +105,10 @@ function getDirectConversationMemberId(
 
 function getGroupConversationName(
   conversation: ConversationWithUserState,
-  currentUserId: string | undefined,
-  membersById: Map<string, { name: string }>,
+  currentUserId: string,
+  membersById: Map<string, Member>,
 ) {
-  if (conversation.type !== "group" || !currentUserId || membersById.size === 0) {
+  if (conversation.type !== "group" || membersById.size === 0) {
     return conversation.name ?? conversation.id
   }
 
@@ -184,7 +184,14 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   const matchRoute = useMatchRoute()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+
   const membersQuery = useWorkspaceMembers()
+  const conversationsQuery = useConversations()
+  const sessionQuery = useQuery({
+    queryKey: ["sidebar-session"],
+    queryFn: () => getSession(),
+  })
+
   const [notificationPermission, setNotificationPermission] =
     useState<NotificationPermission | null>(null)
   const [isEnablingNotifications, setIsEnablingNotifications] = useState(false)
@@ -238,7 +245,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
       setIsEnablingNotifications(false)
     }
   }
-  const conversationsQuery = useConversations()
+
   const createConversationMutation = useMutation({
     mutationFn: (name: string) => orpcClient.createConversation({ name }),
     onMutate: async (name) => {
@@ -353,11 +360,6 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
     },
   })
 
-  const sessionQuery = useQuery({
-    queryKey: ["sidebar-session"],
-    queryFn: () => getSession(),
-  })
-
   useEffect(() => {
     if (!conversationsQuery.data) {
       return
@@ -365,24 +367,52 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
     seedConversationQueryCache(queryClient, conversationsQuery.data)
   }, [conversationsQuery.data, queryClient])
 
-  const currentUserId = sessionQuery.data?.session.user?.id
-  const membersById = new Map(
-    (membersQuery.data ?? []).map((member) => [member.id, member]),
+  const isSidebarPending =
+    sessionQuery.isPending ||
+    conversationsQuery.isPending ||
+    membersQuery.isPending
+
+  if (isSidebarPending) {
+    return <AppSidebarLoader {...props} />
+  }
+
+  const sidebarError =
+    sessionQuery.error ?? conversationsQuery.error ?? membersQuery.error
+
+  if (sidebarError) {
+    throw sidebarError
+  }
+
+  const sessionData = sessionQuery.data
+  const conversations = conversationsQuery.data
+  const members = membersQuery.data
+
+  if (!sessionData || !conversations || !members) {
+    throw new Error("Sidebar data missing")
+  }
+
+  const currentUserId = sessionData.session.user.id
+  const membersById = new Map(members.map((member) => [member.id, member]))
+  const channelConversations = conversations.filter(
+    (conversation) => conversation.type === "channel",
   )
-  const channelConversations =
-    conversationsQuery.data?.filter((conversation) => conversation.type === "channel") ?? []
-  const groupConversations =
-    conversationsQuery.data?.filter((conversation) => conversation.type === "group") ?? []
-  const directConversations =
-    conversationsQuery.data?.filter((conversation) => conversation.type === "direct") ?? []
-  const directConversationIdsByMemberId = new Map<string, string>()
+  const groupConversations = conversations.filter(
+    (conversation) => conversation.type === "group",
+  )
+  const directConversations = conversations.filter(
+    (conversation) => conversation.type === "direct",
+  )
+  const directConversationsByMemberId = new Map<
+    string,
+    ConversationWithUserState
+  >()
 
   for (const conversation of directConversations) {
     const memberId = getDirectConversationMemberId(conversation, currentUserId)
     if (!memberId) {
       continue
     }
-    directConversationIdsByMemberId.set(memberId, conversation.id)
+    directConversationsByMemberId.set(memberId, conversation)
   }
 
   async function handleOpenMemberConversation(
@@ -426,16 +456,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
         <SidebarGroup className="group-data-[collapsible=icon]:hidden">
           <SidebarGroupLabel>Channels</SidebarGroupLabel>
           <SidebarMenu>
-            {conversationsQuery.isLoading ? (
-              Array.from({ length: 4 }).map((_, index) => (
-                <SidebarMenuItem key={`conversation-skeleton-${index}`}>
-                  <div className="flex items-center gap-2 px-2 py-2">
-                    <Skeleton className="size-4 rounded-sm" />
-                    <Skeleton className="h-4 w-28" />
-                  </div>
-                </SidebarMenuItem>
-              ))
-            ) : channelConversations.length === 0 ? (
+            {channelConversations.length === 0 ? (
               <SidebarMenuItem>
                 <div className="px-2 py-2 text-sm text-muted-foreground">
                   No channels yet
@@ -492,24 +513,15 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
 
           <SidebarGroupLabel className="mt-4">Members</SidebarGroupLabel>
           <SidebarMenu>
-            {membersQuery.isLoading ? (
-              Array.from({ length: 3 }).map((_, index) => (
-                <SidebarMenuItem key={`member-skeleton-${index}`}>
-                  <div className="flex items-center gap-2 px-2 py-2">
-                    <Skeleton className="size-6 rounded-full" />
-                    <Skeleton className="h-4 w-28" />
-                  </div>
-                </SidebarMenuItem>
-              ))
-            ) : membersQuery.data?.length === 0 ? (
+            {members.length === 0 ? (
               <SidebarMenuItem>
                 <div className="px-2 py-2 text-sm text-muted-foreground">
                   No members yet
                 </div>
               </SidebarMenuItem>
             ) : (
-              membersQuery.data?.map((member) => {
-                const conversationId = directConversationIdsByMemberId.get(
+              members.map((member) => {
+                const conversation = directConversationsByMemberId.get(
                   member.id,
                 )
 
@@ -517,14 +529,17 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
                   <SidebarMenuItem key={member.id}>
                     <SidebarMenuButton
                       isActive={Boolean(
-                        conversationId &&
-                          matchRoute({
-                            to: "/c/$conversationId",
-                            params: { conversationId } as any,
-                          }),
+                        conversation &&
+                        matchRoute({
+                          to: "/c/$conversationId",
+                          params: { conversationId: conversation.id } as any,
+                        }),
                       )}
                       onClick={() => {
-                        void handleOpenMemberConversation(member.id, conversationId)
+                        void handleOpenMemberConversation(
+                          member.id,
+                          conversation?.id,
+                        )
                       }}
                     >
                       <Avatar className="size-5">
@@ -592,12 +607,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  render={
-                    <a
-                      href={sessionQuery.data?.adminUrl ?? ""}
-                      target="_blank"
-                    />
-                  }
+                  render={<a href={sessionData.adminUrl} target="_blank" />}
                 >
                   <Settings2Icon />
                   <span>Admin</span>
@@ -620,29 +630,25 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
                   />
                 }
               >
-                {sessionQuery.data ? (
-                  <>
-                    <Avatar className="size-8 rounded-lg">
-                      <AvatarImage
-                        src={
-                          sessionQuery.data.session.user!.imageUrl ?? undefined
-                        }
-                        alt={sessionQuery.data.session.user!.name}
-                      />
-                      <AvatarFallback className="rounded-lg">
-                        {getFallbackText(sessionQuery.data.session.user!.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-medium">
-                        {sessionQuery.data.session.user!.name}
-                      </span>
-                      <span className="truncate text-xs text-foreground/70">
-                        {sessionQuery.data.session.user!.id}
-                      </span>
-                    </div>
-                  </>
-                ) : null}
+                <>
+                  <Avatar className="size-8 rounded-lg">
+                    <AvatarImage
+                      src={sessionData.session.user.imageUrl ?? undefined}
+                      alt={sessionData.session.user.name}
+                    />
+                    <AvatarFallback className="rounded-lg">
+                      {getFallbackText(sessionData.session.user.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="grid flex-1 text-left text-sm leading-tight">
+                    <span className="truncate font-medium">
+                      {sessionData.session.user.name}
+                    </span>
+                    <span className="truncate text-xs text-foreground/70">
+                      {sessionData.session.user.id}
+                    </span>
+                  </div>
+                </>
                 <EllipsisVerticalIcon className="ml-auto size-4" />
               </DropdownMenuTrigger>
               <DropdownMenuContent
