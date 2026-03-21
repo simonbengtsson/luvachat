@@ -49,7 +49,8 @@ import {
   conversationQueryOptions,
   conversationsQueryKey,
 } from "@/core/conversationsQuery"
-import type { Member } from "@/core/luvabase"
+import { getConversationDisplayName } from "@/core/conversationDisplay"
+import { getSession as getLuvaSession, type Member } from "@/core/luvabase"
 import { useWorkspaceMembers } from "@/core/members"
 import {
   conversationMessagesQueryKey,
@@ -72,6 +73,8 @@ import {
   useElementScrollRestoration,
   useNavigate,
 } from "@tanstack/react-router"
+import { createServerFn } from "@tanstack/react-start"
+import { getRequest } from "@tanstack/react-start/server"
 import {
   ArrowLeftIcon,
   EllipsisVerticalIcon,
@@ -90,6 +93,11 @@ const conversationSearchSchema = z.object({
 export const Route = createFileRoute("/c/$conversationId")({
   validateSearch: conversationSearchSchema,
   component: RouteComponent,
+})
+
+const getSession = createServerFn({ method: "GET" }).handler(async () => {
+  const request = getRequest()
+  return getLuvaSession(request)
 })
 
 function getInitials(value?: string | null) {
@@ -133,6 +141,10 @@ function RouteComponent() {
   const { conversationId } = Route.useParams()
   const search = Route.useSearch()
   const conversationQuery = useQuery(conversationQueryOptions(conversationId))
+  const sessionQuery = useQuery({
+    queryKey: ["conversation-session"],
+    queryFn: () => getSession(),
+  })
   const membersQuery = useWorkspaceMembers()
   const members = membersQuery.data ?? []
   const threadMessageId = search.thread || undefined
@@ -142,13 +154,19 @@ function RouteComponent() {
       new Map<string, Member>(members.map((member) => [member.id, member])),
     [members],
   )
+  const conversation = conversationQuery.data
+  const currentUserId = sessionQuery.data?.user.id
+  const conversationTitle =
+    conversation && currentUserId
+      ? getConversationDisplayName(conversation, currentUserId, membersById)
+      : (conversation?.name ?? conversationId)
 
   return (
     <ConversationView
       key={`${conversationId}:${threadMessageId ?? "root"}`}
       conversationId={conversationId}
       conversationType={conversationQuery.data?.type ?? null}
-      conversationName={conversationQuery.data?.name ?? null}
+      conversationTitle={conversationTitle}
       threadMessageId={threadMessageId}
       members={members}
       membersById={membersById}
@@ -159,14 +177,14 @@ function RouteComponent() {
 function ConversationView({
   conversationId,
   conversationType,
-  conversationName,
+  conversationTitle,
   threadMessageId,
   members,
   membersById,
 }: {
   conversationId: string
   conversationType: string | null
-  conversationName: string | null
+  conversationTitle: string
   threadMessageId?: string
   members: Member[]
   membersById: Map<string, Member>
@@ -517,8 +535,8 @@ function ConversationView({
         title={
           `${isThreadView ? "Thread: " : ""}${
             conversationType === "channel"
-              ? "#" + (conversationName ?? conversationId)
-              : (conversationName ?? conversationId)
+              ? "#" + conversationTitle
+              : conversationTitle
           }`
         }
         actions={

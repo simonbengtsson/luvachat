@@ -18,6 +18,7 @@ import {
   seedConversationQueryCache,
   useConversations,
 } from "@/core/conversationsQuery"
+import { getConversationDisplayName } from "@/core/conversationDisplay"
 import {
   type Member,
   getAdminUrl,
@@ -110,21 +111,7 @@ function getGroupConversationName(
   currentUserId: string,
   membersById: Map<string, Member>,
 ) {
-  if (conversation.type !== "group" || membersById.size === 0) {
-    return conversation.name ?? conversation.id
-  }
-
-  const participantIds = conversation.memberIds.filter(
-    (memberId) => memberId !== currentUserId,
-  )
-
-  if (participantIds.length === 0) {
-    return conversation.name ?? conversation.id
-  }
-
-  return participantIds
-    .map((memberId) => membersById.get(memberId)?.name ?? memberId)
-    .join(", ")
+  return getConversationDisplayName(conversation, currentUserId, membersById)
 }
 
 function SidebarConversationItem({
@@ -528,6 +515,9 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
                 const conversation = directConversationsByMemberId.get(
                   member.id,
                 )
+                const hasUnread = conversation
+                  ? hasUnreadMessages(conversation)
+                  : false
 
                 return (
                   <SidebarMenuItem key={member.id}>
@@ -555,7 +545,15 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
                           {getFallbackText(member.name)}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="truncate">{member.name}</span>
+                      <span className={cn("truncate", hasUnread && "font-semibold")}>
+                        {member.name}
+                      </span>
+                      {hasUnread ? (
+                        <span
+                          aria-hidden
+                          className="ml-auto size-2 rounded-full bg-sidebar-foreground"
+                        />
+                      ) : null}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 )
