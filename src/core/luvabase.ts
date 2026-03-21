@@ -44,12 +44,8 @@ export async function getSession(
     }
   }
 
-  console.log("VITE_DEV_USER", import.meta.env.VITE_DEV_USER)
-
   return {
-    user:
-      members[import.meta.env.VITE_DEV_USER as keyof typeof members] ??
-      members.abc,
+    user: members.abc,
   }
 }
 
