@@ -321,19 +321,31 @@ export function ChatInputEditor({
 }
 
 const KeyboardShortcuts = Extension.create({
+	priority: 1000,
 	addKeyboardShortcuts() {
-		return {
-			Enter: () => {
-				if (this.editor.isActive("listItem")) {
+		const handleEditorEnter = () =>
+			this.editor.commands.first(({ commands }) => [
+				() => commands.splitListItem("listItem"),
+				() => commands.newlineInCode(),
+				() => commands.createParagraphNear(),
+				() => commands.liftEmptyBlock(),
+				() => commands.splitBlock(),
+			]);
+			
+			return {
+				Enter: () => {
+					if (this.editor.isActive("listItem")) {
+						return false;
+					}
+					const onEnter = this.options.getOnEnter?.();
+					if (onEnter) {
+						onEnter();
+						return true;
+					}
 					return false;
-				}
-				const onEnter = this.options.getOnEnter?.();
-				if (onEnter) {
-					onEnter();
-					return true;
-				}
-				return false;
-			},
+				},
+				// Needed since we want markdown shortcuts for bullet items etc to work on shift + enter (new paragraph, not new line needed)
+			"Shift-Enter": () => handleEditorEnter(),
 		};
 	},
 	addOptions() {
