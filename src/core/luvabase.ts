@@ -8,7 +8,9 @@ import {
   type Session,
 } from "@luvabase/sdk"
 
-function shouldUseLuvabase() {
+export const DEV_USER_COOKIE_NAME = "luvachat-dev-user"
+
+export function shouldUseLuvabase() {
   return Boolean(process.env.luvaEnv)
 }
 
@@ -30,6 +32,25 @@ const members = {
   },
 }
 
+function getDevUserIdFromRequest(request: Request): string | null {
+  const cookieHeader = request.headers.get("cookie")
+  if (!cookieHeader) {
+    return null
+  }
+
+  for (const cookie of cookieHeader.split(/;\s*/)) {
+    const [name, ...valueParts] = cookie.split("=")
+    if (name !== DEV_USER_COOKIE_NAME) {
+      continue
+    }
+
+    const value = valueParts.join("=")
+    return value ? decodeURIComponent(value) : null
+  }
+
+  return null
+}
+
 export async function getSession(
   request: Request,
 ): Promise<Session & { user: Member }> {
@@ -44,8 +65,14 @@ export async function getSession(
     }
   }
 
+  const cookieUserId = getDevUserIdFromRequest(request)
+  const envUserId = import.meta.env.VITE_DEV_USER
+
   return {
-    user: members.abc,
+    user:
+      members[cookieUserId as keyof typeof members] ??
+      members[envUserId as keyof typeof members] ??
+      members.abc,
   }
 }
 

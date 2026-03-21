@@ -22,6 +22,7 @@ import {
   type Member,
   getAdminUrl,
   getSession as getLuvaSession,
+  shouldUseLuvabase,
 } from "@/core/luvabase"
 import { useWorkspaceMembers } from "@/core/members"
 import { orpcClient } from "@/core/orpcClient"
@@ -53,6 +54,7 @@ import {
 import { type ComponentProps, useEffect, useState } from "react"
 import { dispatchOpenAppCommandEvent } from "./app-command.events"
 import { AppSidebarLoader } from "./app-sidebar-loader"
+import { DevUserSwitcher } from "./dev-user-switcher"
 import { PopupInput } from "./PopupInput"
 import {
   DropdownMenu,
@@ -176,6 +178,7 @@ const getSession = createServerFn({ method: "GET" }).handler(async () => {
   return {
     session,
     adminUrl: getAdminUrl(),
+    canSwitchDevUser: !shouldUseLuvabase(),
   }
 })
 
@@ -392,6 +395,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   }
 
   const currentUserId = sessionData.session.user.id
+  const canSwitchDevUser = sessionData.canSwitchDevUser
   const membersById = new Map(members.map((member) => [member.id, member]))
   const channelConversations = conversations.filter(
     (conversation) => conversation.type === "channel",
@@ -615,6 +619,12 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
+            {canSwitchDevUser ? (
+              <DevUserSwitcher
+                currentUserId={currentUserId}
+                members={members}
+              />
+            ) : null}
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
