@@ -9,6 +9,7 @@ import { QueryClientProvider } from "@tanstack/react-query"
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools"
 import { useEffect } from "react"
+import emojiFontUrl from "@fontsource/noto-color-emoji/files/noto-color-emoji-emoji-400-normal.woff2?url"
 import appCss from "../styles.css?url"
 
 export const Route = createRootRoute({
@@ -33,6 +34,13 @@ export const Route = createRootRoute({
       {
         rel: "stylesheet",
         href: appCss,
+      },
+      {
+        rel: "preload",
+        href: emojiFontUrl,
+        as: "font",
+        type: "font/woff2",
+        crossOrigin: "anonymous",
       },
       {
         rel: "icon",
