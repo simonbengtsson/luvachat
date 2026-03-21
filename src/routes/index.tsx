@@ -22,6 +22,7 @@ export const Route = createFileRoute("/")({
           })
           first = {
             ...conversation,
+            memberIds: [],
             lastViewedAt: null,
             lastMessageAt: null,
           }

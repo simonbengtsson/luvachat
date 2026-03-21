@@ -85,6 +85,15 @@ type OrpcContext = {
 }
 
 const base = os.$context<OrpcContext>()
+const conversationMemberIdsSeparator = "\u0000"
+
+function parseConversationMemberIds(memberIds: string | null) {
+  if (!memberIds) {
+    return []
+  }
+
+  return memberIds.split(conversationMemberIdsSeparator).filter(Boolean)
+}
 
 const getConversations = base.handler(
   async ({ context }): Promise<ConversationWithUserState[]> => {
@@ -99,17 +108,33 @@ const getConversations = base.handler(
       .from(messagesTable)
       .groupBy(messagesTable.conversationId)
       .as("conversation_last_message")
+    const conversationMembersSubquery = context.db
+      .select({
+        conversationId: conversationMembersTable.conversationId,
+        memberIds:
+          sql<string | null>`group_concat(${conversationMembersTable.userId}, ${conversationMemberIdsSeparator})`.as(
+            "member_ids",
+          ),
+      })
+      .from(conversationMembersTable)
+      .groupBy(conversationMembersTable.conversationId)
+      .as("conversation_members")
 
-    return context.db
+    const conversations = await context.db
       .select({
         id: conversationsTable.id,
         type: conversationsTable.type,
         name: conversationsTable.name,
         createdAt: conversationsTable.createdAt,
+        memberIds: conversationMembersSubquery.memberIds,
         lastViewedAt: conversationUserStateTable.lastViewedAt,
         lastMessageAt: conversationLastMessageSubquery.lastMessageAt,
       })
       .from(conversationsTable)
+      .leftJoin(
+        conversationMembersSubquery,
+        eq(conversationMembersSubquery.conversationId, conversationsTable.id),
+      )
       .leftJoin(
         conversationUserStateTable,
         and(
@@ -125,6 +150,11 @@ const getConversations = base.handler(
         ),
       )
       .orderBy(desc(conversationsTable.createdAt))
+
+    return conversations.map((conversation) => ({
+      ...conversation,
+      memberIds: parseConversationMemberIds(conversation.memberIds),
+    }))
   },
 )
 
@@ -186,9 +216,17 @@ const getConversationById = base
         .from(messagesTable)
         .where(eq(messagesTable.conversationId, normalizedConversationId))
         .limit(1)
+      const memberIds = await context.db
+        .select({
+          userId: conversationMembersTable.userId,
+        })
+        .from(conversationMembersTable)
+        .where(eq(conversationMembersTable.conversationId, normalizedConversationId))
+        .orderBy(asc(conversationMembersTable.userId))
 
       return {
         ...currentConversation,
+        memberIds: memberIds.map((member) => member.userId),
         lastViewedAt: userState[0]?.lastViewedAt ?? null,
         lastMessageAt: lastMessage[0]?.lastMessageAt ?? null,
       }

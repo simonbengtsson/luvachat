@@ -1,8 +1,8 @@
 import {
   integer,
-  type AnySQLiteColumn,
   sqliteTable,
   text,
+  type AnySQLiteColumn,
 } from "drizzle-orm/sqlite-core"
 import { createSelectSchema } from "drizzle-orm/zod"
 import { z } from "zod"
@@ -16,6 +16,7 @@ export const conversationsTable = sqliteTable("conversations", {
 export const ConversationSchema = createSelectSchema(conversationsTable)
 export type Conversation = z.infer<typeof ConversationSchema>
 export const ConversationWithUserState = ConversationSchema.extend({
+  memberIds: z.array(z.string()),
   lastViewedAt: z.string().nullable(),
   lastMessageAt: z.string().nullable(),
 })

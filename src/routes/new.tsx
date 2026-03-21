@@ -137,6 +137,7 @@ function RouteComponent() {
     onSuccess: async ({ conversation, message }) => {
       const conversationWithUserState: ConversationWithUserState = {
         ...conversation,
+        memberIds: selectedMemberIds,
         lastViewedAt: message.createdAt,
         lastMessageAt: message.createdAt,
       }

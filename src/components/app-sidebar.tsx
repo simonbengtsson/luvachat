@@ -89,12 +89,50 @@ function hasUnreadMessages(conversation: ConversationWithUserState) {
   return conversation.lastViewedAt < conversation.lastMessageAt
 }
 
+function getDirectConversationMemberId(
+  conversation: ConversationWithUserState,
+  currentUserId?: string,
+) {
+  if (!currentUserId) {
+    return null
+  }
+
+  return (
+    conversation.memberIds.find((memberId) => memberId !== currentUserId) ??
+    null
+  )
+}
+
+function getGroupConversationName(
+  conversation: ConversationWithUserState,
+  currentUserId: string | undefined,
+  membersById: Map<string, { name: string }>,
+) {
+  if (conversation.type !== "group" || !currentUserId || membersById.size === 0) {
+    return conversation.name ?? conversation.id
+  }
+
+  const participantIds = conversation.memberIds.filter(
+    (memberId) => memberId !== currentUserId,
+  )
+
+  if (participantIds.length === 0) {
+    return conversation.name ?? conversation.id
+  }
+
+  return participantIds
+    .map((memberId) => membersById.get(memberId)?.name ?? memberId)
+    .join(", ")
+}
+
 function SidebarConversationItem({
   conversation,
+  label,
   icon: Icon,
   matchRoute,
 }: {
   conversation: ConversationWithUserState
+  label?: string
   icon: LucideIcon
   matchRoute: ReturnType<typeof useMatchRoute>
 }) {
@@ -118,7 +156,7 @@ function SidebarConversationItem({
       >
         <Icon />
         <span className={cn("truncate", hasUnread && "font-semibold")}>
-          {conversation.name ?? conversation.id}
+          {label ?? conversation.name ?? conversation.id}
         </span>
         {hasUnread ? (
           <span
@@ -223,6 +261,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
         type: "channel",
         name: trimmedName,
         createdAt: new Date().toISOString(),
+        memberIds: [],
         lastViewedAt: null,
         lastMessageAt: null,
       }
@@ -276,6 +315,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
         (conversations = []) => {
           const createdChannel: ConversationWithUserState = {
             ...conversation,
+            memberIds: [],
             lastViewedAt: null,
             lastMessageAt: null,
           }
@@ -294,6 +334,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
       )
       const createdChannel: ConversationWithUserState = {
         ...conversation,
+        memberIds: [],
         lastViewedAt: null,
         lastMessageAt: null,
       }
@@ -324,35 +365,40 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
     seedConversationQueryCache(queryClient, conversationsQuery.data)
   }, [conversationsQuery.data, queryClient])
 
+  const currentUserId = sessionQuery.data?.session.user?.id
+  const membersById = new Map(
+    (membersQuery.data ?? []).map((member) => [member.id, member]),
+  )
   const channelConversations =
     conversationsQuery.data?.filter((conversation) => conversation.type === "channel") ?? []
   const groupConversations =
     conversationsQuery.data?.filter((conversation) => conversation.type === "group") ?? []
+  const directConversations =
+    conversationsQuery.data?.filter((conversation) => conversation.type === "direct") ?? []
+  const directConversationIdsByMemberId = new Map<string, string>()
 
-  async function handleOpenMemberConversation(memberId: string) {
-    try {
-      const existingConversation =
-        await orpcClient.getDirectConversationByMemberIds({
-          memberIds: [memberId],
-        })
-
-      if (isMobile) {
-        setOpenMobile(false)
-      }
-
-      if (existingConversation) {
-        await navigate({
-          to: "/c/$conversationId",
-          params: { conversationId: existingConversation.id } as any,
-        })
-        return
-      }
-    } catch (error) {
-      console.error("Failed to resolve direct conversation", error)
+  for (const conversation of directConversations) {
+    const memberId = getDirectConversationMemberId(conversation, currentUserId)
+    if (!memberId) {
+      continue
     }
+    directConversationIdsByMemberId.set(memberId, conversation.id)
+  }
 
+  async function handleOpenMemberConversation(
+    memberId: string,
+    conversationId?: string,
+  ) {
     if (isMobile) {
       setOpenMobile(false)
+    }
+
+    if (conversationId) {
+      await navigate({
+        to: "/c/$conversationId",
+        params: { conversationId } as any,
+      })
+      return
     }
 
     await navigate({
@@ -431,6 +477,11 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
                   <SidebarConversationItem
                     key={conversation.id}
                     conversation={conversation}
+                    label={getGroupConversationName(
+                      conversation,
+                      currentUserId,
+                      membersById,
+                    )}
                     icon={UsersIcon}
                     matchRoute={matchRoute}
                   />
@@ -457,26 +508,39 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
                 </div>
               </SidebarMenuItem>
             ) : (
-              membersQuery.data?.map((member) => (
-                <SidebarMenuItem key={member.id}>
-                  <SidebarMenuButton
-                    onClick={() => {
-                      void handleOpenMemberConversation(member.id)
-                    }}
-                  >
-                    <Avatar className="size-5">
-                      <AvatarImage
-                        src={member.imageUrl ?? undefined}
-                        alt={member.name}
-                      />
-                      <AvatarFallback className="text-[10px]">
-                        {getFallbackText(member.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="truncate">{member.name}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))
+              membersQuery.data?.map((member) => {
+                const conversationId = directConversationIdsByMemberId.get(
+                  member.id,
+                )
+
+                return (
+                  <SidebarMenuItem key={member.id}>
+                    <SidebarMenuButton
+                      isActive={Boolean(
+                        conversationId &&
+                          matchRoute({
+                            to: "/c/$conversationId",
+                            params: { conversationId } as any,
+                          }),
+                      )}
+                      onClick={() => {
+                        void handleOpenMemberConversation(member.id, conversationId)
+                      }}
+                    >
+                      <Avatar className="size-5">
+                        <AvatarImage
+                          src={member.imageUrl ?? undefined}
+                          alt={member.name}
+                        />
+                        <AvatarFallback className="text-[10px]">
+                          {getFallbackText(member.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="truncate">{member.name}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )
+              })
             )}
           </SidebarMenu>
         </SidebarGroup>
