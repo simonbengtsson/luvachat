@@ -1,20 +1,25 @@
 "use client"
 
 import type { Editor, JSONContent } from "@tiptap/react"
-import { PlusIcon, SmileIcon, XIcon } from "lucide-react"
-import type { ChangeEvent } from "react"
+import { PaperclipIcon, SmileIcon, XIcon } from "lucide-react"
+import type { ChangeEvent, ClipboardEvent } from "react"
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react"
 import EmojiPicker from "@/components/shadcnblocks/emoji-picker"
 import type { Member } from "@/core/luvabase"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
+  ChatInputBoldButton,
   ChatInput,
   ChatInputBulletListButton,
+  ChatInputCodeButton,
   ChatInputEditor,
   ChatInputGroupAddon,
+  ChatInputItalicButton,
   ChatInputMention,
+  ChatInputMentionButton,
   ChatInputSubmitButton,
+  ChatInputUnderlineButton,
   createMentionConfig,
   useChatInput,
   useChatInputContext,
@@ -24,6 +29,19 @@ import { cn } from "@/lib/utils"
 export type AppChatInputHandle = {
   clear: () => void
   focus: () => void
+}
+
+function getAttachmentKey(file: File) {
+  return `${file.name}:${file.size}:${file.lastModified}`
+}
+
+function getPastedImageFiles(event: ClipboardEvent<HTMLElement>) {
+  const clipboardItems = Array.from(event.clipboardData?.items ?? [])
+
+  return clipboardItems
+    .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
+    .map((item) => item.getAsFile())
+    .filter((file): file is File => file !== null)
 }
 
 type AppChatInputProps = {
@@ -283,6 +301,27 @@ export const AppChatInput = forwardRef<AppChatInputHandle, AppChatInputProps>(
       }
     }, [])
 
+    const appendAttachments = useCallback((nextFiles: File[]) => {
+      if (nextFiles.length === 0) {
+        return
+      }
+
+      setSelectedAttachments((current) => {
+        const seen = new Set(current.map(getAttachmentKey))
+        const uniqueNewFiles = nextFiles.filter((file) => {
+          const key = getAttachmentKey(file)
+          if (seen.has(key)) {
+            return false
+          }
+
+          seen.add(key)
+          return true
+        })
+
+        return uniqueNewFiles.length > 0 ? [...current, ...uniqueNewFiles] : current
+      })
+    }, [])
+
     const handleEditorChange = useCallback((editor: Editor | null) => {
       editorRef.current = editor
     }, [])
@@ -304,30 +343,23 @@ export const AppChatInput = forwardRef<AppChatInputHandle, AppChatInputProps>(
     const handleAttachmentChange = useCallback(
       (event: ChangeEvent<HTMLInputElement>) => {
         const nextFiles = Array.from(event.target.files ?? [])
-        if (nextFiles.length === 0) {
+        appendAttachments(nextFiles)
+        event.target.value = ""
+      },
+      [appendAttachments],
+    )
+
+    const handlePasteCapture = useCallback(
+      (event: ClipboardEvent<HTMLDivElement>) => {
+        const pastedImageFiles = getPastedImageFiles(event)
+        if (pastedImageFiles.length === 0) {
           return
         }
 
-        setSelectedAttachments((current) => {
-          const seen = new Set(
-            current.map((file) => `${file.name}:${file.size}:${file.lastModified}`),
-          )
-          const uniqueNewFiles = nextFiles.filter((file) => {
-            const key = `${file.name}:${file.size}:${file.lastModified}`
-            if (seen.has(key)) {
-              return false
-            }
-
-            seen.add(key)
-            return true
-          })
-
-          return [...current, ...uniqueNewFiles]
-        })
-
-        event.target.value = ""
+        event.preventDefault()
+        appendAttachments(pastedImageFiles)
       },
-      [],
+      [appendAttachments],
     )
 
     const removeAttachment = useCallback((indexToRemove: number) => {
@@ -387,7 +419,11 @@ export const AppChatInput = forwardRef<AppChatInputHandle, AppChatInputProps>(
         (!allowAttachmentsWithoutText || selectedAttachments.length === 0))
 
     return (
-      <div ref={rootRef} className={cn("w-full", className)}>
+      <div
+        ref={rootRef}
+        className={cn("w-full", className)}
+        onPasteCapture={handlePasteCapture}
+      >
         <ChatInput
           value={value}
           onChange={onChange}
@@ -427,7 +463,7 @@ export const AppChatInput = forwardRef<AppChatInputHandle, AppChatInputProps>(
                 {selectedAttachments.map((attachment, index) => (
                   <div
                     key={`${attachment.name}-${attachment.size}-${attachment.lastModified}`}
-                    className="flex min-w-[180px] shrink-0 items-center gap-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-2"
+                    className="flex min-w-[180px] shrink-0 items-start gap-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-2 text-left"
                   >
                     <span className="truncate text-sm">{attachment.name}</span>
                     <Button
@@ -452,9 +488,17 @@ export const AppChatInput = forwardRef<AppChatInputHandle, AppChatInputProps>(
           ) : null}
           <ChatInputGroupAddon
             align="block-end"
-            className="justify-between border-t border-border/70 px-2 py-2"
+            className="gap-2 border-t border-border/70 px-2 py-2"
           >
-            <div className="flex items-center gap-1">
+            <div className="flex min-w-0 flex-1 items-center gap-1">
+              <div className="flex items-center gap-1 pr-1">
+                <ChatInputBoldButton />
+                <ChatInputItalicButton />
+                <ChatInputUnderlineButton />
+                <ChatInputCodeButton />
+                <ChatInputBulletListButton />
+              </div>
+              <div className="h-5 w-px shrink-0 bg-border/70" aria-hidden="true" />
               <Button
                 type="button"
                 variant="ghost"
@@ -463,7 +507,7 @@ export const AppChatInput = forwardRef<AppChatInputHandle, AppChatInputProps>(
                 aria-label="Attach file"
                 onClick={handleAttachmentButtonClick}
               >
-                <PlusIcon />
+                <PaperclipIcon />
               </Button>
               <input
                 ref={fileInputRef}
@@ -474,7 +518,7 @@ export const AppChatInput = forwardRef<AppChatInputHandle, AppChatInputProps>(
                 aria-label="Select files to attach"
               />
               <AppChatInputEmojiButton />
-              <ChatInputBulletListButton />
+              <ChatInputMentionButton />
             </div>
             <ChatInputSubmitButton
               variant={isStreaming ? "secondary" : "default"}

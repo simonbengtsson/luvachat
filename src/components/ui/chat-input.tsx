@@ -7,15 +7,18 @@ import type { Editor, JSONContent } from "@tiptap/react";
 import { EditorContent, ReactRenderer, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import type { SuggestionProps } from "@tiptap/suggestion";
-import { ArrowUpIcon, ListIcon, Loader2, PlusIcon } from "lucide-react";
+import {
+	ArrowUpIcon,
+	AtSignIcon,
+	BoldIcon,
+	CodeIcon,
+	ItalicIcon,
+	ListIcon,
+	Loader2,
+	UnderlineIcon,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
 	InputGroup,
 	InputGroupAddon,
@@ -768,6 +771,37 @@ const StopIcon = ({ className }: { className?: string }) => (
 	</svg>
 );
 
+function ChatInputToolbarButton({
+	active = false,
+	className,
+	children,
+	disabled,
+	label,
+	onClick,
+	...props
+}: ComponentProps<typeof InputGroupButton> & {
+	active?: boolean;
+	label: string;
+}) {
+	const { disabled: contextDisabled } = useContext(ChatInputContext);
+
+	return (
+		<InputGroupButton
+			variant={active ? "secondary" : "ghost"}
+			size="icon-sm"
+			className={cn("rounded-full shrink-0", className)}
+			aria-label={label}
+			aria-pressed={active}
+			disabled={disabled ?? contextDisabled}
+			onClick={onClick}
+			{...props}
+		>
+			{children}
+			<span className="sr-only">{label}</span>
+		</InputGroupButton>
+	);
+}
+
 export function ChatInputMentionButton({
 	className,
 	...props
@@ -778,25 +812,124 @@ export function ChatInputMentionButton({
 		return null;
 	}
 
+	const mentionConfig =
+		mentionConfigs.find((config) => config.trigger === "@") ?? mentionConfigs[0];
+
 	return (
-		<DropdownMenu>
-			<DropdownMenuTrigger render={<InputGroupButton variant="outline" size="icon-sm" className={cn("rounded-full shrink-0", className)} {...props} />}><PlusIcon className="h-4 w-4" /><span className="sr-only">Add Mention</span></DropdownMenuTrigger>
-			<DropdownMenuContent align="start" className="w-48">
-				{mentionConfigs.map((config) => (
-					<DropdownMenuItem
-						key={config.type}
-						onClick={() => {
-							if (editor) {
-								editor.commands.insertContent(config.trigger);
-								editor.commands.focus();
-							}
-						}}
-					>
-						{config.trigger} {config.type}
-					</DropdownMenuItem>
-				))}
-			</DropdownMenuContent>
-		</DropdownMenu>
+		<ChatInputToolbarButton
+			className={className}
+			label="Add mention"
+			onClick={() => {
+				if (!editor) {
+					return;
+				}
+
+				editor.chain().focus().insertContent(mentionConfig.trigger).run();
+			}}
+			{...props}
+		>
+			<AtSignIcon className="h-4 w-4" />
+		</ChatInputToolbarButton>
+	);
+}
+
+export function ChatInputBoldButton({
+	className,
+	...props
+}: ComponentProps<typeof InputGroupButton>) {
+	const { editor } = useContext(ChatInputContext);
+
+	if (!editor) {
+		return null;
+	}
+
+	return (
+		<ChatInputToolbarButton
+			active={editor.isActive("bold")}
+			className={className}
+			label="Bold"
+			onClick={() => {
+				editor.chain().focus().toggleBold().run();
+			}}
+			{...props}
+		>
+			<BoldIcon className="h-4 w-4" />
+		</ChatInputToolbarButton>
+	);
+}
+
+export function ChatInputItalicButton({
+	className,
+	...props
+}: ComponentProps<typeof InputGroupButton>) {
+	const { editor } = useContext(ChatInputContext);
+
+	if (!editor) {
+		return null;
+	}
+
+	return (
+		<ChatInputToolbarButton
+			active={editor.isActive("italic")}
+			className={className}
+			label="Italic"
+			onClick={() => {
+				editor.chain().focus().toggleItalic().run();
+			}}
+			{...props}
+		>
+			<ItalicIcon className="h-4 w-4" />
+		</ChatInputToolbarButton>
+	);
+}
+
+export function ChatInputUnderlineButton({
+	className,
+	...props
+}: ComponentProps<typeof InputGroupButton>) {
+	const { editor } = useContext(ChatInputContext);
+
+	if (!editor) {
+		return null;
+	}
+
+	return (
+		<ChatInputToolbarButton
+			active={editor.isActive("underline")}
+			className={className}
+			label="Underline"
+			onClick={() => {
+				editor.chain().focus().toggleUnderline().run();
+			}}
+			{...props}
+		>
+			<UnderlineIcon className="h-4 w-4" />
+		</ChatInputToolbarButton>
+	);
+}
+
+export function ChatInputCodeButton({
+	className,
+	...props
+}: ComponentProps<typeof InputGroupButton>) {
+	const { editor } = useContext(ChatInputContext);
+
+	if (!editor) {
+		return null;
+	}
+
+	return (
+		<ChatInputToolbarButton
+			active={editor.isActive("code")}
+			className={className}
+			label="Code"
+			onClick={() => {
+				editor.chain().focus().toggleCode().run();
+			}}
+			{...props}
+		>
+			<CodeIcon className="h-4 w-4" />
+		</ChatInputToolbarButton>
 	);
 }
 
@@ -811,21 +944,18 @@ export function ChatInputBulletListButton({
 	}
 
 	return (
-		<InputGroupButton
-			variant={editor.isActive("bulletList") ? "secondary" : "ghost"}
-			size="icon-sm"
-			className={cn("rounded-full shrink-0", className)}
-			aria-label="Toggle bullet list"
-			aria-pressed={editor.isActive("bulletList")}
+		<ChatInputToolbarButton
+			active={editor.isActive("bulletList")}
+			className={className}
 			disabled={disabled}
+			label="Toggle bullet list"
 			onClick={() => {
 				editor.chain().focus().toggleBulletList().run();
 			}}
 			{...props}
 		>
 			<ListIcon className="h-4 w-4" />
-			<span className="sr-only">Toggle bullet list</span>
-		</InputGroupButton>
+		</ChatInputToolbarButton>
 	);
 }
 

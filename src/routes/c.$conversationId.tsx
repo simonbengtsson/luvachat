@@ -556,7 +556,7 @@ function ConversationView({
               overscrollBehaviorX: "auto",
               overscrollBehaviorY: "contain",
             }}
-            className="max-w-full px-6 py-4"
+            className="max-w-full px-6 pt-6 pb-4"
           >
             {!isThreadView && hasNextPage && (
               <div ref={loadMoreRef} className="flex justify-center py-2">
