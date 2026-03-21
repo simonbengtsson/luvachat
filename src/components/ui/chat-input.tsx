@@ -209,7 +209,9 @@ export function ChatInputEditor({
 
 	const extensions = useMemo(
 		() => [
-			StarterKit,
+			StarterKit.configure({
+				trailingNode: false,
+			}),
 			Placeholder.configure({ placeholder }),
 			KeyboardShortcuts.configure({
 				getOnEnter: () => onEnterRef.current,
@@ -331,20 +333,19 @@ const KeyboardShortcuts = Extension.create({
 				() => commands.liftEmptyBlock(),
 				() => commands.splitBlock(),
 			]);
-			
-			return {
-				Enter: () => {
-					if (this.editor.isActive("listItem")) {
-						return false;
-					}
-					const onEnter = this.options.getOnEnter?.();
-					if (onEnter) {
-						onEnter();
-						return true;
-					}
+		return {
+			Enter: () => {
+				if (this.editor.isActive("listItem")) {
 					return false;
-				},
-				// Needed since we want markdown shortcuts for bullet items etc to work on shift + enter (new paragraph, not new line needed)
+				}
+				const onEnter = this.options.getOnEnter?.();
+				if (onEnter) {
+					onEnter();
+					return true;
+				}
+				return false;
+			},
+		    // Needed since we want markdown shortcuts for bullet items etc to work on shift + enter (new paragraph, not new line needed)
 			"Shift-Enter": () => handleEditorEnter(),
 		};
 	},
