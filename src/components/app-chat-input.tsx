@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
   ChatInputBoldButton,
+  ChatInputBlockquoteButton,
   ChatInput,
   ChatInputBulletListButton,
   ChatInputCodeButton,
@@ -18,6 +19,7 @@ import {
   ChatInputItalicButton,
   ChatInputMention,
   ChatInputMentionButton,
+  ChatInputOrderedListButton,
   ChatInputSubmitButton,
   ChatInputUnderlineButton,
   createMentionConfig,
@@ -140,7 +142,7 @@ function serializeChatInputValue(
   }
 
   if (node.type === "text") {
-    return node.text ?? ""
+    return serializeTextNode(node)
   }
 
   if (node.type === "hardBreak") {
@@ -171,10 +173,7 @@ function serializeChatInputValue(
   }
 
   if (node.type === "blockquote") {
-    return (node.content ?? [])
-      .map((child) => serializeChatInputValue(child, mentionTriggers, indent))
-      .filter(Boolean)
-      .join("\n")
+    return serializeBlockquote(node, mentionTriggers, indent)
   }
 
   if (node.type === "heading") {
@@ -185,9 +184,7 @@ function serializeChatInputValue(
   }
 
   if (node.type === "codeBlock") {
-    return (node.content ?? [])
-      .map((child) => serializeChatInputValue(child, mentionTriggers, indent))
-      .join("")
+    return serializeCodeBlock(node, mentionTriggers, indent)
   }
 
   if (node.type === "paragraph") {
@@ -205,6 +202,74 @@ function serializeChatInputValue(
   }
 
   return childContent.join("")
+}
+
+function serializeTextNode(node: JSONContent): string {
+  const text = node.text ?? ""
+  if (!text) {
+    return ""
+  }
+
+  if (node.marks?.some((mark) => mark.type === "code")) {
+    return wrapInlineCode(text)
+  }
+
+  return text
+}
+
+function serializeBlockquote(
+  node: JSONContent,
+  mentionTriggers: Map<string, string>,
+  indent: number,
+): string {
+  const content = (node.content ?? [])
+    .map((child) => serializeChatInputValue(child, mentionTriggers, indent))
+    .filter(Boolean)
+    .join("\n")
+    .trim()
+
+  if (!content) {
+    return ""
+  }
+
+  return content
+    .split("\n")
+    .map((line) => `${" ".repeat(indent)}> ${line}`)
+    .join("\n")
+}
+
+function serializeCodeBlock(
+  node: JSONContent,
+  mentionTriggers: Map<string, string>,
+  indent: number,
+): string {
+  const content = (node.content ?? [])
+    .map((child) => serializeChatInputValue(child, mentionTriggers, indent))
+    .join("")
+    .trimEnd()
+
+  if (!content) {
+    return ""
+  }
+
+  const language =
+    typeof node.attrs?.language === "string" ? node.attrs.language : ""
+
+  return `\`\`\`${language}\n${content}\n\`\`\``
+}
+
+function wrapInlineCode(text: string) {
+  const longestBacktickRun = Math.max(
+    0,
+    ...Array.from(text.matchAll(/`+/g), (match) => match[0].length),
+  )
+  const fence = "`".repeat(longestBacktickRun + 1)
+
+  if (text.startsWith("`") || text.endsWith("`")) {
+    return `${fence} ${text} ${fence}`
+  }
+
+  return `${fence}${text}${fence}`
 }
 
 function serializeBulletListItem(
@@ -548,34 +613,38 @@ export const AppChatInput = forwardRef<AppChatInputHandle, AppChatInputProps>(
             className="gap-2 border-t border-border/70 px-2 py-2"
           >
             <div className="flex min-w-0 flex-1 items-center gap-1">
-              <div className="flex items-center gap-1 pr-1">
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="rounded-full"
+                  aria-label="Attach file"
+                  onClick={handleAttachmentButtonClick}
+                >
+                  <PaperclipIcon />
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={handleAttachmentChange}
+                  aria-label="Select files to attach"
+                />
+                <AppChatInputEmojiButton />
+                <ChatInputMentionButton />
+              </div>
+              <div className="h-5 w-px shrink-0 bg-border/70" aria-hidden="true" />
+              <div className="flex items-center gap-1 pl-1">
                 <ChatInputBoldButton />
                 <ChatInputItalicButton />
                 <ChatInputUnderlineButton />
                 <ChatInputCodeButton />
+                <ChatInputBlockquoteButton />
                 <ChatInputBulletListButton />
+                <ChatInputOrderedListButton />
               </div>
-              <div className="h-5 w-px shrink-0 bg-border/70" aria-hidden="true" />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                className="rounded-full"
-                aria-label="Attach file"
-                onClick={handleAttachmentButtonClick}
-              >
-                <PaperclipIcon />
-              </Button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                className="hidden"
-                onChange={handleAttachmentChange}
-                aria-label="Select files to attach"
-              />
-              <AppChatInputEmojiButton />
-              <ChatInputMentionButton />
             </div>
             <ChatInputSubmitButton
               variant={isStreaming ? "secondary" : "default"}

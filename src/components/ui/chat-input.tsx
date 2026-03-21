@@ -14,7 +14,9 @@ import {
 	CodeIcon,
 	ItalicIcon,
 	ListIcon,
+	ListOrderedIcon,
 	Loader2,
+	TextQuoteIcon,
 	UnderlineIcon,
 } from "lucide-react";
 
@@ -314,6 +316,50 @@ export function ChatInputEditor({
 				.tiptap li p {
 					display: inline;
 					line-height: inherit;
+				}
+				.tiptap a {
+					word-break: break-word;
+					color: inherit;
+					font-weight: 500;
+					text-decoration: underline;
+					text-underline-offset: 0.25rem;
+				}
+				.tiptap blockquote {
+					margin: 0.75rem 0;
+					border-left: 3px solid var(--border);
+					border-radius: 0.875rem;
+					background: var(--muted);
+					padding: 0.75rem 0.875rem;
+					color: var(--muted-foreground);
+				}
+				.tiptap blockquote p {
+					margin: 0;
+				}
+				.tiptap :not(pre) > code {
+					border: 1px solid var(--border);
+					border-radius: 0.5rem;
+					background: var(--muted);
+					padding: 0.125rem 0.375rem;
+					font-size: 0.875em;
+					font-family: ui-monospace, SFMono-Regular, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+				}
+				.tiptap pre {
+					margin: 0.75rem 0;
+					overflow-x: auto;
+					border: 1px solid var(--border);
+					border-radius: 0.875rem;
+					background: var(--card);
+					padding: 0.875rem 1rem;
+				}
+				.tiptap pre code {
+					display: block;
+					background: transparent;
+					padding: 0;
+					color: var(--foreground);
+					font-size: 0.875rem;
+					line-height: 1.6;
+					font-family: ui-monospace, SFMono-Regular, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+					white-space: pre;
 				}
 			`}</style>
 			<EditorContent
@@ -933,6 +979,32 @@ export function ChatInputCodeButton({
 	);
 }
 
+export function ChatInputBlockquoteButton({
+	className,
+	...props
+}: ComponentProps<typeof InputGroupButton>) {
+	const { editor, disabled } = useContext(ChatInputContext);
+
+	if (!editor) {
+		return null;
+	}
+
+	return (
+		<ChatInputToolbarButton
+			active={editor.isActive("blockquote")}
+			className={className}
+			disabled={disabled}
+			label="Toggle block quote"
+			onClick={() => {
+				editor.chain().focus().toggleBlockquote().run();
+			}}
+			{...props}
+		>
+			<TextQuoteIcon className="h-4 w-4" />
+		</ChatInputToolbarButton>
+	);
+}
+
 export function ChatInputBulletListButton({
 	className,
 	...props
@@ -955,6 +1027,32 @@ export function ChatInputBulletListButton({
 			{...props}
 		>
 			<ListIcon className="h-4 w-4" />
+		</ChatInputToolbarButton>
+	);
+}
+
+export function ChatInputOrderedListButton({
+	className,
+	...props
+}: ComponentProps<typeof InputGroupButton>) {
+	const { editor, disabled } = useContext(ChatInputContext);
+
+	if (!editor) {
+		return null;
+	}
+
+	return (
+		<ChatInputToolbarButton
+			active={editor.isActive("orderedList")}
+			className={className}
+			disabled={disabled}
+			label="Toggle ordered list"
+			onClick={() => {
+				editor.chain().focus().toggleOrderedList().run();
+			}}
+			{...props}
+		>
+			<ListOrderedIcon className="h-4 w-4" />
 		</ChatInputToolbarButton>
 	);
 }

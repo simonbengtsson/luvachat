@@ -208,7 +208,7 @@ function RouteComponent() {
 
                     {isStreamingPlaceholder ? (
                       <div
-                        className="flex items-center gap-1.5 text-sm text-muted-foreground"
+                        className="flex items-center gap-1.5 px-2 text-sm text-muted-foreground"
                         aria-live="polite"
                       >
                         <LoaderCircleIcon className="size-3.5 animate-spin" />
@@ -232,7 +232,7 @@ function RouteComponent() {
                     <ChatMessageTimestamp createdAt={new Date()} />
                   </ChatMessageHeader>
                   <div
-                    className="flex items-center gap-1.5 text-sm text-muted-foreground"
+                    className="flex items-center gap-1.5 px-2 text-sm text-muted-foreground"
                     aria-live="polite"
                   >
                     <LoaderCircleIcon className="size-3.5 animate-spin" />
