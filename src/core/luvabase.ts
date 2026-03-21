@@ -12,6 +12,24 @@ function shouldUseLuvabase() {
   return Boolean(process.env.luvaEnv)
 }
 
+const members = {
+  abc: {
+    id: "abc",
+    name: "John Doe",
+    imageUrl: "https://i.pravatar.cc/150?u=123",
+  },
+  def: {
+    id: "def",
+    name: "Charlie Smith",
+    imageUrl: "https://i.pravatar.cc/150?u=def",
+  },
+  ghi: {
+    id: "ghi",
+    name: "David Johnson",
+    imageUrl: "https://i.pravatar.cc/150?u=ghi",
+  },
+}
+
 export async function getSession(
   request: Request,
 ): Promise<Session & { user: Member }> {
@@ -26,12 +44,12 @@ export async function getSession(
     }
   }
 
+  console.log("VITE_DEV_USER", import.meta.env.VITE_DEV_USER)
+
   return {
-    user: {
-      id: "abc",
-      name: "John Doe",
-      imageUrl: "https://i.pravatar.cc/150?u=123",
-    },
+    user:
+      members[import.meta.env.VITE_DEV_USER as keyof typeof members] ??
+      members.abc,
   }
 }
 
@@ -41,20 +59,7 @@ export async function getMembers(request: Request): Promise<Member[]> {
     return getSdkMembers(request)
   }
 
-  const session = await getSession(request)
-  return [
-    session.user,
-    {
-      id: "def",
-      name: "Charlie Smith",
-      imageUrl: "https://i.pravatar.cc/150?u=def",
-    },
-    {
-      id: "ghi",
-      name: "David Johnson",
-      imageUrl: "https://i.pravatar.cc/150?u=ghi",
-    },
-  ]
+  return Object.values(members)
 }
 
 export function getLuvaEnv(): LuvaEnv {

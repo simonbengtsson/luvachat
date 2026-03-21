@@ -8,6 +8,7 @@
   "scripts": {
     "d:gen": "drizzle-kit generate",
     "dev": "vite dev --port 3000",
+    "dev:other": "VITE_DEV_USER=def vite dev --port 4000",
     "build": "vite build",
     "preview": "bun run build && vite preview",
     "test": "vitest run",
