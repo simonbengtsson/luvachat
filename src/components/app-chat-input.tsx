@@ -31,6 +31,74 @@ export type AppChatInputHandle = {
   focus: () => void
 }
 
+function AppChatInputAttachment({
+  attachment,
+  onRemove,
+}: {
+  attachment: File
+  onRemove: () => void
+}) {
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const isImage = attachment.type.startsWith("image/")
+
+  useEffect(() => {
+    if (!isImage) {
+      setPreviewUrl(null)
+      return
+    }
+
+    const nextPreviewUrl = URL.createObjectURL(attachment)
+    setPreviewUrl(nextPreviewUrl)
+
+    return () => {
+      URL.revokeObjectURL(nextPreviewUrl)
+    }
+  }, [attachment, isImage])
+
+  return (
+    <div
+      className={cn(
+        "flex min-w-[180px] max-w-[220px] shrink-0 flex-col rounded-lg border border-border/70 bg-muted/30 text-left",
+        previewUrl ? "overflow-hidden p-0" : "gap-2 p-2",
+      )}
+    >
+      {previewUrl ? (
+        <div className="relative">
+          <img
+            src={previewUrl}
+            alt={attachment.name || "Image attachment"}
+            className="h-24 w-full object-cover"
+          />
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon-sm"
+            className="absolute right-1 top-1 rounded-full"
+            onClick={onRemove}
+            aria-label={`Remove ${attachment.name}`}
+          >
+            <XIcon className="size-3.5" />
+          </Button>
+        </div>
+      ) : (
+        <div className="flex w-full items-start gap-2 px-1">
+          <span className="min-w-0 flex-1 truncate text-sm">{attachment.name}</span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="-mr-1 -mt-1 rounded-full"
+            onClick={onRemove}
+            aria-label={`Remove ${attachment.name}`}
+          >
+            <XIcon className="size-3.5" />
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function getAttachmentKey(file: File) {
   return `${file.name}:${file.size}:${file.lastModified}`
 }
@@ -458,25 +526,14 @@ export const AppChatInput = forwardRef<AppChatInputHandle, AppChatInputProps>(
             onEditorChange={handleEditorChange}
           />
           {selectedAttachments.length > 0 ? (
-            <div className="border-t border-border/70 px-3 py-2">
+            <div className="w-full border-t border-border/70 px-3 py-2">
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {selectedAttachments.map((attachment, index) => (
-                  <div
+                  <AppChatInputAttachment
                     key={`${attachment.name}-${attachment.size}-${attachment.lastModified}`}
-                    className="flex min-w-[180px] shrink-0 items-start gap-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-2 text-left"
-                  >
-                    <span className="truncate text-sm">{attachment.name}</span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      className="ml-auto rounded-full"
-                      onClick={() => removeAttachment(index)}
-                      aria-label={`Remove ${attachment.name}`}
-                    >
-                      <XIcon className="size-3.5" />
-                    </Button>
-                  </div>
+                    attachment={attachment}
+                    onRemove={() => removeAttachment(index)}
+                  />
                 ))}
               </div>
               {attachmentsHelperText ? (
