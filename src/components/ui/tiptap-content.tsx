@@ -62,7 +62,7 @@ export function TiptapContent({ content, className }: TiptapContentProps) {
   return (
     <div
       className={cn(
-        "text-sm leading-relaxed [&_a]:break-words [&_a]:font-medium [&_a]:underline [&_a]:underline-offset-4 [&_blockquote]:mt-4 [&_blockquote]:border-l-2 [&_blockquote]:pl-6 [&_blockquote]:italic [&_code]:rounded-sm [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_ol]:my-0 [&_ol]:ml-6 [&_ol]:list-decimal [&_p]:break-words [&_p]:leading-6 [&_pre]:my-4 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:border [&_pre]:border-border [&_pre]:bg-zinc-950 [&_pre]:p-4 [&_pre]:text-zinc-50 [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_ul]:my-0 [&_ul]:ml-6 [&_ul]:list-disc [&_li]:my-0 [&_li]:leading-6 [&_li>p]:inline [&_li>p]:leading-6",
+        "text-sm leading-relaxed [&_a]:break-words [&_a]:font-medium [&_a]:underline [&_a]:underline-offset-4 [&_a[data-mention=true]]:no-underline [&_a[data-mention=true]]:hover:no-underline [&_blockquote]:mt-4 [&_blockquote:first-child]:mt-0 [&_blockquote]:border-l-2 [&_blockquote]:pl-6 [&_blockquote]:italic [&_code]:rounded-sm [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_ol]:my-0 [&_ol]:ml-6 [&_ol]:list-decimal [&_p]:break-words [&_p]:leading-6 [&_pre]:my-4 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:border [&_pre]:border-border [&_pre]:bg-zinc-950 [&_pre]:p-4 [&_pre]:text-zinc-50 [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_ul]:my-0 [&_ul]:ml-6 [&_ul]:list-disc [&_li]:my-0 [&_li]:leading-6 [&_li>p]:inline [&_li>p]:leading-6",
         className,
       )}
     >
@@ -206,7 +206,7 @@ function renderMention(
         href={`/new?members=${encodeURIComponent(id)}`}
         memberId={id}
         onOpen={openMemberConversation}
-        className="rounded-sm bg-primary px-2 py-0.5 font-medium text-primary-foreground no-underline hover:no-underline"
+        className="rounded-sm bg-foreground/10 px-2 py-0.5 font-medium text-foreground no-underline hover:no-underline"
         title={label}
       >
         @{label}
@@ -350,8 +350,9 @@ function MentionConversationLink({
   return (
     <a
       href={href}
+      data-mention="true"
       className={cn(
-        "font-semibold text-foreground underline underline-offset-4",
+        "font-semibold text-foreground no-underline hover:no-underline",
         className,
       )}
       title={title}

@@ -228,7 +228,7 @@ export function ChatInputEditor({
 				return MentionPlugin.configure({
 					HTMLAttributes: {
 						class: cn(
-							"bg-primary text-primary-foreground rounded-sm px-1 py-0.5 no-underline",
+							"rounded-sm bg-foreground/10 px-1 py-0.5 text-foreground no-underline",
 							config.editorMentionClass,
 						),
 					},
@@ -325,12 +325,14 @@ export function ChatInputEditor({
 					text-underline-offset: 0.25rem;
 				}
 				.tiptap blockquote {
-					margin: 0.75rem 0;
-					border-left: 3px solid var(--border);
-					border-radius: 0.875rem;
-					background: var(--muted);
-					padding: 0.75rem 0.875rem;
-					color: var(--muted-foreground);
+					margin: 0;
+					margin-top: 1rem;
+					border-left: 2px solid var(--border);
+					padding-left: 1.5rem;
+					font-style: italic;
+				}
+				.tiptap blockquote:first-child {
+					margin-top: 0;
 				}
 				.tiptap blockquote p {
 					margin: 0;
@@ -386,9 +388,6 @@ const KeyboardShortcuts = Extension.create({
 			]);
 		return {
 			Enter: () => {
-				if (this.editor.isActive("listItem")) {
-					return false;
-				}
 				const onEnter = this.options.getOnEnter?.();
 				if (onEnter) {
 					onEnter();
