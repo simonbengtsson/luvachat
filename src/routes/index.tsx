@@ -1,15 +1,32 @@
-import { orpcClient } from "@/core/orpcClient"
+import { getSession } from "@/core/luvabase"
+import { createServerOrpcClient } from "@/core/orpcClient"
 import { createFileRoute } from "@tanstack/react-router"
+import { env } from "cloudflare:workers"
 
 export const Route = createFileRoute("/")({
   server: {
     handlers: {
-      GET: async () => {
-        const conversations = await orpcClient.getConversations()
-        const first = conversations.at(0)
+      GET: async ({ request }) => {
+        const session = await getSession(request)
+        const syncObject = env.SyncObject.getByName("workspace")
+        const serverOrpcClient = createServerOrpcClient(
+          syncObject,
+          session.user.id,
+        )
+        const conversations = await serverOrpcClient.getConversations()
+        let first = conversations.at(0)
+
         if (!first) {
-          return new Response("No channels yet")
+          const conversation = await serverOrpcClient.createConversation({
+            name: "general",
+          })
+          first = {
+            ...conversation,
+            lastViewedAt: null,
+            lastMessageAt: null,
+          }
         }
+
         return new Response("", {
           status: 302,
           headers: { Location: `/c/${first.id}` },
