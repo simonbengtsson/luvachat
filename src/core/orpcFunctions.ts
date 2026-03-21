@@ -500,6 +500,43 @@ const sendDirectMessage = base
     },
   )
 
+const markConversationViewed = base
+  .input(
+    z.object({
+      conversationId: z.string().min(1),
+    }),
+  )
+  .handler(async ({ context, input }): Promise<void> => {
+    const normalizedConversationId = input.conversationId.trim()
+    const normalizedUserId = context.userId.trim()
+
+    if (!normalizedConversationId || !normalizedUserId) {
+      return
+    }
+
+    const latestMessage = await context.db
+      .select({
+        createdAt: sql<string | null>`max(${messagesTable.createdAt})`.as(
+          "created_at",
+        ),
+      })
+      .from(messagesTable)
+      .where(eq(messagesTable.conversationId, normalizedConversationId))
+      .limit(1)
+
+    const latestMessageCreatedAt = latestMessage[0]?.createdAt
+    if (!latestMessageCreatedAt) {
+      return
+    }
+
+    await markConversationAsViewed(
+      context,
+      normalizedConversationId,
+      normalizedUserId,
+      latestMessageCreatedAt,
+    )
+  })
+
 const getVapidPublicKey = base.handler(async ({ context }): Promise<string> => {
   return context.vapidDetails!.publicKey
 })
@@ -1218,6 +1255,7 @@ export const orpcRouter = {
   sendMessage,
   getDirectConversationByMemberIds,
   sendDirectMessage,
+  markConversationViewed,
   getVapidPublicKey,
   savePushSubscription,
   deletePushSubscription,

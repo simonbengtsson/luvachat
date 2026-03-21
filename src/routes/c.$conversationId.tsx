@@ -118,6 +118,25 @@ function isImageAttachment(contentType: string) {
   return contentType.startsWith("image/")
 }
 
+function subscribeToDocumentVisibility(listener: () => void) {
+  if (typeof document === "undefined") {
+    return () => {}
+  }
+
+  document.addEventListener("visibilitychange", listener)
+  return () => {
+    document.removeEventListener("visibilitychange", listener)
+  }
+}
+
+function getDocumentVisibilityState() {
+  if (typeof document === "undefined") {
+    return "visible"
+  }
+
+  return document.visibilityState
+}
+
 function getAttachmentUrl(storageKey: string) {
   return `/assets/${storageKey.split("/").map(encodeURIComponent).join("/")}`
 }
@@ -167,6 +186,7 @@ function RouteComponent() {
       conversationId={conversationId}
       conversationType={conversationQuery.data?.type ?? null}
       conversationTitle={conversationTitle}
+      currentUserId={currentUserId ?? null}
       threadMessageId={threadMessageId}
       members={members}
       membersById={membersById}
@@ -178,6 +198,7 @@ function ConversationView({
   conversationId,
   conversationType,
   conversationTitle,
+  currentUserId,
   threadMessageId,
   members,
   membersById,
@@ -185,6 +206,7 @@ function ConversationView({
   conversationId: string
   conversationType: string | null
   conversationTitle: string
+  currentUserId: string | null
   threadMessageId?: string
   members: Member[]
   membersById: Map<string, Member>
@@ -223,11 +245,17 @@ function ConversationView({
     getSyncConnectionStatus,
     getSyncConnectionStatus,
   )
+  const documentVisibilityState = useSyncExternalStore(
+    subscribeToDocumentVisibility,
+    getDocumentVisibilityState,
+    getDocumentVisibilityState,
+  )
   const isSyncConnected = syncConnectionStatus === "connected"
 
   const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false)
   const composerRef = useRef<AppChatInputHandle>(null)
   const loadMoreRef = useRef<HTMLDivElement>(null)
+  const lastPersistedViewedMessageIdRef = useRef<string | null>(null)
   const previousScrollHeightRef = useRef<number>(0)
   const previousMessagesLengthRef = useRef<number>(0)
   const hasInitializedScrollRef = useRef(false)
@@ -296,6 +324,10 @@ function ConversationView({
         scrollMessagesToBottom("smooth")
       }, 100)
     },
+  })
+
+  const markConversationViewedMutation = useMutation({
+    mutationFn: () => orpcClient.markConversationViewed({ conversationId }),
   })
 
   const deleteConversationMutation = useMutation({
@@ -521,6 +553,9 @@ function ConversationView({
   const threadRootMessage = threadMessageId
     ? (messages.find((message) => message.id === threadMessageId) ?? null)
     : null
+  const latestConversationMessage = !isThreadView
+    ? (messages[messages.length - 1] ?? null)
+    : null
   const threadRootTiptapDocument = threadRootMessage
     ? parseTiptapJson(threadRootMessage.tiptapJson)
     : null
@@ -528,6 +563,47 @@ function ConversationView({
     isThreadView && threadMessageId
       ? messages.filter((message) => message.id !== threadMessageId)
       : messages
+
+  useEffect(() => {
+    if (!latestConversationMessage) {
+      return
+    }
+
+    if (lastPersistedViewedMessageIdRef.current === null) {
+      lastPersistedViewedMessageIdRef.current = latestConversationMessage.id
+    }
+  }, [latestConversationMessage])
+
+  useEffect(() => {
+    if (
+      isThreadView ||
+      !currentUserId ||
+      !latestConversationMessage ||
+      documentVisibilityState !== "visible" ||
+      latestConversationMessage.userId === currentUserId
+    ) {
+      return
+    }
+
+    if (lastPersistedViewedMessageIdRef.current === latestConversationMessage.id) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      lastPersistedViewedMessageIdRef.current = latestConversationMessage.id
+      markConversationViewedMutation.mutate()
+    }, 250)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [
+    currentUserId,
+    documentVisibilityState,
+    isThreadView,
+    latestConversationMessage,
+    markConversationViewedMutation,
+  ])
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
