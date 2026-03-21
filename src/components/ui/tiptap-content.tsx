@@ -62,7 +62,7 @@ export function TiptapContent({ content, className }: TiptapContentProps) {
   return (
     <div
       className={cn(
-        "text-sm leading-relaxed [&_a]:break-words [&_a]:font-medium [&_a]:underline [&_a]:underline-offset-4 [&_blockquote]:mt-4 [&_blockquote]:border-l-2 [&_blockquote]:pl-6 [&_blockquote]:italic [&_code]:rounded-sm [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_ol]:my-4 [&_ol]:ml-6 [&_ol]:list-decimal [&_p]:break-words [&_p]:leading-6 [&_pre]:my-4 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:border [&_pre]:border-border [&_pre]:bg-zinc-950 [&_pre]:p-4 [&_pre]:text-zinc-50 [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_ul]:my-4 [&_ul]:ml-6 [&_ul]:list-disc [&_li]:mt-2",
+        "text-sm leading-relaxed [&_a]:break-words [&_a]:font-medium [&_a]:underline [&_a]:underline-offset-4 [&_blockquote]:mt-4 [&_blockquote]:border-l-2 [&_blockquote]:pl-6 [&_blockquote]:italic [&_code]:rounded-sm [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_ol]:my-0 [&_ol]:ml-6 [&_ol]:list-decimal [&_p]:break-words [&_p]:leading-6 [&_pre]:my-4 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:border [&_pre]:border-border [&_pre]:bg-zinc-950 [&_pre]:p-4 [&_pre]:text-zinc-50 [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_ul]:my-0 [&_ul]:ml-6 [&_ul]:list-disc [&_li]:my-0 [&_li]:leading-6 [&_li>p]:inline [&_li>p]:leading-6",
         className,
       )}
     >
@@ -92,6 +92,14 @@ function renderNode(
 ): ReactNode {
   switch (node.type) {
     case "paragraph":
+      if (!hasVisibleInlineContent(node)) {
+        return (
+          <p key={key}>
+            <br />
+          </p>
+        )
+      }
+
       return (
         <p key={key}>
           {renderInlineContent(node.content ?? [], key, openMemberConversation)}
@@ -154,6 +162,24 @@ function renderInlineContent(
   return nodes.map((node, index) =>
     renderNode(node, `${path}-inline-${index}`, openMemberConversation),
   )
+}
+
+function hasVisibleInlineContent(node: JSONContent): boolean {
+  return (node.content ?? []).some((child) => {
+    if (child.type === "text") {
+      return Boolean(child.text)
+    }
+
+    if (child.type === "hardBreak") {
+      return true
+    }
+
+    if (child.type?.endsWith("-mention")) {
+      return true
+    }
+
+    return hasVisibleInlineContent(child)
+  })
 }
 
 function renderTextNode(
@@ -350,7 +376,9 @@ function serializeNodeAsHtml(node: JSONContent): string {
     case "hardBreak":
       return "<br />"
     case "paragraph":
-      return `<p>${serializeNodesAsHtml(node.content ?? [])}</p>`
+      return hasVisibleInlineContent(node)
+        ? `<p>${serializeNodesAsHtml(node.content ?? [])}</p>`
+        : "<p><br /></p>"
     case "bulletList":
       return `<ul>${serializeNodesAsHtml(node.content ?? [])}</ul>`
     case "orderedList":

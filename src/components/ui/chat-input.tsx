@@ -295,7 +295,7 @@ export function ChatInputEditor({
 				}
 				.tiptap ul,
 				.tiptap ol {
-					margin: 0.5rem 0;
+					margin: 0;
 					padding-left: 1.25rem;
 				}
 				.tiptap ul {
@@ -305,10 +305,12 @@ export function ChatInputEditor({
 					list-style: decimal;
 				}
 				.tiptap li {
-					margin: 0.125rem 0;
+					margin: 0;
+					line-height: inherit;
 				}
 				.tiptap li p {
 					display: inline;
+					line-height: inherit;
 				}
 			`}</style>
 			<EditorContent
@@ -323,7 +325,7 @@ export function ChatInputEditor({
 }
 
 const KeyboardShortcuts = Extension.create({
-	priority: 1000,
+	//priority: 1000, Not needed and cannot be used since it overrides enter for mentions etc
 	addKeyboardShortcuts() {
 		const handleEditorEnter = () =>
 			this.editor.commands.first(({ commands }) => [
