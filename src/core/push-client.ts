@@ -1,5 +1,4 @@
 import { orpcClient } from "./orpcClient"
-import type { PushSubscriptionInput } from "./schema"
 
 export const PUSH_SERVICE_WORKER_PATH = "/push-sw.js"
 
@@ -65,7 +64,7 @@ export async function cleanupPushSubscription(): Promise<void> {
 
 function serializePushSubscription(
   subscription: PushSubscription,
-): PushSubscriptionInput {
+) {
   const json = subscription.toJSON()
   const endpoint = json.endpoint ?? subscription.endpoint
   const p256dh = json.keys?.p256dh

@@ -1,7 +1,16 @@
 import { and, eq } from "drizzle-orm"
 import { z } from "zod"
-import { PushSubscriptionInputSchema, pushSubscriptionsTable } from "../schema"
+import { pushSubscriptionsTable } from "../schema"
 import { base } from "./context"
+
+const PushSubscriptionInputSchema = z.object({
+  endpoint: z.url(),
+  expirationTime: z.number().nullable().optional(),
+  keys: z.object({
+    p256dh: z.string().min(1),
+    auth: z.string().min(1),
+  }),
+})
 
 export const getVapidPublicKey = base.handler(async ({ context }) => {
   return context.vapidDetails!.publicKey
