@@ -28,7 +28,7 @@ export const sendMessage = base
   .input(
     z.object({
       conversationId: z.string().min(1),
-      parentMessageId: z.string().optional(),
+      threadRootMessageId: z.string().optional(),
       content: z.string(),
       tiptapJson: z.string().nullable().optional(),
       attachments: z.array(attachmentFileSchema),

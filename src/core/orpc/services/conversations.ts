@@ -1,9 +1,9 @@
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm"
+import { alias } from "drizzle-orm/sqlite-core"
 import { generateId } from "../../generateId"
 import type { EnrichedConversation } from "../../models"
 import {
   conversationMembersTable,
-  conversationUserStateTable,
   conversationsTable,
   messageAttachmentsTable,
   messagesTable,
@@ -31,7 +31,7 @@ function buildConversationLastRootMessageSubquery(context: OrpcContext) {
       ),
     })
     .from(messagesTable)
-    .where(isNull(messagesTable.parentMessageId))
+    .where(isNull(messagesTable.threadRootMessageId))
     .groupBy(messagesTable.conversationId)
     .as("conversation_last_root_message")
 }
@@ -74,6 +74,10 @@ export async function getConversationsForUser(
 ): Promise<EnrichedConversation[]> {
   const conversationLastMessageSubquery =
     buildConversationLastRootMessageSubquery(context)
+  const currentUserConversationMembershipTable = alias(
+    conversationMembersTable,
+    "current_user_conversation_membership",
+  )
   const conversationMembersSubquery = context.db
     .select({
       conversationId: conversationMembersTable.conversationId,
@@ -94,7 +98,7 @@ export async function getConversationsForUser(
       name: conversationsTable.name,
       createdAt: conversationsTable.createdAt,
       memberIds: conversationMembersSubquery.memberIds,
-      lastViewedAt: conversationUserStateTable.lastViewedAt,
+      lastViewedAt: currentUserConversationMembershipTable.lastViewedAt,
       lastMessageAt: conversationLastMessageSubquery.lastMessageAt,
     })
     .from(conversationsTable)
@@ -103,10 +107,13 @@ export async function getConversationsForUser(
       eq(conversationMembersSubquery.conversationId, conversationsTable.id),
     )
     .leftJoin(
-      conversationUserStateTable,
+      currentUserConversationMembershipTable,
       and(
-        eq(conversationUserStateTable.conversationId, conversationsTable.id),
-        eq(conversationUserStateTable.userId, context.userId),
+        eq(
+          currentUserConversationMembershipTable.conversationId,
+          conversationsTable.id,
+        ),
+        eq(currentUserConversationMembershipTable.userId, context.userId),
       ),
     )
     .leftJoin(
@@ -143,13 +150,13 @@ export async function getConversationByIdForUser(
 
   const userState = await context.db
     .select({
-      lastViewedAt: conversationUserStateTable.lastViewedAt,
+      lastViewedAt: conversationMembersTable.lastViewedAt,
     })
-    .from(conversationUserStateTable)
+    .from(conversationMembersTable)
     .where(
       and(
-        eq(conversationUserStateTable.conversationId, conversationId),
-        eq(conversationUserStateTable.userId, context.userId),
+        eq(conversationMembersTable.conversationId, conversationId),
+        eq(conversationMembersTable.userId, context.userId),
       ),
     )
     .limit(1)
@@ -164,7 +171,7 @@ export async function getConversationByIdForUser(
     .where(
       and(
         eq(messagesTable.conversationId, conversationId),
-        isNull(messagesTable.parentMessageId),
+        isNull(messagesTable.threadRootMessageId),
       ),
     )
     .limit(1)
@@ -225,8 +232,8 @@ export async function deleteConversation(
     .delete(messagesTable)
     .where(eq(messagesTable.conversationId, conversationId))
   await context.db
-    .delete(conversationUserStateTable)
-    .where(eq(conversationUserStateTable.conversationId, conversationId))
+    .delete(conversationMembersTable)
+    .where(eq(conversationMembersTable.conversationId, conversationId))
   await context.db
     .delete(conversationsTable)
     .where(eq(conversationsTable.id, conversationId))
@@ -251,7 +258,7 @@ export async function getLatestRootMessageCreatedAt(
     .where(
       and(
         eq(messagesTable.conversationId, conversationId),
-        isNull(messagesTable.parentMessageId),
+        isNull(messagesTable.threadRootMessageId),
       ),
     )
     .limit(1)
@@ -267,13 +274,13 @@ export async function markConversationAsViewed(
 ): Promise<void> {
   const existingState = await context.db
     .select({
-      lastViewedAt: conversationUserStateTable.lastViewedAt,
+      lastViewedAt: conversationMembersTable.lastViewedAt,
     })
-    .from(conversationUserStateTable)
+    .from(conversationMembersTable)
     .where(
       and(
-        eq(conversationUserStateTable.conversationId, conversationId),
-        eq(conversationUserStateTable.userId, userId),
+        eq(conversationMembersTable.conversationId, conversationId),
+        eq(conversationMembersTable.userId, userId),
       ),
     )
     .limit(1)
@@ -288,23 +295,24 @@ export async function markConversationAsViewed(
 
   const nextLastViewedAt = new Date().toISOString()
 
-  if (previousLastViewedAt) {
+  if (existingState[0]) {
     await context.db
-      .update(conversationUserStateTable)
+      .update(conversationMembersTable)
       .set({ lastViewedAt: nextLastViewedAt })
       .where(
         and(
-          eq(conversationUserStateTable.conversationId, conversationId),
-          eq(conversationUserStateTable.userId, userId),
+          eq(conversationMembersTable.conversationId, conversationId),
+          eq(conversationMembersTable.userId, userId),
         ),
       )
     return
   }
 
-  await context.db.insert(conversationUserStateTable).values({
+  await context.db.insert(conversationMembersTable).values({
     id: `${userId}_${conversationId}`,
     userId,
     conversationId,
+    joinedAt: nextLastViewedAt,
     lastViewedAt: nextLastViewedAt,
   })
 }
@@ -433,6 +441,7 @@ export async function createDirectConversation(
           userId,
           conversationId: conversation.id,
           joinedAt: createdAt,
+          lastViewedAt: null,
         })),
       )
       .run()

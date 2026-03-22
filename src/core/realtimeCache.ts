@@ -17,7 +17,7 @@ export function applyMessageCreatedToCache(
   message: EnrichedMessage,
   options?: { markViewed?: boolean },
 ): void {
-  if (message.parentMessageId) {
+  if (message.threadRootMessageId) {
     upsertMessageInThreadCache(queryClient, message)
     void queryClient.invalidateQueries({
       queryKey: conversationMessagesQueryKey(message.conversationId),
@@ -70,12 +70,12 @@ function upsertMessageInThreadCache(
   queryClient: QueryClient,
   message: EnrichedMessage,
 ): void {
-  if (!message.parentMessageId) {
+  if (!message.threadRootMessageId) {
     return
   }
 
   queryClient.setQueryData<EnrichedMessage[]>(
-    messagesQueryKey(message.conversationId, message.parentMessageId),
+    messagesQueryKey(message.conversationId, message.threadRootMessageId),
     (existing) => {
       if (!existing) {
         return existing
@@ -94,7 +94,7 @@ function updateConversationMetadata(
   message: EnrichedMessage,
   markViewed: boolean,
 ): void {
-  if (message.parentMessageId) {
+  if (message.threadRootMessageId) {
     return
   }
 

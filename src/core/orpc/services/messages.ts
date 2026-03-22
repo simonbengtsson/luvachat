@@ -15,6 +15,7 @@ import {
   messageAttachmentsTable,
   messageMentionsTable,
   messagesTable,
+  threadMembersTable,
   type Message,
   type MessageAttachment,
   type MessageMention,
@@ -227,6 +228,49 @@ function extractMessageMentions(
   }))
 }
 
+async function markThreadAsViewed(
+  context: OrpcContext,
+  conversationId: string,
+  threadRootMessageId: string,
+  userId: string,
+  mostRecentMessageCreatedAt: string,
+): Promise<void> {
+  const existingState = await context.db
+    .select({
+      lastViewedAt: threadMembersTable.lastViewedAt,
+    })
+    .from(threadMembersTable)
+    .where(eq(threadMembersTable.id, `${userId}_${threadRootMessageId}`))
+    .limit(1)
+
+  const previousLastViewedAt = existingState[0]?.lastViewedAt
+  if (
+    previousLastViewedAt &&
+    previousLastViewedAt > mostRecentMessageCreatedAt
+  ) {
+    return
+  }
+
+  const nextLastViewedAt = new Date().toISOString()
+
+  if (existingState[0]) {
+    await context.db
+      .update(threadMembersTable)
+      .set({ lastViewedAt: nextLastViewedAt })
+      .where(eq(threadMembersTable.id, `${userId}_${threadRootMessageId}`))
+    return
+  }
+
+  await context.db.insert(threadMembersTable).values({
+    id: `${userId}_${threadRootMessageId}`,
+    userId,
+    conversationId,
+    threadRootMessageId,
+    joinedAt: nextLastViewedAt,
+    lastViewedAt: nextLastViewedAt,
+  })
+}
+
 export async function getMessagesForConversation(
   context: OrpcContext,
   input: {
@@ -243,15 +287,15 @@ export async function getMessagesForConversation(
 
   const threadSummarySubquery = context.db
     .select({
-      parentMessageId: messagesTable.parentMessageId,
+      threadRootMessageId: messagesTable.threadRootMessageId,
       threadReplyCount: sql<number>`count(*)`.as("thread_reply_count"),
       threadLastReplyAt: sql<string>`max(${messagesTable.createdAt})`.as(
         "thread_last_reply_at",
       ),
     })
     .from(messagesTable)
-    .where(isNotNull(messagesTable.parentMessageId))
-    .groupBy(messagesTable.parentMessageId)
+    .where(isNotNull(messagesTable.threadRootMessageId))
+    .groupBy(messagesTable.threadRootMessageId)
     .as("message_thread_summary")
 
   let nextCursor: string | undefined
@@ -262,7 +306,7 @@ export async function getMessagesForConversation(
       .select({
         id: messagesTable.id,
         conversationId: messagesTable.conversationId,
-        parentMessageId: messagesTable.parentMessageId,
+        threadRootMessageId: messagesTable.threadRootMessageId,
         content: messagesTable.content,
         tiptapJson: messagesTable.tiptapJson,
         createdAt: messagesTable.createdAt,
@@ -276,14 +320,14 @@ export async function getMessagesForConversation(
       .from(messagesTable)
       .leftJoin(
         threadSummarySubquery,
-        eq(threadSummarySubquery.parentMessageId, messagesTable.id),
+        eq(threadSummarySubquery.threadRootMessageId, messagesTable.id),
       )
       .where(
         and(
           eq(messagesTable.conversationId, input.conversationId),
           or(
             eq(messagesTable.id, input.threadMessageId),
-            eq(messagesTable.parentMessageId, input.threadMessageId),
+            eq(messagesTable.threadRootMessageId, input.threadMessageId),
           ),
         ),
       )
@@ -293,7 +337,7 @@ export async function getMessagesForConversation(
       .select({
         id: messagesTable.id,
         conversationId: messagesTable.conversationId,
-        parentMessageId: messagesTable.parentMessageId,
+        threadRootMessageId: messagesTable.threadRootMessageId,
         content: messagesTable.content,
         tiptapJson: messagesTable.tiptapJson,
         createdAt: messagesTable.createdAt,
@@ -307,12 +351,12 @@ export async function getMessagesForConversation(
       .from(messagesTable)
       .leftJoin(
         threadSummarySubquery,
-        eq(threadSummarySubquery.parentMessageId, messagesTable.id),
+        eq(threadSummarySubquery.threadRootMessageId, messagesTable.id),
       )
       .where(
         and(
           eq(messagesTable.conversationId, input.conversationId),
-          isNull(messagesTable.parentMessageId),
+          isNull(messagesTable.threadRootMessageId),
           input.cursor ? lt(messagesTable.createdAt, input.cursor) : undefined,
         ),
       )
@@ -330,12 +374,22 @@ export async function getMessagesForConversation(
     : messageRecords[0]?.createdAt
 
   if (mostRecentMessageCreatedAt) {
-    await markConversationAsViewed(
-      context,
-      input.conversationId,
-      context.userId,
-      mostRecentMessageCreatedAt,
-    )
+    if (input.threadMessageId) {
+      await markThreadAsViewed(
+        context,
+        input.conversationId,
+        input.threadMessageId,
+        context.userId,
+        mostRecentMessageCreatedAt,
+      )
+    } else {
+      await markConversationAsViewed(
+        context,
+        input.conversationId,
+        context.userId,
+        mostRecentMessageCreatedAt,
+      )
+    }
   }
 
   const messages = await enrichMessages(context, messageRecords)
@@ -350,7 +404,7 @@ export async function createMessageInConversation(
   context: OrpcContext,
   input: {
     conversationId: string
-    parentMessageId?: string
+    threadRootMessageId?: string
     content: string
     tiptapJson?: string | null
     attachments: File[]
@@ -376,34 +430,34 @@ export async function createMessageInConversation(
   const normalizedTiptapJson = normalizeTiptapJson(
     trimmedContent ? input.tiptapJson : null,
   )
-  let parentMessageId: string | null = null
+  let threadRootMessageId: string | null = null
 
-  if (input.parentMessageId) {
-    const parentMessage = await context.db
+  if (input.threadRootMessageId) {
+    const threadRootMessage = await context.db
       .select({
         id: messagesTable.id,
         conversationId: messagesTable.conversationId,
-        parentMessageId: messagesTable.parentMessageId,
+        threadRootMessageId: messagesTable.threadRootMessageId,
       })
       .from(messagesTable)
-      .where(eq(messagesTable.id, input.parentMessageId))
+      .where(eq(messagesTable.id, input.threadRootMessageId))
       .limit(1)
 
-    if (parentMessage[0]?.conversationId !== input.conversationId) {
+    if (threadRootMessage[0]?.conversationId !== input.conversationId) {
       throw new Error("Thread message is invalid")
     }
 
-    if (parentMessage[0].parentMessageId) {
+    if (threadRootMessage[0].threadRootMessageId) {
       throw new Error("Nested threads are not allowed")
     }
 
-    parentMessageId = parentMessage[0].id
+    threadRootMessageId = threadRootMessage[0].id
   }
 
   const messageRecord: Message = {
     id: crypto.randomUUID(),
     conversationId: input.conversationId,
-    parentMessageId,
+    threadRootMessageId,
     content: trimmedContent ? input.content : "",
     tiptapJson: normalizedTiptapJson,
     userId: context.userId,
@@ -474,6 +528,15 @@ export async function createMessageInConversation(
     context.userId,
     createdAt,
   )
+  if (threadRootMessageId) {
+    await markThreadAsViewed(
+      context,
+      input.conversationId,
+      threadRootMessageId,
+      context.userId,
+      createdAt,
+    )
+  }
 
   broadcastEvent(context, {
     type: "messageCreated",

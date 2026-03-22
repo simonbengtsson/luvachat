@@ -16,7 +16,7 @@ async function listThreadParticipantUserIds(
   context: OrpcContext,
   message: EnrichedMessage,
 ): Promise<string[]> {
-  const threadMessageId = message.parentMessageId ?? message.id
+  const threadMessageId = message.threadRootMessageId ?? message.id
   const participants = await context.db
     .select({
       userId: messagesTable.userId,
@@ -27,7 +27,7 @@ async function listThreadParticipantUserIds(
         eq(messagesTable.conversationId, message.conversationId),
         or(
           eq(messagesTable.id, threadMessageId),
-          eq(messagesTable.parentMessageId, threadMessageId),
+          eq(messagesTable.threadRootMessageId, threadMessageId),
         ),
         sql`${messagesTable.userId} <> ${message.userId}`,
       ),

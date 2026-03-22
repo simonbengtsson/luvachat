@@ -340,7 +340,7 @@ function ConversationView({
     }) =>
       orpcClient.sendMessage({
         conversationId,
-        parentMessageId: threadMessageId,
+        threadRootMessageId: threadMessageId,
         content,
         tiptapJson,
         attachments,
@@ -834,7 +834,7 @@ function ConversationView({
                       <ChatMessageTimestamp createdAt={message.createdAt} />
                     </ChatMessageHeader>
                     <ChatMessageActions>
-                      {!message.parentMessageId ? (
+                      {!message.threadRootMessageId ? (
                         <ChatMessageAction
                           label="Open thread"
                           onClick={() => openThread(message.id)}
@@ -935,7 +935,7 @@ function ConversationView({
                         ) : null}
                       </ChatMessageContent>
                     ) : null}
-                    {!message.parentMessageId &&
+                    {!message.threadRootMessageId &&
                     message.threadReplyCount > 0 ? (
                       <ChatMessageFooter className="px-2 pt-0">
                         <ChatMessageThread
