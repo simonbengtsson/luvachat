@@ -1,6 +1,6 @@
 import { queryOptions, useQuery, type QueryClient } from "@tanstack/react-query"
+import type { ConversationWithUserState } from "./models"
 import { orpcClient } from "./orpcClient"
-import type { ConversationWithUserState } from "./schema"
 
 export const conversationsQueryKey = ["conversations"] as const
 export const conversationQueryKey = (conversationId: string) =>

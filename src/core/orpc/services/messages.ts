@@ -1,12 +1,23 @@
-import { and, asc, desc, eq, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-orm"
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  lt,
+  or,
+  sql,
+} from "drizzle-orm"
+import type { EnrichedMessage } from "../../models"
 import {
   messageAttachmentsTable,
   messageMentionsTable,
   messagesTable,
-  type EnrichedMessage,
+  type Message,
   type MessageAttachment,
   type MessageMention,
-  type MessageRecord,
 } from "../../schema"
 import type { OrpcContext } from "../context"
 import { broadcastEvent } from "../realtime"
@@ -20,7 +31,7 @@ type AttachmentUploadInput = {
   bytes: ArrayBuffer
 }
 
-type MessageListRecord = MessageRecord & {
+type MessageListRecord = Message & {
   threadReplyCount: number
   threadLastReplyAt: string | null
 }
@@ -389,7 +400,7 @@ export async function createMessageInConversation(
     parentMessageId = parentMessage[0].id
   }
 
-  const messageRecord: MessageRecord = {
+  const messageRecord: Message = {
     id: crypto.randomUUID(),
     conversationId: input.conversationId,
     parentMessageId,

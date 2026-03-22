@@ -51,6 +51,7 @@ import {
 } from "@/core/conversationsQuery"
 import { getConversationDisplayName } from "@/core/conversationDisplay"
 import { getSession as getLuvaSession, type Member } from "@/core/luvabase"
+import type { ConversationWithUserState } from "@/core/models"
 import { useWorkspaceMembers } from "@/core/members"
 import {
   conversationMessagesQueryKey,
@@ -59,7 +60,6 @@ import {
 } from "@/core/messagesQuery"
 import { orpcClient } from "@/core/orpcClient"
 import { applyMessageCreatedToCache } from "@/core/realtimeCache"
-import type { ConversationWithUserState } from "@/core/schema"
 import { getScrollRestorationKey } from "@/core/scrollRestorationKey"
 import {
   useInfiniteQuery,

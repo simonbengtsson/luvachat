@@ -1,4 +1,5 @@
 import { and, asc, eq, inArray, or, sql } from "drizzle-orm"
+import type { EnrichedMessage } from "../../models"
 import {
   buildPushNotificationPayload,
   createPushRequestDetails,
@@ -7,7 +8,6 @@ import {
   conversationsTable,
   messagesTable,
   pushSubscriptionsTable,
-  type EnrichedMessage,
   type PushSubscriptionRecord,
 } from "../../schema"
 import type { OrpcContext } from "../context"

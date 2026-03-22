@@ -1,5 +1,6 @@
 import webpush from "web-push"
-import type { EnrichedMessage, PushSubscriptionRecord } from "./schema"
+import type { EnrichedMessage } from "./models"
+import type { PushSubscriptionRecord } from "./schema"
 
 const NOTIFICATION_BODY_MAX_LENGTH = 140
 

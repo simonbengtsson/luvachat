@@ -5,24 +5,16 @@ import {
   type AnySQLiteColumn,
 } from "drizzle-orm/sqlite-core"
 
-export const conversationsTable = sqliteTable("conversations", {
-  id: text("id").primaryKey(),
-  type: text("type").notNull(), // channel | direct | group
-  name: text("name"),
-  createdAt: text("created_at").notNull(),
-})
-export type Conversation = typeof conversationsTable.$inferSelect
+// Database schema
+// - messages
+// - message_attachments
+// - message_mentions
+// - conversations
+// - conversation_members
+// - conversation_user_state
+// - push_subscriptions
 
-export const conversationMembersTable = sqliteTable("conversation_members", {
-  id: text("id").primaryKey(), // userId_conversationId
-  userId: text("user_id").notNull(),
-  conversationId: text("conversation_id")
-    .notNull()
-    .references(() => conversationsTable.id),
-  joinedAt: text("joined_at").notNull(),
-})
-export type ConversationMember = typeof conversationMembersTable.$inferSelect
-
+export type Message = typeof messagesTable.$inferSelect
 export const messagesTable = sqliteTable("messages", {
   id: text("id").primaryKey(),
   conversationId: text("conversation_id")
@@ -40,6 +32,7 @@ export const messagesTable = sqliteTable("messages", {
   userId: text("user_id").notNull(),
 })
 
+export type MessageAttachment = typeof messageAttachmentsTable.$inferSelect
 export const messageAttachmentsTable = sqliteTable("message_attachments", {
   id: text("id").primaryKey(),
   messageId: text("message_id")
@@ -52,6 +45,26 @@ export const messageAttachmentsTable = sqliteTable("message_attachments", {
   sizeBytes: integer("size_bytes").notNull(),
   createdAt: text("created_at").notNull(),
 })
+
+export type Conversation = typeof conversationsTable.$inferSelect
+export const conversationsTable = sqliteTable("conversations", {
+  id: text("id").primaryKey(),
+  type: text("type").notNull(), // channel | direct | group
+  name: text("name"),
+  createdAt: text("created_at").notNull(),
+})
+
+export type ConversationMember = typeof conversationMembersTable.$inferSelect
+export const conversationMembersTable = sqliteTable("conversation_members", {
+  id: text("id").primaryKey(), // userId_conversationId
+  userId: text("user_id").notNull(),
+  conversationId: text("conversation_id")
+    .notNull()
+    .references(() => conversationsTable.id),
+  joinedAt: text("joined_at").notNull(),
+})
+
+export type MessageMention = typeof messageMentionsTable.$inferSelect
 export const messageMentionsTable = sqliteTable("message_mentions", {
   id: text("id").primaryKey(),
   messageId: text("message_id")
@@ -61,19 +74,8 @@ export const messageMentionsTable = sqliteTable("message_mentions", {
   mentionedUserId: text("mentioned_user_id"),
   createdAt: text("created_at").notNull(),
 })
-export type MessageRecord = typeof messagesTable.$inferSelect
 
-export type MessageAttachment = typeof messageAttachmentsTable.$inferSelect
-
-export type MessageMention = typeof messageMentionsTable.$inferSelect
-
-export type EnrichedMessage = MessageRecord & {
-  attachments: MessageAttachment[]
-  mentions: MessageMention[]
-  threadReplyCount: number
-  threadLastReplyAt: string | null
-}
-
+export type PushSubscriptionRecord = typeof pushSubscriptionsTable.$inferSelect
 export const pushSubscriptionsTable = sqliteTable("push_subscriptions", {
   endpoint: text("endpoint").primaryKey(),
   userId: text("user_id").notNull(),
@@ -82,8 +84,9 @@ export const pushSubscriptionsTable = sqliteTable("push_subscriptions", {
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 })
-export type PushSubscriptionRecord = typeof pushSubscriptionsTable.$inferSelect
 
+export type ConversationUserState =
+  typeof conversationUserStateTable.$inferSelect
 export const conversationUserStateTable = sqliteTable(
   "conversation_user_state",
   {
@@ -95,10 +98,3 @@ export const conversationUserStateTable = sqliteTable(
     lastViewedAt: text("last_viewed_at").notNull(),
   },
 )
-export type ChannelUserState = typeof conversationUserStateTable.$inferSelect
-
-export type ConversationWithUserState = Conversation & {
-  memberIds: string[]
-  lastViewedAt: string | null
-  lastMessageAt: string | null
-}

@@ -14,10 +14,10 @@ import {
   conversationsQueryKey,
 } from "@/core/conversationsQuery"
 import type { Member } from "@/core/luvabase"
+import type { ConversationWithUserState } from "@/core/models"
 import { useWorkspaceMembers } from "@/core/members"
 import { orpcClient } from "@/core/orpcClient"
 import { applyMessageCreatedToCache } from "@/core/realtimeCache"
-import type { ConversationWithUserState } from "@/core/schema"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import type { JSONContent } from "@tiptap/react"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"

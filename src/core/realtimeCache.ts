@@ -8,7 +8,7 @@ import {
   messagesQueryKey,
   type MessagesPage,
 } from "./messagesQuery"
-import type { ConversationWithUserState, EnrichedMessage } from "./schema"
+import type { ConversationWithUserState, EnrichedMessage } from "./models"
 
 type MessagesInfiniteData = InfiniteData<MessagesPage, string | undefined>
 

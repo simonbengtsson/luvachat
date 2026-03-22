@@ -25,6 +25,7 @@ import {
   getSession as getLuvaSession,
   shouldUseLuvabase,
 } from "@/core/luvabase"
+import type { ConversationWithUserState } from "@/core/models"
 import { useWorkspaceMembers } from "@/core/members"
 import { orpcClient } from "@/core/orpcClient"
 import {
@@ -32,7 +33,6 @@ import {
   supportsPushNotifications,
   syncPushSubscription,
 } from "@/core/push-client"
-import type { ConversationWithUserState } from "@/core/schema"
 import { cn } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link, useMatchRoute, useNavigate } from "@tanstack/react-router"

@@ -1,6 +1,6 @@
 import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query"
+import type { EnrichedMessage } from "./models"
 import { orpcClient } from "./orpcClient"
-import type { EnrichedMessage } from "./schema"
 
 export const conversationMessagesQueryKey = (conversationId: string) =>
   ["messages", conversationId] as const

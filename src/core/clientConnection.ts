@@ -2,7 +2,7 @@ import { conversationsQueryKey } from "./conversationsQuery"
 import { generateShortId } from "./generateId"
 import { queryClient } from "./queryClient"
 import { applyMessageCreatedToCache } from "./realtimeCache"
-import { ServerEventSchema, type ClientEvent } from "./sync-events"
+import { ServerEventSchema } from "./sync-events"
 
 export type SyncConnectionStatus =
   | "disconnected"
@@ -80,7 +80,6 @@ function connectSocket(): void {
     console.log("[sync] websocket connected", { clientId })
     hasConnectedOnce = true
     setSyncConnectionStatus("connected")
-    startPingInterval(ws, clientId)
   })
 
   ws.addEventListener("message", (messageEvent) => {
@@ -170,26 +169,6 @@ function getActiveConversationId(): string | null {
   const match = window.location.pathname.match(/^\/c\/([^/]+)$/)
   const activeConversationId = match?.[1]
   return activeConversationId ? decodeURIComponent(activeConversationId) : null
-}
-
-function startPingInterval(ws: WebSocket, clientId: string): void {
-  clearPingInterval()
-
-  pingIntervalId = window.setInterval(() => {
-    if (ws.readyState !== WebSocket.OPEN) {
-      return
-    }
-
-    // sendEvent(ws, clientId, {
-    //   type: "ping",
-    //   timestamp: new Date().toISOString(),
-    // })
-  }, 60_000)
-}
-
-function sendEvent(ws: WebSocket, clientId: string, event: ClientEvent): void {
-  console.log("[sync] client sending event", { clientId, event })
-  ws.send(JSON.stringify(event))
 }
 
 function clearPingInterval(): void {

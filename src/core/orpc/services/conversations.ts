@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm"
 import { generateId } from "../../generateId"
+import type { ConversationWithUserState } from "../../models"
 import {
   conversationMembersTable,
   conversationUserStateTable,
@@ -7,7 +8,6 @@ import {
   messageAttachmentsTable,
   messagesTable,
   type Conversation,
-  type ConversationWithUserState,
 } from "../../schema"
 import type { OrpcContext } from "../context"
 import { broadcastWorkspaceUpdated } from "../realtime"

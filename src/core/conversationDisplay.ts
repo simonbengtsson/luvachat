@@ -1,5 +1,5 @@
 import type { Member } from "./luvabase"
-import type { ConversationWithUserState } from "./schema"
+import type { ConversationWithUserState } from "./models"
 
 type DisplayConversation = Pick<
   ConversationWithUserState,
