@@ -81,7 +81,9 @@ function RouteComponent() {
   const composerRef = useRef<AppChatInputHandle>(null)
   const [query, setQuery] = useState("")
   const [isOpen, setIsOpen] = useState(false)
-  const selectedMemberIds = parseMemberIds(search.members)
+  const [selectedMemberIds, setSelectedMemberIds] = useState(() =>
+    parseMemberIds(search.members),
+  )
   const syncConnectionStatus = useSyncExternalStore(
     subscribeToSyncConnectionStatus,
     getSyncConnectionStatus,
@@ -105,6 +107,10 @@ function RouteComponent() {
     }
   }, [])
 
+  useEffect(() => {
+    setSelectedMemberIds(parseMemberIds(search.members))
+  }, [search.members])
+
   const selectedMembers = selectedMemberIds.map((memberId) => ({
     id: memberId,
     member: membersById.get(memberId) ?? null,
@@ -117,27 +123,29 @@ function RouteComponent() {
 
   const sendDirectMessageMutation = useMutation({
     mutationFn: ({
+      memberIds,
       content,
       tiptapJson,
       attachments,
       conversationName,
     }: {
+      memberIds: string[]
       content: string
       tiptapJson: string | null
       attachments: File[]
       conversationName?: string
     }) =>
       orpcClient.sendDirectMessage({
-        memberIds: selectedMemberIds,
+        memberIds,
         content,
         tiptapJson,
         attachments,
         conversationName,
       }),
-    onSuccess: async ({ conversation, message }) => {
+    onSuccess: async ({ conversation, message }, { memberIds }) => {
       const conversationWithUserState: EnrichedConversation = {
         ...conversation,
-        memberIds: selectedMemberIds,
+        memberIds,
         lastViewedAt: message.createdAt,
         lastMessageAt: message.createdAt,
       }
@@ -168,30 +176,20 @@ function RouteComponent() {
     },
   })
 
-  function updateSelectedMembers(nextMemberIds: string[]) {
-    const nextSearch = nextMemberIds.join(",")
-
-    navigate({
-      to: "/new",
-      search: nextSearch ? { members: nextSearch } : {},
-      replace: true,
-    })
-  }
-
   function handleAddMember(memberId: string) {
     if (selectedMemberIds.includes(memberId)) {
       return
     }
 
-    updateSelectedMembers([...selectedMemberIds, memberId])
+    setSelectedMemberIds((currentMemberIds) => [...currentMemberIds, memberId])
     setQuery("")
     setIsOpen(true)
     inputRef.current?.focus()
   }
 
   function handleRemoveMember(memberId: string) {
-    updateSelectedMembers(
-      selectedMemberIds.filter(
+    setSelectedMemberIds((currentMemberIds) =>
+      currentMemberIds.filter(
         (currentMemberId) => currentMemberId !== memberId,
       ),
     )
@@ -203,10 +201,12 @@ function RouteComponent() {
     attachments: File[],
     tiptapDocument: JSONContent,
   ) {
+    const memberIds = selectedMemberIds
+
     if (
       !isSyncConnected ||
       sendDirectMessageMutation.isPending ||
-      selectedMemberIds.length === 0 ||
+      memberIds.length === 0 ||
       (!content.trim() && attachments.length === 0)
     ) {
       return
@@ -218,6 +218,7 @@ function RouteComponent() {
       .join(", ")
 
     sendDirectMessageMutation.mutate({
+      memberIds,
       content,
       tiptapJson: content.trim() ? JSON.stringify(tiptapDocument) : null,
       attachments,
