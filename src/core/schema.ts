@@ -1,7 +1,9 @@
 import {
+  index,
   integer,
   sqliteTable,
   text,
+  uniqueIndex,
   type AnySQLiteColumn,
 } from "drizzle-orm/sqlite-core"
 
@@ -9,6 +11,7 @@ import {
 // - messages
 // - message_attachments
 // - message_mentions
+// - message_reactions
 // - conversations
 // - conversation_members
 // - conversation_user_state
@@ -74,6 +77,28 @@ export const messageMentionsTable = sqliteTable("message_mentions", {
   mentionedUserId: text("mentioned_user_id"),
   createdAt: text("created_at").notNull(),
 })
+
+export type MessageReaction = typeof messageReactionsTable.$inferSelect
+export const messageReactionsTable = sqliteTable(
+  "message_reactions",
+  {
+    id: text("id").primaryKey(),
+    messageId: text("message_id")
+      .notNull()
+      .references(() => messagesTable.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull(),
+    emoji: text("emoji").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    index("message_reactions_message_id_idx").on(table.messageId),
+    uniqueIndex("message_reactions_message_user_emoji_idx").on(
+      table.messageId,
+      table.userId,
+      table.emoji,
+    ),
+  ],
+)
 
 export type PushSubscriptionRecord = typeof pushSubscriptionsTable.$inferSelect
 export const pushSubscriptionsTable = sqliteTable("push_subscriptions", {
