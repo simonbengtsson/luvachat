@@ -1,5 +1,5 @@
 import { queryOptions, useQuery, type QueryClient } from "@tanstack/react-query"
-import type { ConversationWithUserState } from "./models"
+import type { EnrichedConversation } from "./models"
 import { orpcClient } from "./orpcClient"
 
 export const conversationsQueryKey = ["conversations"] as const
@@ -31,7 +31,7 @@ export function conversationQueryOptions(conversationId: string) {
 
 export function seedConversationQueryCache(
   queryClient: QueryClient,
-  conversations: ConversationWithUserState[],
+  conversations: EnrichedConversation[],
 ) {
   for (const conversation of conversations) {
     queryClient.setQueryData(

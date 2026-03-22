@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm"
 import { generateId } from "../../generateId"
-import type { ConversationWithUserState } from "../../models"
+import type { EnrichedConversation } from "../../models"
 import {
   conversationMembersTable,
   conversationUserStateTable,
@@ -71,7 +71,7 @@ async function deleteBucketObjects(
 
 export async function getConversationsForUser(
   context: OrpcContext,
-): Promise<ConversationWithUserState[]> {
+): Promise<EnrichedConversation[]> {
   const conversationLastMessageSubquery =
     buildConversationLastRootMessageSubquery(context)
   const conversationMembersSubquery = context.db
@@ -124,7 +124,7 @@ export async function getConversationsForUser(
 export async function getConversationByIdForUser(
   context: OrpcContext,
   conversationId: string,
-): Promise<ConversationWithUserState | null> {
+): Promise<EnrichedConversation | null> {
   const conversation = await context.db
     .select({
       id: conversationsTable.id,
@@ -215,7 +215,10 @@ export async function deleteConversation(
       storageKey: messageAttachmentsTable.storageKey,
     })
     .from(messageAttachmentsTable)
-    .innerJoin(messagesTable, eq(messageAttachmentsTable.messageId, messagesTable.id))
+    .innerJoin(
+      messagesTable,
+      eq(messageAttachmentsTable.messageId, messagesTable.id),
+    )
     .where(eq(messagesTable.conversationId, conversationId))
 
   await context.db

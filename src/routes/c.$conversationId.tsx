@@ -3,6 +3,7 @@ import {
   type AppChatInputHandle,
 } from "@/components/app-chat-input"
 import { SiteHeader } from "@/components/site-header"
+import { Button } from "@/components/ui/button"
 import {
   ChatMessage,
   ChatMessageAction,
@@ -28,7 +29,6 @@ import {
   ChatMessageAreaContent,
   ChatMessageAreaScrollButton,
 } from "@/components/ui/chat-message-area"
-import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,20 +44,20 @@ import {
   getSyncConnectionStatus,
   subscribeToSyncConnectionStatus,
 } from "@/core/clientConnection"
+import { getConversationDisplayName } from "@/core/conversationDisplay"
 import {
   conversationQueryKey,
   conversationQueryOptions,
   conversationsQueryKey,
 } from "@/core/conversationsQuery"
-import { getConversationDisplayName } from "@/core/conversationDisplay"
 import { getSession as getLuvaSession, type Member } from "@/core/luvabase"
-import type { ConversationWithUserState } from "@/core/models"
 import { useWorkspaceMembers } from "@/core/members"
 import {
   conversationMessagesQueryKey,
   messagesInfiniteQueryOptions,
   threadMessagesQueryOptions,
 } from "@/core/messagesQuery"
+import type { EnrichedConversation } from "@/core/models"
 import { orpcClient } from "@/core/orpcClient"
 import { applyMessageCreatedToCache } from "@/core/realtimeCache"
 import { getScrollRestorationKey } from "@/core/scrollRestorationKey"
@@ -67,7 +67,6 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query"
-import type { JSONContent } from "@tiptap/react"
 import {
   createFileRoute,
   useElementScrollRestoration,
@@ -75,6 +74,7 @@ import {
 } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
+import type { JSONContent } from "@tiptap/react"
 import {
   ArrowLeftIcon,
   EllipsisVerticalIcon,
@@ -82,7 +82,13 @@ import {
   LoaderCircleIcon,
   MessageSquareTextIcon,
 } from "lucide-react"
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react"
 import { useStickToBottom } from "use-stick-to-bottom"
 import { z } from "zod"
 
@@ -191,8 +197,7 @@ function RouteComponent() {
   const threadMessageId = search.thread || undefined
 
   const membersById = useMemo(
-    () =>
-      new Map<string, Member>(members.map((member) => [member.id, member])),
+    () => new Map<string, Member>(members.map((member) => [member.id, member])),
     [members],
   )
   const conversation = conversationQuery.data
@@ -363,10 +368,10 @@ function ConversationView({
       await queryClient.cancelQueries({ queryKey: conversationsQueryKey })
 
       const previousConversations = queryClient.getQueryData<
-        ConversationWithUserState[]
+        EnrichedConversation[]
       >(conversationsQueryKey)
 
-      queryClient.setQueryData<ConversationWithUserState[]>(
+      queryClient.setQueryData<EnrichedConversation[]>(
         conversationsQueryKey,
         (conversations = []) =>
           conversations.filter(
@@ -385,7 +390,7 @@ function ConversationView({
       }
     },
     onSuccess: async () => {
-      queryClient.setQueryData<ConversationWithUserState[]>(
+      queryClient.setQueryData<EnrichedConversation[]>(
         conversationsQueryKey,
         (conversations = []) =>
           conversations.filter(
@@ -400,7 +405,7 @@ function ConversationView({
       })
 
       const remainingConversations =
-        queryClient.getQueryData<ConversationWithUserState[]>(
+        queryClient.getQueryData<EnrichedConversation[]>(
           conversationsQueryKey,
         ) ?? []
 
@@ -613,7 +618,9 @@ function ConversationView({
       return
     }
 
-    if (lastPersistedViewedMessageIdRef.current === latestConversationMessage.id) {
+    if (
+      lastPersistedViewedMessageIdRef.current === latestConversationMessage.id
+    ) {
       return
     }
 
@@ -637,13 +644,11 @@ function ConversationView({
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <SiteHeader
-        title={
-          `${isThreadView ? "Thread: " : ""}${
-            conversationType === "channel"
-              ? "#" + conversationTitle
-              : conversationTitle
-          }`
-        }
+        title={`${isThreadView ? "Thread: " : ""}${
+          conversationType === "channel"
+            ? "#" + conversationTitle
+            : conversationTitle
+        }`}
         actions={
           <DropdownMenu>
             <DropdownMenuTrigger
@@ -668,10 +673,7 @@ function ConversationView({
       />
 
       <div className="flex min-h-0 flex-1 flex-col">
-        <ChatMessageArea
-          instance={messageArea}
-          className="min-h-0 flex-1"
-        >
+        <ChatMessageArea instance={messageArea} className="min-h-0 flex-1">
           <ChatMessageAreaContent
             scrollRestorationId={scrollRestorationId}
             scrollStyle={{
@@ -735,65 +737,67 @@ function ConversationView({
                     {threadRootMessage.content ||
                     threadRootMessage.attachments.length > 0 ? (
                       <ChatMessageContent className="px-2 py-0">
-                        {threadRootMessage.content
-                          ? threadRootTiptapDocument
-                            ? (
-                                <TiptapContent content={threadRootTiptapDocument} />
-                              )
-                            : (
-                                <ChatMessageMarkdown
-                                  content={threadRootMessage.content}
-                                />
-                              )
-                          : null}
+                        {threadRootMessage.content ? (
+                          threadRootTiptapDocument ? (
+                            <TiptapContent content={threadRootTiptapDocument} />
+                          ) : (
+                            <ChatMessageMarkdown
+                              content={threadRootMessage.content}
+                            />
+                          )
+                        ) : null}
                         {threadRootMessage.attachments.length > 0 ? (
                           <div className="overflow-x-auto pt-1 pb-1">
                             <div className="flex gap-2">
-                              {threadRootMessage.attachments.map((attachment) => {
-                                const attachmentUrl = getAttachmentUrl(
-                                  attachment.storageKey,
-                                )
+                              {threadRootMessage.attachments.map(
+                                (attachment) => {
+                                  const attachmentUrl = getAttachmentUrl(
+                                    attachment.storageKey,
+                                  )
 
-                                if (isImageAttachment(attachment.contentType)) {
+                                  if (
+                                    isImageAttachment(attachment.contentType)
+                                  ) {
+                                    return (
+                                      <a
+                                        key={attachment.id}
+                                        href={attachmentUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="block w-36 shrink-0 overflow-hidden rounded-xl border border-border/70 bg-muted/20"
+                                      >
+                                        <img
+                                          src={attachmentUrl}
+                                          alt={attachment.fileName}
+                                          loading="lazy"
+                                          onLoad={() =>
+                                            ensureLatestMessageIsVisible()
+                                          }
+                                          className="h-28 w-full object-cover"
+                                        />
+                                      </a>
+                                    )
+                                  }
+
                                   return (
                                     <a
                                       key={attachment.id}
                                       href={attachmentUrl}
                                       target="_blank"
                                       rel="noreferrer"
-                                      className="block w-36 shrink-0 overflow-hidden rounded-xl border border-border/70 bg-muted/20"
+                                      title={attachment.fileName}
+                                      className="flex h-28 w-36 shrink-0 flex-col items-center justify-center gap-2 rounded-xl border border-border/70 bg-muted/20 p-3 text-center hover:bg-muted/40"
                                     >
-                                      <img
-                                        src={attachmentUrl}
-                                        alt={attachment.fileName}
-                                        loading="lazy"
-                                        onLoad={() =>
-                                          ensureLatestMessageIsVisible()
-                                        }
-                                        className="h-28 w-full object-cover"
-                                      />
+                                      <FileIcon className="size-5 shrink-0 text-muted-foreground" />
+                                      <span className="w-full overflow-hidden whitespace-nowrap text-[11px] leading-tight text-muted-foreground">
+                                        {truncateFileNameMiddle(
+                                          attachment.fileName,
+                                        )}
+                                      </span>
                                     </a>
                                   )
-                                }
-
-                                return (
-                                  <a
-                                    key={attachment.id}
-                                    href={attachmentUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    title={attachment.fileName}
-                                    className="flex h-28 w-36 shrink-0 flex-col items-center justify-center gap-2 rounded-xl border border-border/70 bg-muted/20 p-3 text-center hover:bg-muted/40"
-                                  >
-                                    <FileIcon className="size-5 shrink-0 text-muted-foreground" />
-                                    <span className="w-full overflow-hidden whitespace-nowrap text-[11px] leading-tight text-muted-foreground">
-                                      {truncateFileNameMiddle(
-                                        attachment.fileName,
-                                      )}
-                                    </span>
-                                  </a>
-                                )
-                              })}
+                                },
+                              )}
                             </div>
                           </div>
                         ) : null}
@@ -841,9 +845,8 @@ function ConversationView({
                       <ChatMessageActionCopy
                         onClick={async () => {
                           if (message.content && tiptapDocument) {
-                            const html = serializeTiptapContentAsHtml(
-                              tiptapDocument,
-                            )
+                            const html =
+                              serializeTiptapContentAsHtml(tiptapDocument)
 
                             if (
                               typeof ClipboardItem !== "undefined" &&
@@ -872,11 +875,13 @@ function ConversationView({
                     </ChatMessageActions>
                     {message.content || message.attachments.length > 0 ? (
                       <ChatMessageContent className="px-2 py-0">
-                        {message.content
-                          ? tiptapDocument
-                            ? <TiptapContent content={tiptapDocument} />
-                            : <ChatMessageMarkdown content={message.content} />
-                          : null}
+                        {message.content ? (
+                          tiptapDocument ? (
+                            <TiptapContent content={tiptapDocument} />
+                          ) : (
+                            <ChatMessageMarkdown content={message.content} />
+                          )
+                        ) : null}
                         {message.attachments.length > 0 ? (
                           <div className="overflow-x-auto pt-1 pb-1">
                             <div className="flex gap-2">
@@ -930,7 +935,8 @@ function ConversationView({
                         ) : null}
                       </ChatMessageContent>
                     ) : null}
-                    {!message.parentMessageId && message.threadReplyCount > 0 ? (
+                    {!message.parentMessageId &&
+                    message.threadReplyCount > 0 ? (
                       <ChatMessageFooter className="px-2 pt-0">
                         <ChatMessageThread
                           type="button"

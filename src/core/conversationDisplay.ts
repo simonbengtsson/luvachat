@@ -1,8 +1,8 @@
 import type { Member } from "./luvabase"
-import type { ConversationWithUserState } from "./models"
+import type { EnrichedConversation } from "./models"
 
 type DisplayConversation = Pick<
-  ConversationWithUserState,
+  EnrichedConversation,
   "id" | "type" | "name" | "memberIds"
 >
 

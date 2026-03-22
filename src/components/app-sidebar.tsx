@@ -25,8 +25,8 @@ import {
   getSession as getLuvaSession,
   shouldUseLuvabase,
 } from "@/core/luvabase"
-import type { ConversationWithUserState } from "@/core/models"
 import { useWorkspaceMembers } from "@/core/members"
+import type { EnrichedConversation } from "@/core/models"
 import { orpcClient } from "@/core/orpcClient"
 import {
   cleanupPushSubscription,
@@ -85,7 +85,7 @@ function getFallbackText(value?: string | null) {
   return source.slice(0, 2).toUpperCase()
 }
 
-function hasUnreadMessages(conversation: ConversationWithUserState) {
+function hasUnreadMessages(conversation: EnrichedConversation) {
   if (!conversation.lastMessageAt) {
     return false
   }
@@ -98,7 +98,7 @@ function hasUnreadMessages(conversation: ConversationWithUserState) {
 }
 
 function getDirectConversationMemberId(
-  conversation: ConversationWithUserState,
+  conversation: EnrichedConversation,
   currentUserId: string,
 ) {
   return (
@@ -108,7 +108,7 @@ function getDirectConversationMemberId(
 }
 
 function getGroupConversationName(
-  conversation: ConversationWithUserState,
+  conversation: EnrichedConversation,
   currentUserId: string,
   membersById: Map<string, Member>,
 ) {
@@ -121,7 +121,7 @@ function SidebarConversationItem({
   icon: Icon,
   matchRoute,
 }: {
-  conversation: ConversationWithUserState
+  conversation: EnrichedConversation
   label?: string
   icon: LucideIcon
   matchRoute: ReturnType<typeof useMatchRoute>
@@ -245,16 +245,16 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
         return {
           optimisticConversationId: null as string | null,
           previousConversations: queryClient.getQueryData<
-            ConversationWithUserState[]
+            EnrichedConversation[]
           >(conversationsQueryKey),
         }
       }
 
       await queryClient.cancelQueries({ queryKey: conversationsQueryKey })
       const previousConversations = queryClient.getQueryData<
-        ConversationWithUserState[]
+        EnrichedConversation[]
       >(conversationsQueryKey)
-      const optimisticConversation: ConversationWithUserState = {
+      const optimisticConversation: EnrichedConversation = {
         id: `optimistic-${Date.now()}`,
         type: "channel",
         name: trimmedName,
@@ -264,7 +264,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
         lastMessageAt: null,
       }
 
-      queryClient.setQueryData<ConversationWithUserState[]>(
+      queryClient.setQueryData<EnrichedConversation[]>(
         conversationsQueryKey,
         (conversations = []) => [optimisticConversation, ...conversations],
       )
@@ -294,7 +294,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
       }
 
       if (context?.optimisticConversationId) {
-        queryClient.setQueryData<ConversationWithUserState[]>(
+        queryClient.setQueryData<EnrichedConversation[]>(
           conversationsQueryKey,
           (conversations = []) =>
             conversations.filter(
@@ -308,10 +308,10 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
       }
     },
     onSuccess: (conversation, _name, context) => {
-      queryClient.setQueryData<ConversationWithUserState[]>(
+      queryClient.setQueryData<EnrichedConversation[]>(
         conversationsQueryKey,
         (conversations = []) => {
-          const createdChannel: ConversationWithUserState = {
+          const createdChannel: EnrichedConversation = {
             ...conversation,
             memberIds: [],
             lastViewedAt: null,
@@ -330,7 +330,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
           return [createdChannel, ...withoutOptimistic]
         },
       )
-      const createdChannel: ConversationWithUserState = {
+      const createdChannel: EnrichedConversation = {
         ...conversation,
         memberIds: [],
         lastViewedAt: null,
@@ -394,10 +394,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   const directConversations = conversations.filter(
     (conversation) => conversation.type === "direct",
   )
-  const directConversationsByMemberId = new Map<
-    string,
-    ConversationWithUserState
-  >()
+  const directConversationsByMemberId = new Map<string, EnrichedConversation>()
 
   for (const conversation of directConversations) {
     const memberId = getDirectConversationMemberId(conversation, currentUserId)

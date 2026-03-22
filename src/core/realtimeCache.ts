@@ -8,7 +8,7 @@ import {
   messagesQueryKey,
   type MessagesPage,
 } from "./messagesQuery"
-import type { ConversationWithUserState, EnrichedMessage } from "./models"
+import type { EnrichedConversation, EnrichedMessage } from "./models"
 
 type MessagesInfiniteData = InfiniteData<MessagesPage, string | undefined>
 
@@ -81,9 +81,10 @@ function upsertMessageInThreadCache(
         return existing
       }
 
-      return [...existing.filter((item) => item.id !== message.id), message].sort(
-        (left, right) => left.createdAt.localeCompare(right.createdAt),
-      )
+      return [
+        ...existing.filter((item) => item.id !== message.id),
+        message,
+      ].sort((left, right) => left.createdAt.localeCompare(right.createdAt))
     },
   )
 }
@@ -97,7 +98,7 @@ function updateConversationMetadata(
     return
   }
 
-  queryClient.setQueryData<ConversationWithUserState[]>(
+  queryClient.setQueryData<EnrichedConversation[]>(
     conversationsQueryKey,
     (conversations) =>
       conversations?.map((conversation) =>
@@ -113,7 +114,7 @@ function updateConversationMetadata(
       ) ?? conversations,
   )
 
-  queryClient.setQueryData<ConversationWithUserState | null>(
+  queryClient.setQueryData<EnrichedConversation | null>(
     conversationQueryKey(message.conversationId),
     (conversation) =>
       conversation

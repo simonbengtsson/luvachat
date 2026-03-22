@@ -14,13 +14,13 @@ import {
   conversationsQueryKey,
 } from "@/core/conversationsQuery"
 import type { Member } from "@/core/luvabase"
-import type { ConversationWithUserState } from "@/core/models"
 import { useWorkspaceMembers } from "@/core/members"
+import type { EnrichedConversation } from "@/core/models"
 import { orpcClient } from "@/core/orpcClient"
 import { applyMessageCreatedToCache } from "@/core/realtimeCache"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import type { JSONContent } from "@tiptap/react"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
+import type { JSONContent } from "@tiptap/react"
 import { LoaderCircleIcon, XIcon } from "lucide-react"
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { z } from "zod"
@@ -135,14 +135,14 @@ function RouteComponent() {
         conversationName,
       }),
     onSuccess: async ({ conversation, message }) => {
-      const conversationWithUserState: ConversationWithUserState = {
+      const conversationWithUserState: EnrichedConversation = {
         ...conversation,
         memberIds: selectedMemberIds,
         lastViewedAt: message.createdAt,
         lastMessageAt: message.createdAt,
       }
 
-      queryClient.setQueryData<ConversationWithUserState[]>(
+      queryClient.setQueryData<EnrichedConversation[]>(
         conversationsQueryKey,
         (conversations = []) => [
           conversationWithUserState,
