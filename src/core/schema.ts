@@ -12,6 +12,7 @@ import {
 // - message_attachments
 // - message_mentions
 // - message_reactions
+// - activity_events
 // - conversations
 // - conversation_members
 // - conversation_user_state
@@ -96,6 +97,38 @@ export const messageReactionsTable = sqliteTable(
       table.messageId,
       table.userId,
       table.emoji,
+    ),
+  ],
+)
+
+export type ActivityEvent = typeof activityEventsTable.$inferSelect
+export const activityEventsTable = sqliteTable(
+  "activity_events",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    type: text("type").notNull(), // mention | thread_reply | reaction
+    actorUserId: text("actor_user_id").notNull(),
+    conversationId: text("conversation_id")
+      .notNull()
+      .references(() => conversationsTable.id),
+    messageId: text("message_id")
+      .notNull()
+      .references(() => messagesTable.id, { onDelete: "cascade" }),
+    sourceType: text("source_type").notNull(), // mention | reply | reaction
+    sourceId: text("source_id").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    index("activity_events_user_created_at_idx").on(
+      table.userId,
+      table.createdAt,
+    ),
+    index("activity_events_message_id_idx").on(table.messageId),
+    uniqueIndex("activity_events_user_source_idx").on(
+      table.userId,
+      table.sourceType,
+      table.sourceId,
     ),
   ],
 )
