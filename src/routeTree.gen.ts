@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as NewRouteImport } from './routes/new'
 import { Route as AichatRouteImport } from './routes/aichat'
+import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CConversationIdRouteImport } from './routes/c.$conversationId'
 import { Route as AssetsSplatRouteImport } from './routes/assets.$'
@@ -24,6 +25,11 @@ const NewRoute = NewRouteImport.update({
 const AichatRoute = AichatRouteImport.update({
   id: '/aichat',
   path: '/aichat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ActivityRoute = ActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -49,6 +55,7 @@ const ApiAichatRoute = ApiAichatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/activity': typeof ActivityRoute
   '/aichat': typeof AichatRoute
   '/new': typeof NewRoute
   '/api/aichat': typeof ApiAichatRoute
@@ -57,6 +64,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/activity': typeof ActivityRoute
   '/aichat': typeof AichatRoute
   '/new': typeof NewRoute
   '/api/aichat': typeof ApiAichatRoute
@@ -66,6 +74,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/activity': typeof ActivityRoute
   '/aichat': typeof AichatRoute
   '/new': typeof NewRoute
   '/api/aichat': typeof ApiAichatRoute
@@ -76,6 +85,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/activity'
     | '/aichat'
     | '/new'
     | '/api/aichat'
@@ -84,6 +94,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/activity'
     | '/aichat'
     | '/new'
     | '/api/aichat'
@@ -92,6 +103,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/activity'
     | '/aichat'
     | '/new'
     | '/api/aichat'
@@ -101,6 +113,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ActivityRoute: typeof ActivityRoute
   AichatRoute: typeof AichatRoute
   NewRoute: typeof NewRoute
   ApiAichatRoute: typeof ApiAichatRoute
@@ -122,6 +135,13 @@ declare module '@tanstack/react-router' {
       path: '/aichat'
       fullPath: '/aichat'
       preLoaderRoute: typeof AichatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/activity': {
+      id: '/activity'
+      path: '/activity'
+      fullPath: '/activity'
+      preLoaderRoute: typeof ActivityRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -157,6 +177,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ActivityRoute: ActivityRoute,
   AichatRoute: AichatRoute,
   NewRoute: NewRoute,
   ApiAichatRoute: ApiAichatRoute,

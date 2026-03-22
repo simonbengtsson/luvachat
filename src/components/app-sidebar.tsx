@@ -12,13 +12,13 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { getConversationDisplayName } from "@/core/conversationDisplay"
 import {
   conversationQueryKey,
   conversationsQueryKey,
   seedConversationQueryCache,
   useConversations,
 } from "@/core/conversationsQuery"
-import { getConversationDisplayName } from "@/core/conversationDisplay"
 import {
   type Member,
   getAdminUrl,
@@ -39,6 +39,7 @@ import { Link, useMatchRoute, useNavigate } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
 import {
+  ActivityIcon,
   BellIcon,
   EllipsisVerticalIcon,
   ExternalLinkIcon,
@@ -545,7 +546,9 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
                           {getFallbackText(member.name)}
                         </AvatarFallback>
                       </Avatar>
-                      <span className={cn("truncate", hasUnread && "font-semibold")}>
+                      <span
+                        className={cn("truncate", hasUnread && "font-semibold")}
+                      >
                         {member.name}
                       </span>
                       {hasUnread ? (
@@ -586,6 +589,12 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
               </section>
             ) : null}
             <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton render={<Link to="/activity" />}>
+                  <ActivityIcon />
+                  <span>Activity</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton render={<Link to="/new" search={{}} />}>
                   <SquarePenIcon />
