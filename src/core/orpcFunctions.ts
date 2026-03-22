@@ -95,19 +95,25 @@ function parseConversationMemberIds(memberIds: string | null) {
   return memberIds.split(conversationMemberIdsSeparator).filter(Boolean)
 }
 
+function buildConversationLastRootMessageSubquery(context: OrpcContext) {
+  return context.db
+    .select({
+      conversationId: messagesTable.conversationId,
+      lastMessageAt: sql<string>`max(${messagesTable.createdAt})`.as(
+        "last_message_at",
+      ),
+    })
+    .from(messagesTable)
+    .where(isNull(messagesTable.parentMessageId))
+    .groupBy(messagesTable.conversationId)
+    .as("conversation_last_root_message")
+}
+
 const getConversations = base.handler(
   async ({ context }): Promise<ConversationWithUserState[]> => {
     const normalizedUserId = context.userId.trim()
-    const conversationLastMessageSubquery = context.db
-      .select({
-        conversationId: messagesTable.conversationId,
-        lastMessageAt: sql<string>`max(${messagesTable.createdAt})`.as(
-          "last_message_at",
-        ),
-      })
-      .from(messagesTable)
-      .groupBy(messagesTable.conversationId)
-      .as("conversation_last_message")
+    const conversationLastMessageSubquery =
+      buildConversationLastRootMessageSubquery(context)
     const conversationMembersSubquery = context.db
       .select({
         conversationId: conversationMembersTable.conversationId,
@@ -214,7 +220,12 @@ const getConversationById = base
           ),
         })
         .from(messagesTable)
-        .where(eq(messagesTable.conversationId, normalizedConversationId))
+        .where(
+          and(
+            eq(messagesTable.conversationId, normalizedConversationId),
+            isNull(messagesTable.parentMessageId),
+          ),
+        )
         .limit(1)
       const memberIds = await context.db
         .select({
@@ -521,7 +532,12 @@ const markConversationViewed = base
         ),
       })
       .from(messagesTable)
-      .where(eq(messagesTable.conversationId, normalizedConversationId))
+      .where(
+        and(
+          eq(messagesTable.conversationId, normalizedConversationId),
+          isNull(messagesTable.parentMessageId),
+        ),
+      )
       .limit(1)
 
     const latestMessageCreatedAt = latestMessage[0]?.createdAt

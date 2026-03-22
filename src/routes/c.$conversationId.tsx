@@ -80,7 +80,7 @@ import {
   EllipsisVerticalIcon,
   FileIcon,
   LoaderCircleIcon,
-  MessageSquareReplyIcon,
+  MessageSquareTextIcon,
 } from "lucide-react"
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { useStickToBottom } from "use-stick-to-bottom"
@@ -135,6 +135,28 @@ function getDocumentVisibilityState() {
   }
 
   return document.visibilityState
+}
+
+function subscribeToWindowFocus(listener: () => void) {
+  if (typeof window === "undefined") {
+    return () => {}
+  }
+
+  window.addEventListener("focus", listener)
+  window.addEventListener("blur", listener)
+
+  return () => {
+    window.removeEventListener("focus", listener)
+    window.removeEventListener("blur", listener)
+  }
+}
+
+function getWindowFocusState() {
+  if (typeof window === "undefined") {
+    return true
+  }
+
+  return window.document.hasFocus()
 }
 
 function getAttachmentUrl(storageKey: string) {
@@ -249,6 +271,11 @@ function ConversationView({
     subscribeToDocumentVisibility,
     getDocumentVisibilityState,
     getDocumentVisibilityState,
+  )
+  const windowHasFocus = useSyncExternalStore(
+    subscribeToWindowFocus,
+    getWindowFocusState,
+    getWindowFocusState,
   )
   const isSyncConnected = syncConnectionStatus === "connected"
 
@@ -580,6 +607,7 @@ function ConversationView({
       !currentUserId ||
       !latestConversationMessage ||
       documentVisibilityState !== "visible" ||
+      !windowHasFocus ||
       latestConversationMessage.userId === currentUserId
     ) {
       return
@@ -603,6 +631,7 @@ function ConversationView({
     isThreadView,
     latestConversationMessage,
     markConversationViewedMutation,
+    windowHasFocus,
   ])
 
   return (
@@ -806,7 +835,7 @@ function ConversationView({
                           label="Open thread"
                           onClick={() => openThread(message.id)}
                         >
-                          <MessageSquareReplyIcon className="size-4" />
+                          <MessageSquareTextIcon className="size-4" />
                         </ChatMessageAction>
                       ) : null}
                       <ChatMessageActionCopy

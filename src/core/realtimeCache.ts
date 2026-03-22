@@ -93,6 +93,10 @@ function updateConversationMetadata(
   message: Message,
   markViewed: boolean,
 ): void {
+  if (message.parentMessageId) {
+    return
+  }
+
   queryClient.setQueryData<ConversationWithUserState[]>(
     conversationsQueryKey,
     (conversations) =>
