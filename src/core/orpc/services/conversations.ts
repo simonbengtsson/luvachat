@@ -47,6 +47,50 @@ function getParticipantConversationType(participantIds: string[]) {
   return participantIds.length > 2 ? "group" : "direct"
 }
 
+async function getConversationMemberForUser(
+  context: OrpcContext,
+  conversationId: string,
+  userId: string,
+) {
+  return context.db
+    .select({
+      id: conversationMembersTable.id,
+      lastViewedAt: conversationMembersTable.lastViewedAt,
+    })
+    .from(conversationMembersTable)
+    .where(
+      and(
+        eq(conversationMembersTable.conversationId, conversationId),
+        eq(conversationMembersTable.userId, userId),
+      ),
+    )
+    .limit(1)
+}
+
+async function upsertConversationMemberLastViewedAt(
+  context: OrpcContext,
+  conversationId: string,
+  userId: string,
+  lastViewedAt: string,
+  existingMemberId?: string,
+): Promise<void> {
+  if (existingMemberId) {
+    await context.db
+      .update(conversationMembersTable)
+      .set({ lastViewedAt })
+      .where(eq(conversationMembersTable.id, existingMemberId))
+    return
+  }
+
+  await context.db.insert(conversationMembersTable).values({
+    id: `${userId}_${conversationId}`,
+    userId,
+    conversationId,
+    joinedAt: lastViewedAt,
+    lastViewedAt,
+  })
+}
+
 async function deleteBucketObjects(
   context: OrpcContext,
   storageKeys: string[],
@@ -132,14 +176,29 @@ export async function getConversationByIdForUser(
   context: OrpcContext,
   conversationId: string,
 ): Promise<EnrichedConversation | null> {
+  const currentUserConversationMembershipTable = alias(
+    conversationMembersTable,
+    "current_user_conversation_membership",
+  )
   const conversation = await context.db
     .select({
       id: conversationsTable.id,
       type: conversationsTable.type,
       name: conversationsTable.name,
       createdAt: conversationsTable.createdAt,
+      lastViewedAt: currentUserConversationMembershipTable.lastViewedAt,
     })
     .from(conversationsTable)
+    .leftJoin(
+      currentUserConversationMembershipTable,
+      and(
+        eq(
+          currentUserConversationMembershipTable.conversationId,
+          conversationsTable.id,
+        ),
+        eq(currentUserConversationMembershipTable.userId, context.userId),
+      ),
+    )
     .where(eq(conversationsTable.id, conversationId))
     .limit(1)
 
@@ -147,19 +206,6 @@ export async function getConversationByIdForUser(
   if (!currentConversation) {
     return null
   }
-
-  const userState = await context.db
-    .select({
-      lastViewedAt: conversationMembersTable.lastViewedAt,
-    })
-    .from(conversationMembersTable)
-    .where(
-      and(
-        eq(conversationMembersTable.conversationId, conversationId),
-        eq(conversationMembersTable.userId, context.userId),
-      ),
-    )
-    .limit(1)
 
   const lastMessage = await context.db
     .select({
@@ -187,7 +233,6 @@ export async function getConversationByIdForUser(
   return {
     ...currentConversation,
     memberIds: memberIds.map((member) => member.userId),
-    lastViewedAt: userState[0]?.lastViewedAt ?? null,
     lastMessageAt: lastMessage[0]?.lastMessageAt ?? null,
   }
 }
@@ -272,20 +317,12 @@ export async function markConversationAsViewed(
   userId: string,
   mostRecentMessageCreatedAt: string,
 ): Promise<void> {
-  const existingState = await context.db
-    .select({
-      lastViewedAt: conversationMembersTable.lastViewedAt,
-    })
-    .from(conversationMembersTable)
-    .where(
-      and(
-        eq(conversationMembersTable.conversationId, conversationId),
-        eq(conversationMembersTable.userId, userId),
-      ),
-    )
-    .limit(1)
-
-  const previousLastViewedAt = existingState[0]?.lastViewedAt
+  const existingMember = (await getConversationMemberForUser(
+    context,
+    conversationId,
+    userId,
+  ))[0]
+  const previousLastViewedAt = existingMember?.lastViewedAt
   if (
     previousLastViewedAt &&
     previousLastViewedAt > mostRecentMessageCreatedAt
@@ -293,28 +330,13 @@ export async function markConversationAsViewed(
     return
   }
 
-  const nextLastViewedAt = new Date().toISOString()
-
-  if (existingState[0]) {
-    await context.db
-      .update(conversationMembersTable)
-      .set({ lastViewedAt: nextLastViewedAt })
-      .where(
-        and(
-          eq(conversationMembersTable.conversationId, conversationId),
-          eq(conversationMembersTable.userId, userId),
-        ),
-      )
-    return
-  }
-
-  await context.db.insert(conversationMembersTable).values({
-    id: `${userId}_${conversationId}`,
-    userId,
+  await upsertConversationMemberLastViewedAt(
+    context,
     conversationId,
-    joinedAt: nextLastViewedAt,
-    lastViewedAt: nextLastViewedAt,
-  })
+    userId,
+    new Date().toISOString(),
+    existingMember?.id,
+  )
 }
 
 export async function findParticipantConversationByMemberIds(

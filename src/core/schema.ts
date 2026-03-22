@@ -82,6 +82,7 @@ export const conversationsTable = sqliteTable("conversations", {
 })
 
 export type ConversationMember = typeof conversationMembersTable.$inferSelect
+// Membership rows also carry per-user conversation state such as lastViewedAt.
 export const conversationMembersTable = sqliteTable(
   "conversation_members",
   {
