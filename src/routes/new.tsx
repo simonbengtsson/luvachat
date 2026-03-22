@@ -4,6 +4,11 @@ import {
 } from "@/components/app-chat-input"
 import { SiteHeader } from "@/components/site-header"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  ChatMessageArea,
+  ChatMessageAreaContent,
+  ChatMessageAreaScrollButton,
+} from "@/components/ui/chat-message-area"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   getSyncConnectionStatus,
@@ -84,6 +89,7 @@ function RouteComponent() {
   const [selectedMemberIds, setSelectedMemberIds] = useState(() =>
     parseMemberIds(search.members),
   )
+  const hasMembersSearchParam = Boolean(search.members)
   const syncConnectionStatus = useSyncExternalStore(
     subscribeToSyncConnectionStatus,
     getSyncConnectionStatus,
@@ -115,6 +121,10 @@ function RouteComponent() {
     id: memberId,
     member: membersById.get(memberId) ?? null,
   }))
+  const conversationName = selectedMembers
+    .map(({ id, member }) => member?.name?.trim() || id)
+    .filter(Boolean)
+    .join(", ")
 
   const filteredMembers = members.filter(
     (member) =>
@@ -212,11 +222,6 @@ function RouteComponent() {
       return
     }
 
-    const conversationName = selectedMembers
-      .map(({ id, member }) => member?.name?.trim() || id)
-      .filter(Boolean)
-      .join(", ")
-
     sendDirectMessageMutation.mutate({
       memberIds,
       content,
@@ -230,140 +235,175 @@ function RouteComponent() {
     <div className="flex h-full min-h-0 flex-col bg-background">
       <SiteHeader title="New message" />
       <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div className="min-h-0 flex-1 overflow-auto">
-          <div className="px-4 py-6 lg:px-8">
-            <div className="relative max-w-5xl" ref={pickerRef}>
-              <div className="grid gap-3 md:grid-cols-[56px_minmax(0,1fr)] md:items-start">
-                <div className="pt-3 text-sm font-medium text-muted-foreground">
-                  To:
-                </div>
-                <div className="space-y-0">
-                  <div
-                    className="min-h-14 rounded-xl border border-border bg-background px-3 py-2.5 shadow-xs transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/15"
-                    onClick={() => {
-                      inputRef.current?.focus()
-                      setIsOpen(true)
-                    }}
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      {selectedMembers.map(({ id, member }) => (
-                        <button
-                          key={id}
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            handleRemoveMember(id)
-                          }}
-                          className="inline-flex max-w-full items-center gap-2 rounded-md bg-muted px-2 py-1 text-sm"
-                        >
-                          <Avatar className="size-5">
-                            <AvatarImage
-                              src={member?.imageUrl ?? undefined}
-                              alt={member?.name ?? id}
-                            />
-                            <AvatarFallback className="text-[10px]">
-                              {getFallbackText(member?.name ?? id)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="truncate">{member?.name ?? id}</span>
-                          <XIcon className="size-3.5 text-muted-foreground" />
-                        </button>
-                      ))}
-
-                      <input
-                        autoFocus
-                        ref={inputRef}
-                        value={query}
-                        onFocus={() => {
-                          setIsOpen(true)
-                        }}
-                        onChange={(event) => {
-                          setQuery(event.target.value)
-                          setIsOpen(true)
-                        }}
-                        onKeyDown={(event) => {
-                          if (
-                            event.key === "Backspace" &&
-                            query.length === 0 &&
-                            selectedMemberIds.length > 0
-                          ) {
-                            event.preventDefault()
-                            handleRemoveMember(
-                              selectedMemberIds[selectedMemberIds.length - 1]!,
-                            )
-                            return
-                          }
-
-                          if (event.key === "Enter" && filteredMembers[0]) {
-                            event.preventDefault()
-                            handleAddMember(filteredMembers[0].id)
-                            return
-                          }
-
-                          if (event.key === "Escape") {
-                            setIsOpen(false)
-                          }
-                        }}
-                        placeholder="@somebody"
-                        className="h-8 min-w-[220px] flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+        {hasMembersSearchParam ? (
+          <ChatMessageArea className="min-h-0 flex-1">
+            <ChatMessageAreaContent className="flex min-h-full items-center justify-center px-6 py-8">
+              <div className="flex max-w-sm flex-col items-center gap-4 text-center">
+                <div className="flex items-center justify-center -space-x-3">
+                  {selectedMembers.slice(0, 3).map(({ id, member }) => (
+                    <Avatar
+                      key={id}
+                      className="size-14 border-2 border-background shadow-sm"
+                    >
+                      <AvatarImage
+                        src={member?.imageUrl ?? undefined}
+                        alt={member?.name ?? id}
                       />
-                    </div>
-                  </div>
+                      <AvatarFallback>
+                        {getFallbackText(member?.name ?? id)}
+                      </AvatarFallback>
+                    </Avatar>
+                  ))}
+                </div>
 
-                  {isOpen ? (
-                    <div className="mt-1 overflow-hidden rounded-xl border border-border bg-popover shadow-md">
-                      {membersQuery.isLoading ? (
-                        <div className="space-y-2 p-2">
-                          {Array.from({ length: 4 }).map((_, index) => (
-                            <div
-                              key={`new-message-member-skeleton-${index}`}
-                              className="flex items-center gap-3 px-2 py-1.5"
-                            >
-                              <Skeleton className="size-8 rounded-full" />
-                              <Skeleton className="h-4 w-40" />
-                            </div>
-                          ))}
-                        </div>
-                      ) : filteredMembers.length > 0 ? (
-                        <div className="max-h-80 overflow-y-auto p-1">
-                          {filteredMembers.map((member) => (
-                            <button
-                              key={member.id}
-                              type="button"
-                              onClick={() => {
-                                handleAddMember(member.id)
-                              }}
-                              className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left text-sm hover:bg-muted"
-                            >
-                              <Avatar className="size-8">
-                                <AvatarImage
-                                  src={member.imageUrl ?? undefined}
-                                  alt={member.name}
-                                />
-                                <AvatarFallback className="text-[10px]">
-                                  {getFallbackText(member.name)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="min-w-0">
-                                <div className="truncate font-medium">
-                                  {member.name}
-                                </div>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="px-3 py-2 text-sm text-muted-foreground">
-                          No matching members
-                        </div>
-                      )}
+                <div className="space-y-1">
+                  <h2 className="text-lg font-semibold">
+                    {conversationName || "New conversation"}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    No messages yet. Send the first one.
+                  </p>
+                </div>
+              </div>
+            </ChatMessageAreaContent>
+            <ChatMessageAreaScrollButton />
+          </ChatMessageArea>
+        ) : (
+          <div className="min-h-0 flex-1 overflow-auto">
+            <div className="px-4 py-6 lg:px-8">
+              <div className="relative max-w-5xl" ref={pickerRef}>
+                <div className="grid gap-3 md:grid-cols-[56px_minmax(0,1fr)] md:items-start">
+                  <div className="pt-3 text-sm font-medium text-muted-foreground">
+                    To:
+                  </div>
+                  <div className="space-y-0">
+                    <div
+                      className="min-h-14 rounded-xl border border-border bg-background px-3 py-2.5 shadow-xs transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/15"
+                      onClick={() => {
+                        inputRef.current?.focus()
+                        setIsOpen(true)
+                      }}
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        {selectedMembers.map(({ id, member }) => (
+                          <button
+                            key={id}
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              handleRemoveMember(id)
+                            }}
+                            className="inline-flex max-w-full items-center gap-2 rounded-md bg-muted px-2 py-1 text-sm"
+                          >
+                            <Avatar className="size-5">
+                              <AvatarImage
+                                src={member?.imageUrl ?? undefined}
+                                alt={member?.name ?? id}
+                              />
+                              <AvatarFallback className="text-[10px]">
+                                {getFallbackText(member?.name ?? id)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="truncate">{member?.name ?? id}</span>
+                            <XIcon className="size-3.5 text-muted-foreground" />
+                          </button>
+                        ))}
+
+                        <input
+                          autoFocus
+                          ref={inputRef}
+                          value={query}
+                          onFocus={() => {
+                            setIsOpen(true)
+                          }}
+                          onChange={(event) => {
+                            setQuery(event.target.value)
+                            setIsOpen(true)
+                          }}
+                          onKeyDown={(event) => {
+                            if (
+                              event.key === "Backspace" &&
+                              query.length === 0 &&
+                              selectedMemberIds.length > 0
+                            ) {
+                              event.preventDefault()
+                              handleRemoveMember(
+                                selectedMemberIds[selectedMemberIds.length - 1]!,
+                              )
+                              return
+                            }
+
+                            if (event.key === "Enter" && filteredMembers[0]) {
+                              event.preventDefault()
+                              handleAddMember(filteredMembers[0].id)
+                              return
+                            }
+
+                            if (event.key === "Escape") {
+                              setIsOpen(false)
+                            }
+                          }}
+                          placeholder="@somebody"
+                          className="h-8 min-w-[220px] flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                        />
+                      </div>
                     </div>
-                  ) : null}
+
+                    {isOpen ? (
+                      <div className="mt-1 overflow-hidden rounded-xl border border-border bg-popover shadow-md">
+                        {membersQuery.isLoading ? (
+                          <div className="space-y-2 p-2">
+                            {Array.from({ length: 4 }).map((_, index) => (
+                              <div
+                                key={`new-message-member-skeleton-${index}`}
+                                className="flex items-center gap-3 px-2 py-1.5"
+                              >
+                                <Skeleton className="size-8 rounded-full" />
+                                <Skeleton className="h-4 w-40" />
+                              </div>
+                            ))}
+                          </div>
+                        ) : filteredMembers.length > 0 ? (
+                          <div className="max-h-80 overflow-y-auto p-1">
+                            {filteredMembers.map((member) => (
+                              <button
+                                key={member.id}
+                                type="button"
+                                onClick={() => {
+                                  handleAddMember(member.id)
+                                }}
+                                className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left text-sm hover:bg-muted"
+                              >
+                                <Avatar className="size-8">
+                                  <AvatarImage
+                                    src={member.imageUrl ?? undefined}
+                                    alt={member.name}
+                                  />
+                                  <AvatarFallback className="text-[10px]">
+                                    {getFallbackText(member.name)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="min-w-0">
+                                  <div className="truncate font-medium">
+                                    {member.name}
+                                  </div>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="px-3 py-2 text-sm text-muted-foreground">
+                            No matching members
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         <div className="shrink-0 bg-background px-4 pb-5">
           <div className="flex flex-col gap-2">
@@ -378,7 +418,9 @@ function RouteComponent() {
                 selectedMemberIds.length === 0
               }
               placeholder={
-                selectedMemberIds.length > 0
+                hasMembersSearchParam
+                  ? "Jot something down"
+                  : selectedMemberIds.length > 0
                   ? "Jot something down"
                   : "Select at least one member to start chatting"
               }
