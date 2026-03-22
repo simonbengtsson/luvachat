@@ -117,10 +117,11 @@ const getConversations = base.handler(
     const conversationMembersSubquery = context.db
       .select({
         conversationId: conversationMembersTable.conversationId,
-        memberIds:
-          sql<string | null>`group_concat(${conversationMembersTable.userId}, ${conversationMemberIdsSeparator})`.as(
-            "member_ids",
-          ),
+        memberIds: sql<
+          string | null
+        >`group_concat(${conversationMembersTable.userId}, ${conversationMemberIdsSeparator})`.as(
+          "member_ids",
+        ),
       })
       .from(conversationMembersTable)
       .groupBy(conversationMembersTable.conversationId)
@@ -232,7 +233,9 @@ const getConversationById = base
           userId: conversationMembersTable.userId,
         })
         .from(conversationMembersTable)
-        .where(eq(conversationMembersTable.conversationId, normalizedConversationId))
+        .where(
+          eq(conversationMembersTable.conversationId, normalizedConversationId),
+        )
         .orderBy(asc(conversationMembersTable.userId))
 
       return {
@@ -447,8 +450,9 @@ const sendMessage = base
       attachments: z.array(AttachmentFileSchema),
     }),
   )
-  .handler(async ({ context, input }): Promise<Message> =>
-    createMessageInConversation(context, input),
+  .handler(
+    async ({ context, input }): Promise<Message> =>
+      createMessageInConversation(context, input),
   )
 
 const getDirectConversationByMemberIds = base
@@ -823,7 +827,14 @@ async function sendPushNotifications(
   context: OrpcContext,
   message: Message,
 ): Promise<void> {
-  const subscriptions = await listPushSubscriptions(context)
+  const participantUserIds = await listThreadParticipantUserIds(
+    context,
+    message,
+  )
+  const subscriptions = await listPushSubscriptionsByUserIds(
+    context,
+    participantUserIds,
+  )
   if (subscriptions.length === 0) {
     return
   }
@@ -848,10 +859,44 @@ async function sendPushNotifications(
   )
 }
 
-async function listPushSubscriptions(
+async function listThreadParticipantUserIds(
   context: OrpcContext,
+  message: Message,
+): Promise<string[]> {
+  const threadMessageId = message.parentMessageId ?? message.id
+  const participants = await context.db
+    .select({
+      userId: messagesTable.userId,
+    })
+    .from(messagesTable)
+    .where(
+      and(
+        eq(messagesTable.conversationId, message.conversationId),
+        or(
+          eq(messagesTable.id, threadMessageId),
+          eq(messagesTable.parentMessageId, threadMessageId),
+        ),
+        sql`${messagesTable.userId} <> ${message.userId}`,
+      ),
+    )
+    .groupBy(messagesTable.userId)
+    .orderBy(asc(messagesTable.userId))
+
+  return participants.map((participant) => participant.userId)
+}
+
+async function listPushSubscriptionsByUserIds(
+  context: OrpcContext,
+  userIds: string[],
 ): Promise<PushSubscriptionRecord[]> {
-  return context.db.select().from(pushSubscriptionsTable)
+  if (userIds.length === 0) {
+    return []
+  }
+
+  return context.db
+    .select()
+    .from(pushSubscriptionsTable)
+    .where(inArray(pushSubscriptionsTable.userId, userIds))
 }
 
 async function deleteBucketObjects(
@@ -1064,7 +1109,10 @@ async function findParticipantConversationByMemberIds(
     })
   }
 
-  for (const { conversation, memberIds: currentMemberIds } of conversationsById.values()) {
+  for (const {
+    conversation,
+    memberIds: currentMemberIds,
+  } of conversationsById.values()) {
     if (currentMemberIds.slice().sort().join("\u0000") === participantKey) {
       return conversation
     }
@@ -1196,9 +1244,7 @@ async function createMessageInConversation(
   try {
     for (const attachment of attachments) {
       const attachmentId = crypto.randomUUID()
-      const contentType = normalizeAttachmentContentType(
-        attachment.contentType,
-      )
+      const contentType = normalizeAttachmentContentType(attachment.contentType)
       const storageKey = `attachments/${attachmentId}-${sanitizeAttachmentFileName(
         attachment.fileName,
       )}`
