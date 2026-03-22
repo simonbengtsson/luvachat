@@ -15,7 +15,7 @@ import {
 // - activity_events
 // - conversations
 // - conversation_members
-// - conversation_user_state
+// - thread_members
 // - push_subscriptions
 
 export type Message = typeof messagesTable.$inferSelect
@@ -26,7 +26,7 @@ export const messagesTable = sqliteTable(
     conversationId: text("conversation_id")
       .notNull()
       .references(() => conversationsTable.id),
-    parentMessageId: text("parent_message_id").references(
+    threadRootMessageId: text("thread_root_message_id").references(
       (): AnySQLiteColumn => messagesTable.id,
       {
         onDelete: "cascade",
@@ -38,13 +38,13 @@ export const messagesTable = sqliteTable(
     userId: text("user_id").notNull(),
   },
   (table) => [
-    index("messages_conversation_parent_created_at_idx").on(
+    index("messages_conversation_thread_root_created_at_idx").on(
       table.conversationId,
-      table.parentMessageId,
+      table.threadRootMessageId,
       table.createdAt,
     ),
-    index("messages_parent_created_at_idx").on(
-      table.parentMessageId,
+    index("messages_thread_root_created_at_idx").on(
+      table.threadRootMessageId,
       table.createdAt,
     ),
   ],
@@ -91,6 +91,7 @@ export const conversationMembersTable = sqliteTable(
       .notNull()
       .references(() => conversationsTable.id),
     joinedAt: text("joined_at").notNull(),
+    lastViewedAt: text("last_viewed_at"),
   },
   (table) => [
     index("conversation_members_conversation_user_idx").on(
@@ -100,6 +101,37 @@ export const conversationMembersTable = sqliteTable(
     index("conversation_members_user_conversation_idx").on(
       table.userId,
       table.conversationId,
+    ),
+  ],
+)
+
+export type ThreadMember = typeof threadMembersTable.$inferSelect
+export const threadMembersTable = sqliteTable(
+  "thread_members",
+  {
+    id: text("id").primaryKey(), // userId_threadRootMessageId
+    userId: text("user_id").notNull(),
+    conversationId: text("conversation_id")
+      .notNull()
+      .references(() => conversationsTable.id),
+    threadRootMessageId: text("thread_root_message_id")
+      .notNull()
+      .references(() => messagesTable.id, { onDelete: "cascade" }),
+    joinedAt: text("joined_at").notNull(),
+    lastViewedAt: text("last_viewed_at"),
+  },
+  (table) => [
+    index("thread_members_conversation_user_idx").on(
+      table.conversationId,
+      table.userId,
+    ),
+    index("thread_members_thread_root_user_idx").on(
+      table.threadRootMessageId,
+      table.userId,
+    ),
+    uniqueIndex("thread_members_user_thread_root_idx").on(
+      table.userId,
+      table.threadRootMessageId,
     ),
   ],
 )
@@ -194,24 +226,4 @@ export const pushSubscriptionsTable = sqliteTable(
     updatedAt: text("updated_at").notNull(),
   },
   (table) => [index("push_subscriptions_user_idx").on(table.userId)],
-)
-
-export type ConversationUserState =
-  typeof conversationUserStateTable.$inferSelect
-export const conversationUserStateTable = sqliteTable(
-  "conversation_user_state",
-  {
-    id: text("id").primaryKey(), // userId_conversationId
-    userId: text("user_id").notNull(),
-    conversationId: text("conversation_id")
-      .notNull()
-      .references(() => conversationsTable.id),
-    lastViewedAt: text("last_viewed_at").notNull(),
-  },
-  (table) => [
-    index("conversation_user_state_conversation_user_idx").on(
-      table.conversationId,
-      table.userId,
-    ),
-  ],
 )

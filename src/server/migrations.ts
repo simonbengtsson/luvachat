@@ -8,6 +8,8 @@ import bitterSunfire from "../../drizzle/20260319205902_bitter_sunfire/migration
 import meanHardball from "../../drizzle/20260320074112_mean_hardball/migration.sql"
 import mistyVertigo from "../../drizzle/20260320083708_misty_vertigo/migration.sql"
 import niftySauron from "../../drizzle/20260322201209_nifty_sauron/migration.sql"
+import spookyFamine from "../../drizzle/20260322212217_spooky_famine/migration.sql"
+import breezyTheFury from "../../drizzle/20260322212855_breezy_the_fury/migration.sql"
 
 export const migrations = {
   "20260308112408_pretty_silver_fox": prettySilverFox,
@@ -20,4 +22,6 @@ export const migrations = {
   "20260320074112_mean_hardball": meanHardball,
   "20260320083708_misty_vertigo": mistyVertigo,
   "20260322201209_nifty_sauron": niftySauron,
+  "20260322212217_spooky_famine": spookyFamine,
+  "20260322212855_breezy_the_fury": breezyTheFury,
 }
