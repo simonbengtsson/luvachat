@@ -171,9 +171,7 @@ function RouteComponent() {
         conversationQueryKey(conversation.id),
         conversationWithUserState,
       )
-      applyMessageCreatedToCache(queryClient, message, {
-        markViewed: true,
-      })
+      applyMessageCreatedToCache(queryClient, message)
 
       await navigate({
         to: "/c/$conversationId",

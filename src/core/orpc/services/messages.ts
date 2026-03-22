@@ -228,7 +228,33 @@ function extractMessageMentions(
   }))
 }
 
-async function markThreadAsViewed(
+export async function getLatestThreadMessageCreatedAt(
+  context: OrpcContext,
+  conversationId: string,
+  threadRootMessageId: string,
+): Promise<string | null> {
+  const latestMessage = await context.db
+    .select({
+      createdAt: sql<string | null>`max(${messagesTable.createdAt})`.as(
+        "created_at",
+      ),
+    })
+    .from(messagesTable)
+    .where(
+      and(
+        eq(messagesTable.conversationId, conversationId),
+        or(
+          eq(messagesTable.id, threadRootMessageId),
+          eq(messagesTable.threadRootMessageId, threadRootMessageId),
+        ),
+      ),
+    )
+    .limit(1)
+
+  return latestMessage[0]?.createdAt ?? null
+}
+
+export async function markThreadAsViewed(
   context: OrpcContext,
   conversationId: string,
   threadRootMessageId: string,
@@ -369,29 +395,6 @@ export async function getMessagesForConversation(
     }
   }
 
-  const mostRecentMessageCreatedAt = input.cursor
-    ? undefined
-    : messageRecords[0]?.createdAt
-
-  if (mostRecentMessageCreatedAt) {
-    if (input.threadMessageId) {
-      await markThreadAsViewed(
-        context,
-        input.conversationId,
-        input.threadMessageId,
-        context.userId,
-        mostRecentMessageCreatedAt,
-      )
-    } else {
-      await markConversationAsViewed(
-        context,
-        input.conversationId,
-        context.userId,
-        mostRecentMessageCreatedAt,
-      )
-    }
-  }
-
   const messages = await enrichMessages(context, messageRecords)
 
   return {
@@ -522,17 +525,18 @@ export async function createMessageInConversation(
     threadLastReplyAt: null,
   }
 
-  await markConversationAsViewed(
-    context,
-    input.conversationId,
-    context.userId,
-    createdAt,
-  )
   if (threadRootMessageId) {
     await markThreadAsViewed(
       context,
       input.conversationId,
       threadRootMessageId,
+      context.userId,
+      createdAt,
+    )
+  } else {
+    await markConversationAsViewed(
+      context,
+      input.conversationId,
       context.userId,
       createdAt,
     )

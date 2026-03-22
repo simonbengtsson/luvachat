@@ -125,10 +125,7 @@ function connectSocket(): void {
     }
 
     if (parsedEvent.data.type === "messageCreated") {
-      applyMessageCreatedToCache(queryClient, parsedEvent.data.message, {
-        markViewed:
-          getActiveConversationId() === parsedEvent.data.message.conversationId,
-      })
+      applyMessageCreatedToCache(queryClient, parsedEvent.data.message)
     }
   })
 
@@ -163,12 +160,6 @@ function getSyncUrl(clientId: string): string {
   const url = new URL(`${protocol}//${window.location.host}/sync`)
   url.searchParams.set("userId", clientId)
   return url.toString()
-}
-
-function getActiveConversationId(): string | null {
-  const match = window.location.pathname.match(/^\/c\/([^/]+)$/)
-  const activeConversationId = match?.[1]
-  return activeConversationId ? decodeURIComponent(activeConversationId) : null
 }
 
 function clearPingInterval(): void {

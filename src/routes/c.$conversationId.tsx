@@ -59,7 +59,10 @@ import {
 } from "@/core/messagesQuery"
 import type { EnrichedConversation } from "@/core/models"
 import { orpcClient } from "@/core/orpcClient"
-import { applyMessageCreatedToCache } from "@/core/realtimeCache"
+import {
+  applyMessageCreatedToCache,
+  markConversationViewedInCache,
+} from "@/core/realtimeCache"
 import { getScrollRestorationKey } from "@/core/scrollRestorationKey"
 import {
   useInfiniteQuery,
@@ -213,7 +216,6 @@ function RouteComponent() {
       conversationId={conversationId}
       conversationType={conversationQuery.data?.type ?? null}
       conversationTitle={conversationTitle}
-      currentUserId={currentUserId ?? null}
       threadMessageId={threadMessageId}
       members={members}
       membersById={membersById}
@@ -225,7 +227,6 @@ function ConversationView({
   conversationId,
   conversationType,
   conversationTitle,
-  currentUserId,
   threadMessageId,
   members,
   membersById,
@@ -233,7 +234,6 @@ function ConversationView({
   conversationId: string
   conversationType: string | null
   conversationTitle: string
-  currentUserId: string | null
   threadMessageId?: string
   members: Member[]
   membersById: Map<string, Member>
@@ -346,9 +346,15 @@ function ConversationView({
         attachments,
       }),
     onSuccess: (message) => {
-      applyMessageCreatedToCache(queryClient, message, {
-        markViewed: true,
-      })
+      applyMessageCreatedToCache(queryClient, message)
+      lastPersistedViewedMessageIdRef.current = message.id
+      if (!message.threadRootMessageId) {
+        markConversationViewedInCache(
+          queryClient,
+          conversationId,
+          message.createdAt,
+        )
+      }
       shouldAutoScrollToBottomRef.current = true
       composerRef.current?.clear()
       // Scroll to bottom after sending without affecting page viewport
@@ -359,7 +365,36 @@ function ConversationView({
   })
 
   const markConversationViewedMutation = useMutation({
-    mutationFn: () => orpcClient.markConversationViewed({ conversationId }),
+    mutationFn: (_input: {
+      lastViewedAt: string
+      messageId: string
+    }) => orpcClient.markConversationViewed({ conversationId }),
+    onMutate: ({ lastViewedAt }) => {
+      markConversationViewedInCache(queryClient, conversationId, lastViewedAt)
+    },
+    onError: () => {
+      lastPersistedViewedMessageIdRef.current = null
+      void queryClient.invalidateQueries({ queryKey: conversationsQueryKey })
+      void queryClient.invalidateQueries({
+        queryKey: conversationQueryKey(conversationId),
+      })
+    },
+  })
+
+  const markThreadViewedMutation = useMutation({
+    mutationFn: () => {
+      if (!threadMessageId) {
+        return Promise.resolve()
+      }
+
+      return orpcClient.markThreadViewed({
+        conversationId,
+        threadRootMessageId: threadMessageId,
+      })
+    },
+    onError: () => {
+      lastPersistedViewedMessageIdRef.current = null
+    },
   })
 
   const deleteConversationMutation = useMutation({
@@ -585,9 +620,7 @@ function ConversationView({
   const threadRootMessage = threadMessageId
     ? (messages.find((message) => message.id === threadMessageId) ?? null)
     : null
-  const latestConversationMessage = !isThreadView
-    ? (messages[messages.length - 1] ?? null)
-    : null
+  const latestViewedMessage = messages[messages.length - 1] ?? null
   const threadRootTiptapDocument = threadRootMessage
     ? parseTiptapJson(threadRootMessage.tiptapJson)
     : null
@@ -597,47 +630,43 @@ function ConversationView({
       : messages
 
   useEffect(() => {
-    if (!latestConversationMessage) {
-      return
-    }
-
-    if (lastPersistedViewedMessageIdRef.current === null) {
-      lastPersistedViewedMessageIdRef.current = latestConversationMessage.id
-    }
-  }, [latestConversationMessage])
-
-  useEffect(() => {
     if (
-      isThreadView ||
-      !currentUserId ||
-      !latestConversationMessage ||
+      !latestViewedMessage ||
       documentVisibilityState !== "visible" ||
-      !windowHasFocus ||
-      latestConversationMessage.userId === currentUserId
+      !windowHasFocus
     ) {
       return
     }
 
     if (
-      lastPersistedViewedMessageIdRef.current === latestConversationMessage.id
+      lastPersistedViewedMessageIdRef.current === latestViewedMessage.id
     ) {
       return
     }
 
     const timeoutId = window.setTimeout(() => {
-      lastPersistedViewedMessageIdRef.current = latestConversationMessage.id
-      markConversationViewedMutation.mutate()
+      lastPersistedViewedMessageIdRef.current = latestViewedMessage.id
+
+      if (isThreadView) {
+        markThreadViewedMutation.mutate()
+        return
+      }
+
+      markConversationViewedMutation.mutate({
+        lastViewedAt: latestViewedMessage.createdAt,
+        messageId: latestViewedMessage.id,
+      })
     }, 250)
 
     return () => {
       window.clearTimeout(timeoutId)
     }
   }, [
-    currentUserId,
     documentVisibilityState,
     isThreadView,
-    latestConversationMessage,
+    latestViewedMessage,
     markConversationViewedMutation,
+    markThreadViewedMutation,
     windowHasFocus,
   ])
 

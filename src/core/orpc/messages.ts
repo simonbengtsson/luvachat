@@ -3,7 +3,9 @@ import { base } from "./context"
 import { getOrCreateDirectConversation } from "./conversations"
 import {
   createMessageInConversation,
+  getLatestThreadMessageCreatedAt,
   getMessagesForConversation,
+  markThreadAsViewed,
 } from "./services/messages"
 
 const attachmentFileSchema = z.custom<File>((value) => value instanceof File)
@@ -22,6 +24,32 @@ export const getMessages = base
   )
   .handler(async ({ context, input }) => {
     return getMessagesForConversation(context, input)
+  })
+
+export const markThreadViewed = base
+  .input(
+    z.object({
+      conversationId: z.string().min(1),
+      threadRootMessageId: z.string().min(1),
+    }),
+  )
+  .handler(async ({ context, input }) => {
+    const latestMessageCreatedAt = await getLatestThreadMessageCreatedAt(
+      context,
+      input.conversationId,
+      input.threadRootMessageId,
+    )
+    if (!latestMessageCreatedAt) {
+      return
+    }
+
+    await markThreadAsViewed(
+      context,
+      input.conversationId,
+      input.threadRootMessageId,
+      context.userId,
+      latestMessageCreatedAt,
+    )
   })
 
 export const sendMessage = base

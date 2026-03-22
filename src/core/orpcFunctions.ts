@@ -7,7 +7,12 @@ import {
   getDirectConversationByMemberIds,
   markConversationViewed,
 } from "./orpc/conversations"
-import { getMessages, sendDirectMessage, sendMessage } from "./orpc/messages"
+import {
+  getMessages,
+  markThreadViewed,
+  sendDirectMessage,
+  sendMessage,
+} from "./orpc/messages"
 import {
   deletePushSubscription,
   getVapidPublicKey,
@@ -24,6 +29,7 @@ export const orpcRouter = {
   getDirectConversationByMemberIds,
   sendDirectMessage,
   markConversationViewed,
+  markThreadViewed,
   getVapidPublicKey,
   savePushSubscription,
   deletePushSubscription,

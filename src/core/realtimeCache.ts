@@ -15,7 +15,6 @@ type MessagesInfiniteData = InfiniteData<MessagesPage, string | undefined>
 export function applyMessageCreatedToCache(
   queryClient: QueryClient,
   message: EnrichedMessage,
-  options?: { markViewed?: boolean },
 ): void {
   if (message.threadRootMessageId) {
     upsertMessageInThreadCache(queryClient, message)
@@ -24,9 +23,8 @@ export function applyMessageCreatedToCache(
     })
   } else {
     upsertMessageInConversationCache(queryClient, message)
+    updateConversationMetadata(queryClient, message)
   }
-
-  updateConversationMetadata(queryClient, message, options?.markViewed ?? false)
 }
 
 function upsertMessageInConversationCache(
@@ -92,12 +90,7 @@ function upsertMessageInThreadCache(
 function updateConversationMetadata(
   queryClient: QueryClient,
   message: EnrichedMessage,
-  markViewed: boolean,
 ): void {
-  if (message.threadRootMessageId) {
-    return
-  }
-
   queryClient.setQueryData<EnrichedConversation[]>(
     conversationsQueryKey,
     (conversations) =>
@@ -106,9 +99,6 @@ function updateConversationMetadata(
           ? {
               ...conversation,
               lastMessageAt: message.createdAt,
-              lastViewedAt: markViewed
-                ? message.createdAt
-                : conversation.lastViewedAt,
             }
           : conversation,
       ) ?? conversations,
@@ -121,9 +111,36 @@ function updateConversationMetadata(
         ? {
             ...conversation,
             lastMessageAt: message.createdAt,
-            lastViewedAt: markViewed
-              ? message.createdAt
-              : conversation.lastViewedAt,
+          }
+        : conversation,
+  )
+}
+
+export function markConversationViewedInCache(
+  queryClient: QueryClient,
+  conversationId: string,
+  lastViewedAt: string,
+): void {
+  queryClient.setQueryData<EnrichedConversation[]>(
+    conversationsQueryKey,
+    (conversations) =>
+      conversations?.map((conversation) =>
+        conversation.id === conversationId
+          ? {
+              ...conversation,
+              lastViewedAt,
+            }
+          : conversation,
+      ) ?? conversations,
+  )
+
+  queryClient.setQueryData<EnrichedConversation | null>(
+    conversationQueryKey(conversationId),
+    (conversation) =>
+      conversation
+        ? {
+            ...conversation,
+            lastViewedAt,
           }
         : conversation,
   )
