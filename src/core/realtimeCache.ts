@@ -8,13 +8,13 @@ import {
   messagesQueryKey,
   type MessagesPage,
 } from "./messagesQuery"
-import type { ConversationWithUserState, Message } from "./schema"
+import type { ConversationWithUserState, EnrichedMessage } from "./schema"
 
 type MessagesInfiniteData = InfiniteData<MessagesPage, string | undefined>
 
 export function applyMessageCreatedToCache(
   queryClient: QueryClient,
-  message: Message,
+  message: EnrichedMessage,
   options?: { markViewed?: boolean },
 ): void {
   if (message.parentMessageId) {
@@ -31,7 +31,7 @@ export function applyMessageCreatedToCache(
 
 function upsertMessageInConversationCache(
   queryClient: QueryClient,
-  message: Message,
+  message: EnrichedMessage,
 ): void {
   queryClient.setQueryData<MessagesInfiniteData>(
     messagesQueryKey(message.conversationId),
@@ -68,13 +68,13 @@ function upsertMessageInConversationCache(
 
 function upsertMessageInThreadCache(
   queryClient: QueryClient,
-  message: Message,
+  message: EnrichedMessage,
 ): void {
   if (!message.parentMessageId) {
     return
   }
 
-  queryClient.setQueryData<Message[]>(
+  queryClient.setQueryData<EnrichedMessage[]>(
     messagesQueryKey(message.conversationId, message.parentMessageId),
     (existing) => {
       if (!existing) {
@@ -90,7 +90,7 @@ function upsertMessageInThreadCache(
 
 function updateConversationMetadata(
   queryClient: QueryClient,
-  message: Message,
+  message: EnrichedMessage,
   markViewed: boolean,
 ): void {
   if (message.parentMessageId) {

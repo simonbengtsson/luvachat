@@ -4,8 +4,6 @@ import {
   text,
   type AnySQLiteColumn,
 } from "drizzle-orm/sqlite-core"
-import { createSelectSchema } from "drizzle-orm/zod"
-import { z } from "zod"
 
 export const conversationsTable = sqliteTable("conversations", {
   id: text("id").primaryKey(),
@@ -13,16 +11,7 @@ export const conversationsTable = sqliteTable("conversations", {
   name: text("name"),
   createdAt: text("created_at").notNull(),
 })
-export const ConversationSchema = createSelectSchema(conversationsTable)
-export type Conversation = z.infer<typeof ConversationSchema>
-export const ConversationWithUserState = ConversationSchema.extend({
-  memberIds: z.array(z.string()),
-  lastViewedAt: z.string().nullable(),
-  lastMessageAt: z.string().nullable(),
-})
-export type ConversationWithUserState = z.infer<
-  typeof ConversationWithUserState
->
+export type Conversation = typeof conversationsTable.$inferSelect
 
 export const conversationMembersTable = sqliteTable("conversation_members", {
   id: text("id").primaryKey(), // userId_conversationId
@@ -32,10 +21,7 @@ export const conversationMembersTable = sqliteTable("conversation_members", {
     .references(() => conversationsTable.id),
   joinedAt: text("joined_at").notNull(),
 })
-export const ConversationMemberSchema = createSelectSchema(
-  conversationMembersTable,
-)
-export type ConversationMember = z.infer<typeof ConversationMemberSchema>
+export type ConversationMember = typeof conversationMembersTable.$inferSelect
 
 export const messagesTable = sqliteTable("messages", {
   id: text("id").primaryKey(),
@@ -75,24 +61,18 @@ export const messageMentionsTable = sqliteTable("message_mentions", {
   mentionedUserId: text("mentioned_user_id"),
   createdAt: text("created_at").notNull(),
 })
-export const MessageRecordSchema = createSelectSchema(messagesTable)
-export type MessageRecord = z.infer<typeof MessageRecordSchema>
+export type MessageRecord = typeof messagesTable.$inferSelect
 
-export const MessageAttachmentSchema = createSelectSchema(
-  messageAttachmentsTable,
-)
-export type MessageAttachment = z.infer<typeof MessageAttachmentSchema>
+export type MessageAttachment = typeof messageAttachmentsTable.$inferSelect
 
-export const MessageMentionSchema = createSelectSchema(messageMentionsTable)
-export type MessageMention = z.infer<typeof MessageMentionSchema>
+export type MessageMention = typeof messageMentionsTable.$inferSelect
 
-export const MessageSchema = MessageRecordSchema.extend({
-  attachments: z.array(MessageAttachmentSchema),
-  mentions: z.array(MessageMentionSchema),
-  threadReplyCount: z.number().int().nonnegative().default(0),
-  threadLastReplyAt: z.string().nullable().default(null),
-})
-export type Message = z.infer<typeof MessageSchema>
+export type EnrichedMessage = MessageRecord & {
+  attachments: MessageAttachment[]
+  mentions: MessageMention[]
+  threadReplyCount: number
+  threadLastReplyAt: string | null
+}
 
 export const pushSubscriptionsTable = sqliteTable("push_subscriptions", {
   endpoint: text("endpoint").primaryKey(),
@@ -102,12 +82,7 @@ export const pushSubscriptionsTable = sqliteTable("push_subscriptions", {
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 })
-export const PushSubscriptionRecordSchema = createSelectSchema(
-  pushSubscriptionsTable,
-)
-export type PushSubscriptionRecord = z.infer<
-  typeof PushSubscriptionRecordSchema
->
+export type PushSubscriptionRecord = typeof pushSubscriptionsTable.$inferSelect
 
 export const conversationUserStateTable = sqliteTable(
   "conversation_user_state",
@@ -120,7 +95,10 @@ export const conversationUserStateTable = sqliteTable(
     lastViewedAt: text("last_viewed_at").notNull(),
   },
 )
-export const ChannelUserStateSchema = createSelectSchema(
-  conversationUserStateTable,
-)
-export type ChannelUserState = z.infer<typeof ChannelUserStateSchema>
+export type ChannelUserState = typeof conversationUserStateTable.$inferSelect
+
+export type ConversationWithUserState = Conversation & {
+  memberIds: string[]
+  lastViewedAt: string | null
+  lastMessageAt: string | null
+}

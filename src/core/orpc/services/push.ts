@@ -7,14 +7,14 @@ import {
   conversationsTable,
   messagesTable,
   pushSubscriptionsTable,
-  type Message,
+  type EnrichedMessage,
   type PushSubscriptionRecord,
 } from "../../schema"
 import type { OrpcContext } from "../context"
 
 async function listThreadParticipantUserIds(
   context: OrpcContext,
-  message: Message,
+  message: EnrichedMessage,
 ): Promise<string[]> {
   const threadMessageId = message.parentMessageId ?? message.id
   const participants = await context.db
@@ -105,7 +105,7 @@ async function sendPushNotification(
 
 export async function sendPushNotifications(
   context: OrpcContext,
-  message: Message,
+  message: EnrichedMessage,
 ): Promise<void> {
   const participantUserIds = await listThreadParticipantUserIds(
     context,

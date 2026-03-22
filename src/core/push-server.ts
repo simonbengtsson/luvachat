@@ -1,5 +1,5 @@
 import webpush from "web-push"
-import type { Message, PushSubscriptionRecord } from "./schema"
+import type { EnrichedMessage, PushSubscriptionRecord } from "./schema"
 
 const NOTIFICATION_BODY_MAX_LENGTH = 140
 
@@ -27,7 +27,7 @@ type PushRequestDetails = {
 }
 
 export function buildPushNotificationPayload(
-  message: Message,
+  message: EnrichedMessage,
   conversationName?: string | null,
 ): PushNotificationPayload {
   const title = `#${conversationName?.trim() || message.conversationId}`

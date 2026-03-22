@@ -3,7 +3,7 @@ import {
   messageAttachmentsTable,
   messageMentionsTable,
   messagesTable,
-  type Message,
+  type EnrichedMessage,
   type MessageAttachment,
   type MessageMention,
   type MessageRecord,
@@ -141,7 +141,7 @@ async function listMentionsByMessageIds(
 async function enrichMessages(
   context: OrpcContext,
   messageRecords: MessageListRecord[],
-): Promise<Message[]> {
+): Promise<EnrichedMessage[]> {
   const messageIds = messageRecords.map((message) => message.id)
   const attachmentsByMessageId = await listAttachmentsByMessageIds(
     context,
@@ -225,7 +225,7 @@ export async function getMessagesForConversation(
     limit?: number
   },
 ): Promise<{
-  messages: Message[]
+  messages: EnrichedMessage[]
   nextCursor?: string
 }> {
   const limit = input.limit ?? 10
@@ -344,7 +344,7 @@ export async function createMessageInConversation(
     tiptapJson?: string | null
     attachments: File[]
   },
-): Promise<Message> {
+): Promise<EnrichedMessage> {
   const trimmedContent = input.content.trim()
   const attachments = await Promise.all(
     input.attachments.map(
@@ -449,7 +449,7 @@ export async function createMessageInConversation(
     throw error
   }
 
-  const message: Message = {
+  const message: EnrichedMessage = {
     ...messageRecord,
     attachments: attachmentRecords,
     mentions: mentionRecords,
