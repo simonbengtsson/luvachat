@@ -111,7 +111,6 @@ function buildConversationLastRootMessageSubquery(context: OrpcContext) {
 
 const getConversations = base.handler(
   async ({ context }): Promise<ConversationWithUserState[]> => {
-    const normalizedUserId = context.userId.trim()
     const conversationLastMessageSubquery =
       buildConversationLastRootMessageSubquery(context)
     const conversationMembersSubquery = context.db
@@ -146,7 +145,7 @@ const getConversations = base.handler(
         conversationUserStateTable,
         and(
           eq(conversationUserStateTable.conversationId, conversationsTable.id),
-          eq(conversationUserStateTable.userId, normalizedUserId),
+          eq(conversationUserStateTable.userId, context.userId),
         ),
       )
       .leftJoin(
@@ -173,13 +172,6 @@ const getConversationById = base
   )
   .handler(
     async ({ context, input }): Promise<ConversationWithUserState | null> => {
-      const normalizedConversationId = input.conversationId.trim()
-      const normalizedUserId = context.userId.trim()
-
-      if (!normalizedConversationId) {
-        throw new Error("Conversation id is required")
-      }
-
       const conversation = await context.db
         .select({
           id: conversationsTable.id,
@@ -188,7 +180,7 @@ const getConversationById = base
           createdAt: conversationsTable.createdAt,
         })
         .from(conversationsTable)
-        .where(eq(conversationsTable.id, normalizedConversationId))
+        .where(eq(conversationsTable.id, input.conversationId))
         .limit(1)
 
       const currentConversation = conversation[0]
@@ -196,23 +188,18 @@ const getConversationById = base
         return null
       }
 
-      const userState = normalizedUserId
-        ? await context.db
-            .select({
-              lastViewedAt: conversationUserStateTable.lastViewedAt,
-            })
-            .from(conversationUserStateTable)
-            .where(
-              and(
-                eq(
-                  conversationUserStateTable.conversationId,
-                  normalizedConversationId,
-                ),
-                eq(conversationUserStateTable.userId, normalizedUserId),
-              ),
-            )
-            .limit(1)
-        : []
+      const userState = await context.db
+        .select({
+          lastViewedAt: conversationUserStateTable.lastViewedAt,
+        })
+        .from(conversationUserStateTable)
+        .where(
+          and(
+            eq(conversationUserStateTable.conversationId, input.conversationId),
+            eq(conversationUserStateTable.userId, context.userId),
+          ),
+        )
+        .limit(1)
 
       const lastMessage = await context.db
         .select({
@@ -223,7 +210,7 @@ const getConversationById = base
         .from(messagesTable)
         .where(
           and(
-            eq(messagesTable.conversationId, normalizedConversationId),
+            eq(messagesTable.conversationId, input.conversationId),
             isNull(messagesTable.parentMessageId),
           ),
         )
@@ -233,9 +220,7 @@ const getConversationById = base
           userId: conversationMembersTable.userId,
         })
         .from(conversationMembersTable)
-        .where(
-          eq(conversationMembersTable.conversationId, normalizedConversationId),
-        )
+        .where(eq(conversationMembersTable.conversationId, input.conversationId))
         .orderBy(asc(conversationMembersTable.userId))
 
       return {
@@ -278,11 +263,6 @@ const deleteConversation = base
     }),
   )
   .handler(async ({ context, input }): Promise<void> => {
-    const id = input.conversationId.trim()
-    if (!id) {
-      throw new Error("Conversation id is required")
-    }
-
     const attachmentRows = await context.db
       .select({
         storageKey: messageAttachmentsTable.storageKey,
@@ -292,17 +272,17 @@ const deleteConversation = base
         messagesTable,
         eq(messageAttachmentsTable.messageId, messagesTable.id),
       )
-      .where(eq(messagesTable.conversationId, id))
+      .where(eq(messagesTable.conversationId, input.conversationId))
 
     await context.db
       .delete(messagesTable)
-      .where(eq(messagesTable.conversationId, id))
+      .where(eq(messagesTable.conversationId, input.conversationId))
     await context.db
       .delete(conversationUserStateTable)
-      .where(eq(conversationUserStateTable.conversationId, id))
+      .where(eq(conversationUserStateTable.conversationId, input.conversationId))
     await context.db
       .delete(conversationsTable)
-      .where(eq(conversationsTable.id, id))
+      .where(eq(conversationsTable.id, input.conversationId))
     await deleteBucketObjects(
       context,
       attachmentRows.map((attachment) => attachment.storageKey),
@@ -313,8 +293,8 @@ const deleteConversation = base
 const getMessages = base
   .input(
     z.object({
-      conversationId: z.string(),
-      threadMessageId: z.string().optional(),
+      conversationId: z.string().min(1),
+      threadMessageId: z.string().min(1).optional(),
       cursor: z.string().optional(),
       limit: z.number().optional(),
     }),
@@ -327,9 +307,6 @@ const getMessages = base
       messages: Message[]
       nextCursor?: string
     }> => {
-      const normalizedConversationId = input.conversationId.trim()
-      const normalizedUserId = context.userId.trim()
-      const normalizedThreadMessageId = input.threadMessageId
       const limit = input.limit ?? 10
 
       const threadSummarySubquery = context.db
@@ -348,7 +325,7 @@ const getMessages = base
       let nextCursor: string | undefined
       let messageRecords: MessageListRecord[]
 
-      if (normalizedThreadMessageId) {
+      if (input.threadMessageId) {
         messageRecords = await context.db
           .select({
             id: messagesTable.id,
@@ -371,10 +348,10 @@ const getMessages = base
           )
           .where(
             and(
-              eq(messagesTable.conversationId, normalizedConversationId),
+              eq(messagesTable.conversationId, input.conversationId),
               or(
-                eq(messagesTable.id, normalizedThreadMessageId),
-                eq(messagesTable.parentMessageId, normalizedThreadMessageId),
+                eq(messagesTable.id, input.threadMessageId),
+                eq(messagesTable.parentMessageId, input.threadMessageId),
               ),
             ),
           )
@@ -402,7 +379,7 @@ const getMessages = base
           )
           .where(
             and(
-              eq(messagesTable.conversationId, normalizedConversationId),
+              eq(messagesTable.conversationId, input.conversationId),
               isNull(messagesTable.parentMessageId),
               input.cursor
                 ? lt(messagesTable.createdAt, input.cursor)
@@ -422,11 +399,11 @@ const getMessages = base
         ? undefined
         : messageRecords[0]?.createdAt
 
-      if (normalizedUserId && mostRecentMessageCreatedAt) {
+      if (mostRecentMessageCreatedAt) {
         await markConversationAsViewed(
           context,
-          normalizedConversationId,
-          normalizedUserId,
+          input.conversationId,
+          context.userId,
           mostRecentMessageCreatedAt,
         )
       }
@@ -522,13 +499,6 @@ const markConversationViewed = base
     }),
   )
   .handler(async ({ context, input }): Promise<void> => {
-    const normalizedConversationId = input.conversationId.trim()
-    const normalizedUserId = context.userId.trim()
-
-    if (!normalizedConversationId || !normalizedUserId) {
-      return
-    }
-
     const latestMessage = await context.db
       .select({
         createdAt: sql<string | null>`max(${messagesTable.createdAt})`.as(
@@ -538,7 +508,7 @@ const markConversationViewed = base
       .from(messagesTable)
       .where(
         and(
-          eq(messagesTable.conversationId, normalizedConversationId),
+          eq(messagesTable.conversationId, input.conversationId),
           isNull(messagesTable.parentMessageId),
         ),
       )
@@ -551,8 +521,8 @@ const markConversationViewed = base
 
     await markConversationAsViewed(
       context,
-      normalizedConversationId,
-      normalizedUserId,
+      input.conversationId,
+      context.userId,
       latestMessageCreatedAt,
     )
   })
@@ -564,24 +534,13 @@ const getVapidPublicKey = base.handler(async ({ context }): Promise<string> => {
 const savePushSubscription = base
   .input(PushSubscriptionInputSchema)
   .handler(async ({ context, input }): Promise<void> => {
-    const normalizedUserId = context.userId.trim()
-    const endpoint = input.endpoint.trim()
-
-    if (!normalizedUserId) {
-      throw new Error("User id is required")
-    }
-
-    if (!endpoint) {
-      throw new Error("Push subscription endpoint is required")
-    }
-
     const now = new Date().toISOString()
 
     await context.db
       .insert(pushSubscriptionsTable)
       .values({
-        endpoint,
-        userId: normalizedUserId,
+        endpoint: input.endpoint,
+        userId: context.userId,
         p256dh: input.keys.p256dh,
         auth: input.keys.auth,
         createdAt: now,
@@ -590,7 +549,7 @@ const savePushSubscription = base
       .onConflictDoUpdate({
         target: pushSubscriptionsTable.endpoint,
         set: {
-          userId: normalizedUserId,
+          userId: context.userId,
           p256dh: input.keys.p256dh,
           auth: input.keys.auth,
           updatedAt: now,
@@ -605,19 +564,12 @@ const deletePushSubscription = base
     }),
   )
   .handler(async ({ context, input }): Promise<void> => {
-    const normalizedUserId = context.userId.trim()
-    const normalizedEndpoint = input.endpoint.trim()
-
-    if (!normalizedUserId || !normalizedEndpoint) {
-      return
-    }
-
     await context.db
       .delete(pushSubscriptionsTable)
       .where(
         and(
-          eq(pushSubscriptionsTable.userId, normalizedUserId),
-          eq(pushSubscriptionsTable.endpoint, normalizedEndpoint),
+          eq(pushSubscriptionsTable.userId, context.userId),
+          eq(pushSubscriptionsTable.endpoint, input.endpoint),
         ),
       )
   })
@@ -741,9 +693,7 @@ function collectMentionedUserIds(node: unknown, mentionedUserIds: Set<string>) {
 
   if (contentNode.type === "member-mention") {
     const mentionedUserId =
-      typeof contentNode.attrs?.id === "string"
-        ? contentNode.attrs.id.trim()
-        : ""
+      typeof contentNode.attrs?.id === "string" ? contentNode.attrs.id : ""
 
     if (mentionedUserId) {
       mentionedUserIds.add(mentionedUserId)
@@ -973,14 +923,9 @@ async function deletePushSubscriptionByEndpoint(
   context: OrpcContext,
   endpoint: string,
 ): Promise<void> {
-  const normalizedEndpoint = endpoint.trim()
-  if (!normalizedEndpoint) {
-    return
-  }
-
   await context.db
     .delete(pushSubscriptionsTable)
-    .where(eq(pushSubscriptionsTable.endpoint, normalizedEndpoint))
+    .where(eq(pushSubscriptionsTable.endpoint, endpoint))
 }
 
 function sanitizeAttachmentFileName(fileName: string): string {
@@ -1002,22 +947,7 @@ function normalizeDirectConversationMemberIds(
   memberIds: string[],
   currentUserId: string,
 ) {
-  const normalizedUserId = currentUserId.trim()
-  const normalizedSelectedMemberIds = Array.from(
-    new Set(memberIds.map((memberId) => memberId.trim()).filter(Boolean)),
-  ).sort()
-
-  if (!normalizedUserId) {
-    throw new Error("User id is required")
-  }
-
-  if (normalizedSelectedMemberIds.length === 0) {
-    throw new Error("At least one member is required")
-  }
-
-  return Array.from(
-    new Set([normalizedUserId, ...normalizedSelectedMemberIds]),
-  ).sort()
+  return Array.from(new Set([currentUserId, ...memberIds])).sort()
 }
 
 function getParticipantConversationType(participantIds: string[]) {
@@ -1029,10 +959,9 @@ async function findParticipantConversationByMemberIds(
   currentUserId: string,
   memberIds: string[],
 ): Promise<Conversation | null> {
-  const normalizedCurrentUserId = currentUserId.trim()
   const participantIds = normalizeDirectConversationMemberIds(
     memberIds,
-    normalizedCurrentUserId,
+    currentUserId,
   )
   const conversationType = getParticipantConversationType(participantIds)
 
@@ -1047,7 +976,7 @@ async function findParticipantConversationByMemberIds(
     )
     .where(
       and(
-        eq(conversationMembersTable.userId, normalizedCurrentUserId),
+        eq(conversationMembersTable.userId, currentUserId),
         eq(conversationsTable.type, conversationType),
       ),
     )
@@ -1169,9 +1098,6 @@ async function createMessageInConversation(
     attachments: File[]
   },
 ): Promise<Message> {
-  const normalizedConversationId = input.conversationId.trim()
-  const normalizedUserId = context.userId.trim()
-  const normalizedParentMessageId = input.parentMessageId
   const trimmedContent = input.content.trim()
   const attachments = await Promise.all(
     input.attachments.map(
@@ -1184,14 +1110,6 @@ async function createMessageInConversation(
     ),
   )
 
-  if (!normalizedConversationId) {
-    throw new Error("Conversation id is required")
-  }
-
-  if (!normalizedUserId) {
-    throw new Error("User id is required")
-  }
-
   if (!trimmedContent && attachments.length === 0) {
     throw new Error("Message content or attachments are required")
   }
@@ -1202,7 +1120,7 @@ async function createMessageInConversation(
   )
   let parentMessageId: string | null = null
 
-  if (normalizedParentMessageId) {
+  if (input.parentMessageId) {
     const parentMessage = await context.db
       .select({
         id: messagesTable.id,
@@ -1210,10 +1128,10 @@ async function createMessageInConversation(
         parentMessageId: messagesTable.parentMessageId,
       })
       .from(messagesTable)
-      .where(eq(messagesTable.id, normalizedParentMessageId))
+      .where(eq(messagesTable.id, input.parentMessageId))
       .limit(1)
 
-    if (parentMessage[0]?.conversationId !== normalizedConversationId) {
+    if (parentMessage[0]?.conversationId !== input.conversationId) {
       throw new Error("Thread message is invalid")
     }
 
@@ -1226,11 +1144,11 @@ async function createMessageInConversation(
 
   const messageRecord: MessageRecord = {
     id: crypto.randomUUID(),
-    conversationId: normalizedConversationId,
+    conversationId: input.conversationId,
     parentMessageId,
     content: trimmedContent ? input.content : "",
     tiptapJson: normalizedTiptapJson,
-    userId: normalizedUserId,
+    userId: context.userId,
     createdAt,
   }
   const uploadedKeys: string[] = []
@@ -1259,7 +1177,7 @@ async function createMessageInConversation(
       attachmentRecords.push({
         id: attachmentId,
         messageId: messageRecord.id,
-        userId: normalizedUserId,
+        userId: context.userId,
         storageKey,
         fileName: attachment.fileName,
         contentType,
@@ -1294,8 +1212,8 @@ async function createMessageInConversation(
 
   await markConversationAsViewed(
     context,
-    normalizedConversationId,
-    normalizedUserId,
+    input.conversationId,
+    context.userId,
     createdAt,
   )
 
