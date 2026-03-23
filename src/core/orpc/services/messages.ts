@@ -15,12 +15,14 @@ import {
   activityEventsTable,
   messageAttachmentsTable,
   messageMentionsTable,
+  messageReactionsTable,
   messagesTable,
   threadMembersTable,
   type ActivityEvent,
   type Message,
   type MessageAttachment,
   type MessageMention,
+  type MessageReaction,
 } from "../../schema"
 import type { OrpcContext } from "../context"
 import { broadcastEvent } from "../realtime"
@@ -43,6 +45,8 @@ type MessageListRecord = Message & {
 type ThreadListRecord = MessageListRecord & {
   threadActivityAt: string
 }
+
+type ReactionSummary = EnrichedMessage["reactions"][number]
 
 function createThreadCursor(
   threadActivityAt: string,
@@ -193,6 +197,80 @@ async function listMentionsByMessageIds(
   return mentionsByMessageId
 }
 
+async function listReactionsByMessageIds(
+  context: OrpcContext,
+  messageIds: string[],
+): Promise<Map<string, ReactionSummary[]>> {
+  if (messageIds.length === 0) {
+    return new Map()
+  }
+
+  const reactions = await context.db
+    .select({
+      messageId: messageReactionsTable.messageId,
+      userId: messageReactionsTable.userId,
+      emoji: messageReactionsTable.emoji,
+      createdAt: messageReactionsTable.createdAt,
+    })
+    .from(messageReactionsTable)
+    .where(inArray(messageReactionsTable.messageId, messageIds))
+    .orderBy(
+      asc(messageReactionsTable.createdAt),
+      asc(messageReactionsTable.id),
+    )
+
+  const reactionsByMessageId = new Map<string, ReactionSummary[]>()
+  const groupedReactionsByMessageId = new Map<
+    string,
+    Map<string, ReactionSummary>
+  >()
+
+  for (const reaction of reactions) {
+    let groupedReactions = groupedReactionsByMessageId.get(reaction.messageId)
+    let reactionSummaries = reactionsByMessageId.get(reaction.messageId)
+
+    if (!groupedReactions || !reactionSummaries) {
+      groupedReactions = new Map()
+      reactionSummaries = []
+      groupedReactionsByMessageId.set(reaction.messageId, groupedReactions)
+      reactionsByMessageId.set(reaction.messageId, reactionSummaries)
+    }
+
+    const existingReaction = groupedReactions.get(reaction.emoji)
+    if (existingReaction) {
+      existingReaction.count += 1
+      existingReaction.reactedByCurrentUser ||= reaction.userId === context.userId
+      continue
+    }
+
+    const nextReaction = {
+      emoji: reaction.emoji,
+      count: 1,
+      reactedByCurrentUser: reaction.userId === context.userId,
+    }
+
+    groupedReactions.set(reaction.emoji, nextReaction)
+    reactionSummaries.push(nextReaction)
+  }
+
+  return reactionsByMessageId
+}
+
+function createThreadSummarySubquery(context: OrpcContext) {
+  return context.db
+    .select({
+      threadRootMessageId: messagesTable.threadRootMessageId,
+      threadReplyCount: sql<number>`count(*)`.as("thread_reply_count"),
+      threadLastReplyAt: sql<string>`max(${messagesTable.createdAt})`.as(
+        "thread_last_reply_at",
+      ),
+    })
+    .from(messagesTable)
+    .where(isNotNull(messagesTable.threadRootMessageId))
+    .groupBy(messagesTable.threadRootMessageId)
+    .as("message_thread_summary")
+}
+
 async function enrichMessages(
   context: OrpcContext,
   messageRecords: MessageListRecord[],
@@ -206,11 +284,16 @@ async function enrichMessages(
     context,
     messageIds,
   )
+  const reactionsByMessageId = await listReactionsByMessageIds(
+    context,
+    messageIds,
+  )
 
   return messageRecords.map((message) => ({
     ...message,
     attachments: attachmentsByMessageId.get(message.id) ?? [],
     mentions: mentionsByMessageId.get(message.id) ?? [],
+    reactions: reactionsByMessageId.get(message.id) ?? [],
     threadIsUnread: Boolean(message.threadIsUnread),
   }))
 }
@@ -298,6 +381,60 @@ function buildMentionActivityEvents(
   })
 }
 
+function buildReactionActivityEvent(
+  reactionRecord: MessageReaction,
+  message: Message,
+  actorUserId: string,
+): ActivityEvent | null {
+  if (message.userId === actorUserId) {
+    return null
+  }
+
+  return {
+    id: crypto.randomUUID(),
+    userId: message.userId,
+    type: "reaction",
+    actorUserId,
+    conversationId: message.conversationId,
+    messageId: message.id,
+    sourceType: "reaction",
+    sourceId: reactionRecord.id,
+    createdAt: reactionRecord.createdAt,
+  }
+}
+
+async function getEnrichedMessageById(
+  context: OrpcContext,
+  messageId: string,
+): Promise<EnrichedMessage | null> {
+  const threadSummarySubquery = createThreadSummarySubquery(context)
+  const messageRecords = await context.db
+    .select({
+      id: messagesTable.id,
+      conversationId: messagesTable.conversationId,
+      threadRootMessageId: messagesTable.threadRootMessageId,
+      content: messagesTable.content,
+      tiptapJson: messagesTable.tiptapJson,
+      createdAt: messagesTable.createdAt,
+      userId: messagesTable.userId,
+      threadReplyCount:
+        sql<number>`coalesce(${threadSummarySubquery.threadReplyCount}, 0)`.as(
+          "thread_reply_count",
+        ),
+      threadLastReplyAt: threadSummarySubquery.threadLastReplyAt,
+    })
+    .from(messagesTable)
+    .leftJoin(
+      threadSummarySubquery,
+      eq(threadSummarySubquery.threadRootMessageId, messagesTable.id),
+    )
+    .where(eq(messagesTable.id, messageId))
+    .limit(1)
+
+  const [message] = await enrichMessages(context, messageRecords)
+  return message ?? null
+}
+
 export async function getLatestThreadMessageCreatedAt(
   context: OrpcContext,
   conversationId: string,
@@ -381,18 +518,7 @@ export async function getMessagesForConversation(
 }> {
   const limit = input.limit ?? 10
 
-  const threadSummarySubquery = context.db
-    .select({
-      threadRootMessageId: messagesTable.threadRootMessageId,
-      threadReplyCount: sql<number>`count(*)`.as("thread_reply_count"),
-      threadLastReplyAt: sql<string>`max(${messagesTable.createdAt})`.as(
-        "thread_last_reply_at",
-      ),
-    })
-    .from(messagesTable)
-    .where(isNotNull(messagesTable.threadRootMessageId))
-    .groupBy(messagesTable.threadRootMessageId)
-    .as("message_thread_summary")
+  const threadSummarySubquery = createThreadSummarySubquery(context)
 
   let nextCursor: string | undefined
   let messageRecords: MessageListRecord[]
@@ -482,18 +608,7 @@ export async function getThreadsForUser(
   } = {},
 ): Promise<ThreadPage> {
   const limit = input.limit ?? 20
-  const threadSummarySubquery = context.db
-    .select({
-      threadRootMessageId: messagesTable.threadRootMessageId,
-      threadReplyCount: sql<number>`count(*)`.as("thread_reply_count"),
-      threadLastReplyAt: sql<string>`max(${messagesTable.createdAt})`.as(
-        "thread_last_reply_at",
-      ),
-    })
-    .from(messagesTable)
-    .where(isNotNull(messagesTable.threadRootMessageId))
-    .groupBy(messagesTable.threadRootMessageId)
-    .as("message_thread_summary")
+  const threadSummarySubquery = createThreadSummarySubquery(context)
   const threadActivityAtSql = sql<string>`coalesce(${threadSummarySubquery.threadLastReplyAt}, ${messagesTable.createdAt})`
   const threadIsUnreadSql = sql<number>`
     case
@@ -720,6 +835,7 @@ export async function createMessageInConversation(
     ...messageRecord,
     attachments: attachmentRecords,
     mentions: mentionRecords,
+    reactions: [],
     threadReplyCount: 0,
     threadLastReplyAt: null,
     threadIsUnread: false,
@@ -749,4 +865,86 @@ export async function createMessageInConversation(
   context.waitUntil(sendPushNotifications(context, message))
 
   return message
+}
+
+export async function toggleReactionForMessage(
+  context: OrpcContext,
+  input: {
+    messageId: string
+    emoji: string
+  },
+): Promise<EnrichedMessage> {
+  const messageRecord = await context.db
+    .select()
+    .from(messagesTable)
+    .where(eq(messagesTable.id, input.messageId))
+    .limit(1)
+  const message = messageRecord[0]
+
+  if (!message) {
+    throw new Error("Message not found")
+  }
+
+  const existingReactionRecord = await context.db
+    .select()
+    .from(messageReactionsTable)
+    .where(
+      and(
+        eq(messageReactionsTable.messageId, input.messageId),
+        eq(messageReactionsTable.userId, context.userId),
+        eq(messageReactionsTable.emoji, input.emoji),
+      ),
+    )
+    .limit(1)
+  const existingReaction = existingReactionRecord[0]
+
+  context.db.transaction((tx) => {
+    if (existingReaction) {
+      tx.delete(messageReactionsTable)
+        .where(eq(messageReactionsTable.id, existingReaction.id))
+        .run()
+
+      tx.delete(activityEventsTable)
+        .where(
+          and(
+            eq(activityEventsTable.sourceType, "reaction"),
+            eq(activityEventsTable.sourceId, existingReaction.id),
+          ),
+        )
+        .run()
+
+      return
+    }
+
+    const reactionRecord: MessageReaction = {
+      id: crypto.randomUUID(),
+      messageId: message.id,
+      userId: context.userId,
+      emoji: input.emoji,
+      createdAt: new Date().toISOString(),
+    }
+    const reactionActivityEvent = buildReactionActivityEvent(
+      reactionRecord,
+      message,
+      context.userId,
+    )
+
+    tx.insert(messageReactionsTable).values(reactionRecord).run()
+
+    if (reactionActivityEvent) {
+      tx.insert(activityEventsTable).values(reactionActivityEvent).run()
+    }
+  })
+
+  const updatedMessage = await getEnrichedMessageById(context, message.id)
+  if (!updatedMessage) {
+    throw new Error("Message not found")
+  }
+
+  broadcastEvent(context, {
+    type: "messageUpdated",
+    message: updatedMessage,
+  })
+
+  return updatedMessage
 }

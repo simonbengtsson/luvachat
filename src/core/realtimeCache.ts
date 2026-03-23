@@ -29,6 +29,38 @@ export function applyMessageCreatedToCache(
   }
 }
 
+export function applyMessageUpdatedToCache(
+  queryClient: QueryClient,
+  message: EnrichedMessage,
+): void {
+  queryClient.setQueryData<MessagesInfiniteData>(
+    messagesQueryKey(message.conversationId),
+    (existing) =>
+      existing
+        ? {
+            ...existing,
+            pages: existing.pages.map((page) => ({
+              ...page,
+              messages: page.messages.map((existingMessage) =>
+                existingMessage.id === message.id ? message : existingMessage,
+              ),
+            })),
+          }
+        : existing,
+  )
+
+  queryClient.setQueryData<EnrichedMessage[]>(
+    messagesQueryKey(
+      message.conversationId,
+      message.threadRootMessageId ?? message.id,
+    ),
+    (existing) =>
+      existing?.map((existingMessage) =>
+        existingMessage.id === message.id ? message : existingMessage,
+      ) ?? existing,
+  )
+}
+
 function upsertMessageInConversationCache(
   queryClient: QueryClient,
   message: EnrichedMessage,

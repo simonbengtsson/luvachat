@@ -2,6 +2,7 @@ import {
   AppChatInput,
   type AppChatInputHandle,
 } from "@/components/app-chat-input"
+import EmojiPicker from "@/components/shadcnblocks/emoji-picker"
 import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
 import {
@@ -58,14 +59,16 @@ import {
   messagesInfiniteQueryOptions,
   threadMessagesQueryOptions,
 } from "@/core/messagesQuery"
-import type { EnrichedConversation } from "@/core/models"
+import type { EnrichedConversation, EnrichedMessage } from "@/core/models"
 import { orpcClient } from "@/core/orpcClient"
 import {
   applyMessageCreatedToCache,
+  applyMessageUpdatedToCache,
   markConversationViewedInCache,
   markThreadViewedInCache,
 } from "@/core/realtimeCache"
 import { threadsQueryKey } from "@/core/threadsQuery"
+import { cn } from "@/lib/utils"
 import { getScrollRestorationKey } from "@/core/scrollRestorationKey"
 import {
   useInfiniteQuery,
@@ -87,6 +90,7 @@ import {
   FileIcon,
   LoaderCircleIcon,
   MessageSquareTextIcon,
+  SmileIcon,
 } from "lucide-react"
 import {
   useEffect,
@@ -188,6 +192,93 @@ function truncateFileNameMiddle(fileName: string, maxLength = 19) {
   return `${fileName.slice(0, startLength)}${separator}${fileName.slice(
     fileName.length - endLength,
   )}`
+}
+
+async function copyMessageContent(
+  content: string,
+  tiptapDocument: JSONContent | null,
+) {
+  if (content && tiptapDocument) {
+    const html = serializeTiptapContentAsHtml(tiptapDocument)
+
+    if (
+      typeof ClipboardItem !== "undefined" &&
+      navigator.clipboard.write
+    ) {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          "text/plain": new Blob([content], {
+            type: "text/plain",
+          }),
+          "text/html": new Blob([html], {
+            type: "text/html",
+          }),
+        }),
+      ])
+      return
+    }
+  }
+
+  if (content) {
+    await navigator.clipboard.writeText(content)
+  }
+}
+
+function MessageReactionPicker({
+  onEmojiSelect,
+}: {
+  onEmojiSelect: (emoji: string) => void
+}) {
+  return (
+    <EmojiPicker
+      onEmojiSelect={onEmojiSelect}
+      trigger={
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className="h-7 w-7"
+          aria-label="Add reaction"
+        >
+          <SmileIcon className="size-4" />
+        </Button>
+      }
+    />
+  )
+}
+
+function MessageReactionChips({
+  reactions,
+  onToggleReaction,
+}: {
+  reactions: EnrichedMessage["reactions"]
+  onToggleReaction: (emoji: string) => void
+}) {
+  if (reactions.length === 0) {
+    return null
+  }
+
+  return (
+    <div className="flex flex-wrap gap-1.5 px-2 pt-2">
+      {reactions.map((reaction) => (
+        <Button
+          key={reaction.emoji}
+          type="button"
+          variant={reaction.reactedByCurrentUser ? "secondary" : "outline"}
+          size="xs"
+          className={cn(
+            "h-7 rounded-full px-2.5 text-xs",
+            reaction.reactedByCurrentUser && "border border-border/70",
+          )}
+          onClick={() => onToggleReaction(reaction.emoji)}
+          aria-label={`Toggle ${reaction.emoji} reaction`}
+        >
+          <span className="text-sm leading-none">{reaction.emoji}</span>
+          <span>{reaction.count}</span>
+        </Button>
+      ))}
+    </div>
+  )
 }
 
 function RouteComponent() {
@@ -481,6 +572,20 @@ function ConversationView({
     },
   })
 
+  const toggleMessageReactionMutation = useMutation({
+    mutationFn: ({
+      messageId,
+      emoji,
+    }: {
+      messageId: string
+      emoji: string
+    }) => orpcClient.toggleMessageReaction({ messageId, emoji }),
+    onSuccess: (message) => {
+      applyMessageUpdatedToCache(queryClient, message)
+      void queryClient.invalidateQueries({ queryKey: activityQueryKey })
+    },
+  })
+
   const submitMessage = (
     content: string,
     attachments: File[],
@@ -515,6 +620,14 @@ function ConversationView({
       params: { conversationId } as any,
       search: {},
     })
+  }
+
+  const toggleMessageReaction = (messageId: string, emoji: string) => {
+    if (!isSyncConnected) {
+      return
+    }
+
+    toggleMessageReactionMutation.mutate({ messageId, emoji })
   }
 
   // Initialize scroll once: restore prior position if available, otherwise start at bottom.
@@ -781,6 +894,22 @@ function ConversationView({
                         createdAt={threadRootMessage.createdAt}
                       />
                     </ChatMessageHeader>
+                    <ChatMessageActions>
+                      <MessageReactionPicker
+                        onEmojiSelect={(emoji) =>
+                          toggleMessageReaction(threadRootMessage.id, emoji)
+                        }
+                      />
+                      <ChatMessageActionCopy
+                        onClick={() =>
+                          copyMessageContent(
+                            threadRootMessage.content,
+                            threadRootTiptapDocument,
+                          )
+                        }
+                        disabled={!threadRootMessage.content}
+                      />
+                    </ChatMessageActions>
                     {threadRootMessage.content ||
                     threadRootMessage.attachments.length > 0 ? (
                       <ChatMessageContent className="px-2 py-0">
@@ -850,6 +979,12 @@ function ConversationView({
                         ) : null}
                       </ChatMessageContent>
                     ) : null}
+                    <MessageReactionChips
+                      reactions={threadRootMessage.reactions}
+                      onToggleReaction={(emoji) =>
+                        toggleMessageReaction(threadRootMessage.id, emoji)
+                      }
+                    />
                   </ChatMessageContainer>
                 </ChatMessage>
               </div>
@@ -881,6 +1016,11 @@ function ConversationView({
                       <ChatMessageTimestamp createdAt={message.createdAt} />
                     </ChatMessageHeader>
                     <ChatMessageActions>
+                      <MessageReactionPicker
+                        onEmojiSelect={(emoji) =>
+                          toggleMessageReaction(message.id, emoji)
+                        }
+                      />
                       {!message.threadRootMessageId ? (
                         <ChatMessageAction
                           label="Open thread"
@@ -890,33 +1030,9 @@ function ConversationView({
                         </ChatMessageAction>
                       ) : null}
                       <ChatMessageActionCopy
-                        onClick={async () => {
-                          if (message.content && tiptapDocument) {
-                            const html =
-                              serializeTiptapContentAsHtml(tiptapDocument)
-
-                            if (
-                              typeof ClipboardItem !== "undefined" &&
-                              navigator.clipboard.write
-                            ) {
-                              await navigator.clipboard.write([
-                                new ClipboardItem({
-                                  "text/plain": new Blob([message.content], {
-                                    type: "text/plain",
-                                  }),
-                                  "text/html": new Blob([html], {
-                                    type: "text/html",
-                                  }),
-                                }),
-                              ])
-                              return
-                            }
-                          }
-
-                          if (message.content) {
-                            await navigator.clipboard.writeText(message.content)
-                          }
-                        }}
+                        onClick={() =>
+                          copyMessageContent(message.content, tiptapDocument)
+                        }
                         disabled={!message.content}
                       />
                     </ChatMessageActions>
@@ -982,6 +1098,12 @@ function ConversationView({
                         ) : null}
                       </ChatMessageContent>
                     ) : null}
+                    <MessageReactionChips
+                      reactions={message.reactions}
+                      onToggleReaction={(emoji) =>
+                        toggleMessageReaction(message.id, emoji)
+                      }
+                    />
                     {!message.threadRootMessageId &&
                     message.threadReplyCount > 0 ? (
                       <ChatMessageFooter className="px-2 pt-0">

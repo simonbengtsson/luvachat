@@ -14,6 +14,7 @@ import {
   markThreadViewed,
   sendDirectMessage,
   sendMessage,
+  toggleMessageReaction,
 } from "./orpc/messages"
 import {
   deletePushSubscription,
@@ -30,6 +31,7 @@ export const orpcRouter = {
   getMessages,
   getThreads,
   sendMessage,
+  toggleMessageReaction,
   getDirectConversationByMemberIds,
   sendDirectMessage,
   markConversationViewed,

@@ -16,10 +16,18 @@ export const EnrichedConversation = createSelectSchema(
   lastMessageAt: z.string().nullable(),
 })
 
+export type MessageReactionSummary = z.infer<typeof MessageReactionSummary>
+export const MessageReactionSummary = z.object({
+  emoji: z.string().min(1),
+  count: z.number().int().positive(),
+  reactedByCurrentUser: z.boolean(),
+})
+
 export type EnrichedMessage = z.infer<typeof EnrichedMessage>
 export const EnrichedMessage = createSelectSchema(messagesTable).extend({
   attachments: z.array(createSelectSchema(messageAttachmentsTable)),
   mentions: z.array(createSelectSchema(messageMentionsTable)),
+  reactions: z.array(MessageReactionSummary),
   threadReplyCount: z.number().int().nonnegative(),
   threadLastReplyAt: z.string().nullable(),
   threadIsUnread: z.boolean(),

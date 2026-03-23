@@ -1,7 +1,11 @@
+import { activityQueryKey } from "./activityQuery"
 import { conversationsQueryKey } from "./conversationsQuery"
 import { generateShortId } from "./generateId"
 import { queryClient } from "./queryClient"
-import { applyMessageCreatedToCache } from "./realtimeCache"
+import {
+  applyMessageCreatedToCache,
+  applyMessageUpdatedToCache,
+} from "./realtimeCache"
 import { ServerEventSchema } from "./sync-events"
 
 export type SyncConnectionStatus =
@@ -126,6 +130,12 @@ function connectSocket(): void {
 
     if (parsedEvent.data.type === "messageCreated") {
       applyMessageCreatedToCache(queryClient, parsedEvent.data.message)
+      return
+    }
+
+    if (parsedEvent.data.type === "messageUpdated") {
+      applyMessageUpdatedToCache(queryClient, parsedEvent.data.message)
+      void queryClient.invalidateQueries({ queryKey: activityQueryKey })
     }
   })
 

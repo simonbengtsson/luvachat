@@ -7,6 +7,7 @@ import {
   getMessagesForConversation,
   getThreadsForUser,
   markThreadAsViewed,
+  toggleReactionForMessage,
 } from "./services/messages"
 
 const attachmentFileSchema = z.custom<File>((value) => value instanceof File)
@@ -107,4 +108,15 @@ export const sendDirectMessage = base
       message,
       createdConversation,
     }
+  })
+
+export const toggleMessageReaction = base
+  .input(
+    z.object({
+      messageId: z.string().min(1),
+      emoji: z.string().min(1),
+    }),
+  )
+  .handler(async ({ context, input }) => {
+    return toggleReactionForMessage(context, input)
   })

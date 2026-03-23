@@ -10,4 +10,8 @@ export const ServerEventSchema = z.discriminatedUnion("type", [
     type: z.literal("messageCreated"),
     message: EnrichedMessage,
   }),
+  z.object({
+    type: z.literal("messageUpdated"),
+    message: EnrichedMessage,
+  }),
 ])
