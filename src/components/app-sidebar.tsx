@@ -48,6 +48,7 @@ import { getRequest } from "@tanstack/react-start/server"
 import {
   ActivityIcon,
   BellIcon,
+  CommandIcon,
   EllipsisVerticalIcon,
   ExternalLinkIcon,
   HashIcon,
@@ -679,9 +680,13 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton onClick={dispatchOpenAppCommandEvent}>
+                <SidebarMenuButton render={<Link to="/search" />}>
                   <SearchIcon />
                   <span>Search</span>
+                </SidebarMenuButton>
+                <SidebarMenuButton onClick={dispatchOpenAppCommandEvent}>
+                  <CommandIcon />
+                  <span>Open</span>
                   <span className="ml-auto text-xs text-sidebar-foreground/70">
                     ⌘K
                   </span>

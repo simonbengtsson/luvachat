@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ThreadsRouteImport } from './routes/threads'
+import { Route as SearchRouteImport } from './routes/search'
 import { Route as NewRouteImport } from './routes/new'
 import { Route as AichatRouteImport } from './routes/aichat'
 import { Route as ActivityRouteImport } from './routes/activity'
@@ -22,6 +23,11 @@ import { Route as ApiAichatRouteImport } from './routes/api/aichat'
 const ThreadsRoute = ThreadsRouteImport.update({
   id: '/threads',
   path: '/threads',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SearchRoute = SearchRouteImport.update({
+  id: '/search',
+  path: '/search',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NewRoute = NewRouteImport.update({
@@ -70,6 +76,7 @@ export interface FileRoutesByFullPath {
   '/activity': typeof ActivityRoute
   '/aichat': typeof AichatRoute
   '/new': typeof NewRoute
+  '/search': typeof SearchRoute
   '/threads': typeof ThreadsRoute
   '/api/aichat': typeof ApiAichatRoute
   '/api/thread-summary': typeof ApiThreadSummaryRoute
@@ -81,6 +88,7 @@ export interface FileRoutesByTo {
   '/activity': typeof ActivityRoute
   '/aichat': typeof AichatRoute
   '/new': typeof NewRoute
+  '/search': typeof SearchRoute
   '/threads': typeof ThreadsRoute
   '/api/aichat': typeof ApiAichatRoute
   '/api/thread-summary': typeof ApiThreadSummaryRoute
@@ -93,6 +101,7 @@ export interface FileRoutesById {
   '/activity': typeof ActivityRoute
   '/aichat': typeof AichatRoute
   '/new': typeof NewRoute
+  '/search': typeof SearchRoute
   '/threads': typeof ThreadsRoute
   '/api/aichat': typeof ApiAichatRoute
   '/api/thread-summary': typeof ApiThreadSummaryRoute
@@ -106,6 +115,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/aichat'
     | '/new'
+    | '/search'
     | '/threads'
     | '/api/aichat'
     | '/api/thread-summary'
@@ -117,6 +127,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/aichat'
     | '/new'
+    | '/search'
     | '/threads'
     | '/api/aichat'
     | '/api/thread-summary'
@@ -128,6 +139,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/aichat'
     | '/new'
+    | '/search'
     | '/threads'
     | '/api/aichat'
     | '/api/thread-summary'
@@ -140,6 +152,7 @@ export interface RootRouteChildren {
   ActivityRoute: typeof ActivityRoute
   AichatRoute: typeof AichatRoute
   NewRoute: typeof NewRoute
+  SearchRoute: typeof SearchRoute
   ThreadsRoute: typeof ThreadsRoute
   ApiAichatRoute: typeof ApiAichatRoute
   ApiThreadSummaryRoute: typeof ApiThreadSummaryRoute
@@ -154,6 +167,13 @@ declare module '@tanstack/react-router' {
       path: '/threads'
       fullPath: '/threads'
       preLoaderRoute: typeof ThreadsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/search': {
+      id: '/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof SearchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/new': {
@@ -220,6 +240,7 @@ const rootRouteChildren: RootRouteChildren = {
   ActivityRoute: ActivityRoute,
   AichatRoute: AichatRoute,
   NewRoute: NewRoute,
+  SearchRoute: SearchRoute,
   ThreadsRoute: ThreadsRoute,
   ApiAichatRoute: ApiAichatRoute,
   ApiThreadSummaryRoute: ApiThreadSummaryRoute,
