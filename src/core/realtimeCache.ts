@@ -8,7 +8,7 @@ import {
   messagesQueryKey,
   type MessagesPage,
 } from "./messagesQuery"
-import type { EnrichedConversation, EnrichedMessage } from "./models"
+import type { EnrichedConversation, EnrichedMessage, ThreadPage } from "./models"
 import { threadsQueryKey } from "./threadsQuery"
 
 type MessagesInfiniteData = InfiniteData<MessagesPage, string | undefined>
@@ -152,16 +152,21 @@ export function markThreadViewedInCache(
   queryClient: QueryClient,
   threadRootMessageId: string,
 ): void {
-  queryClient.setQueryData<EnrichedMessage[]>(
-    threadsQueryKey,
-    (threads) =>
-      threads?.map((thread) =>
-        thread.id === threadRootMessageId
-          ? {
-              ...thread,
-              threadIsUnread: false,
-            }
-          : thread,
-      ) ?? threads,
+  queryClient.setQueriesData<ThreadPage>(
+    { queryKey: [...threadsQueryKey, "page"] },
+    (threadPage) =>
+      threadPage
+        ? {
+            ...threadPage,
+            threads: threadPage.threads.map((thread) =>
+              thread.id === threadRootMessageId
+                ? {
+                    ...thread,
+                    threadIsUnread: false,
+                  }
+                : thread,
+            ),
+          }
+        : threadPage,
   )
 }

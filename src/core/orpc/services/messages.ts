@@ -10,7 +10,7 @@ import {
   or,
   sql,
 } from "drizzle-orm"
-import type { EnrichedMessage } from "../../models"
+import type { EnrichedMessage, ThreadPage } from "../../models"
 import {
   activityEventsTable,
   messageAttachmentsTable,
@@ -38,6 +38,46 @@ type MessageListRecord = Message & {
   threadReplyCount: number
   threadLastReplyAt: string | null
   threadIsUnread?: boolean | number
+}
+
+type ThreadListRecord = MessageListRecord & {
+  threadActivityAt: string
+}
+
+function createThreadCursor(
+  threadActivityAt: string,
+  createdAt: string,
+  threadRootMessageId: string,
+) {
+  return JSON.stringify({
+    threadActivityAt,
+    createdAt,
+    threadRootMessageId,
+  })
+}
+
+function parseThreadCursor(cursor?: string) {
+  if (!cursor) {
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(cursor)
+
+    if (
+      typeof parsed?.threadActivityAt === "string" &&
+      typeof parsed?.createdAt === "string" &&
+      typeof parsed?.threadRootMessageId === "string"
+    ) {
+      return parsed as {
+        threadActivityAt: string
+        createdAt: string
+        threadRootMessageId: string
+      }
+    }
+  } catch {}
+
+  return null
 }
 
 function normalizeTiptapJson(tiptapJson: string | null | undefined) {
@@ -435,7 +475,13 @@ export async function getMessagesForConversation(
 
 export async function getThreadsForUser(
   context: OrpcContext,
-): Promise<EnrichedMessage[]> {
+  input: {
+    cursor?: string
+    limit?: number
+    unreadOnly?: boolean
+  } = {},
+): Promise<ThreadPage> {
+  const limit = input.limit ?? 20
   const threadSummarySubquery = context.db
     .select({
       threadRootMessageId: messagesTable.threadRootMessageId,
@@ -448,6 +494,15 @@ export async function getThreadsForUser(
     .where(isNotNull(messagesTable.threadRootMessageId))
     .groupBy(messagesTable.threadRootMessageId)
     .as("message_thread_summary")
+  const threadActivityAtSql = sql<string>`coalesce(${threadSummarySubquery.threadLastReplyAt}, ${messagesTable.createdAt})`
+  const threadIsUnreadSql = sql<number>`
+    case
+      when ${threadMembersTable.lastViewedAt} is null then 1
+      when ${threadMembersTable.lastViewedAt} < ${threadActivityAtSql} then 1
+      else 0
+    end
+  `
+  const parsedCursor = parseThreadCursor(input.cursor)
 
   const threadRecords = await context.db
     .select({
@@ -463,13 +518,8 @@ export async function getThreadsForUser(
           "thread_reply_count",
         ),
       threadLastReplyAt: threadSummarySubquery.threadLastReplyAt,
-      threadIsUnread: sql<number>`
-        case
-          when ${threadMembersTable.lastViewedAt} is null then 1
-          when ${threadMembersTable.lastViewedAt} < coalesce(${threadSummarySubquery.threadLastReplyAt}, ${messagesTable.createdAt}) then 1
-          else 0
-        end
-      `.as("thread_is_unread"),
+      threadIsUnread: threadIsUnreadSql.as("thread_is_unread"),
+      threadActivityAt: threadActivityAtSql.as("thread_activity_at"),
     })
     .from(threadMembersTable)
     .innerJoin(
@@ -480,16 +530,50 @@ export async function getThreadsForUser(
       threadSummarySubquery,
       eq(threadSummarySubquery.threadRootMessageId, messagesTable.id),
     )
-    .where(eq(threadMembersTable.userId, context.userId))
-    .orderBy(
-      desc(
-        sql<string>`coalesce(${threadSummarySubquery.threadLastReplyAt}, ${messagesTable.createdAt})`,
+    .where(
+      and(
+        eq(threadMembersTable.userId, context.userId),
+        input.unreadOnly ? sql`${threadIsUnreadSql} = 1` : undefined,
+        parsedCursor
+          ? or(
+              sql`${threadActivityAtSql} < ${parsedCursor.threadActivityAt}`,
+              and(
+                sql`${threadActivityAtSql} = ${parsedCursor.threadActivityAt}`,
+                lt(messagesTable.createdAt, parsedCursor.createdAt),
+              ),
+              and(
+                sql`${threadActivityAtSql} = ${parsedCursor.threadActivityAt}`,
+                eq(messagesTable.createdAt, parsedCursor.createdAt),
+                lt(messagesTable.id, parsedCursor.threadRootMessageId),
+              ),
+            )
+          : undefined,
       ),
+    )
+    .orderBy(
+      desc(threadActivityAtSql),
       desc(messagesTable.createdAt),
       desc(messagesTable.id),
     )
+    .limit(limit + 1)
 
-  return enrichMessages(context, threadRecords)
+  let nextCursor: string | undefined
+  if (threadRecords.length > limit) {
+    threadRecords.pop()
+    const lastThread = threadRecords.at(-1) as ThreadListRecord | undefined
+    nextCursor = lastThread
+      ? createThreadCursor(
+          lastThread.threadActivityAt,
+          lastThread.createdAt,
+          lastThread.id,
+        )
+      : undefined
+  }
+
+  return {
+    threads: await enrichMessages(context, threadRecords),
+    nextCursor,
+  }
 }
 
 export async function createMessageInConversation(

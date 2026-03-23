@@ -13,6 +13,11 @@ const attachmentFileSchema = z.custom<File>((value) => value instanceof File)
 const directConversationMembersInputSchema = z.object({
   memberIds: z.array(z.string().min(1)).min(1),
 })
+const threadsInputSchema = z.object({
+  cursor: z.string().optional(),
+  limit: z.number().optional(),
+  unreadOnly: z.boolean().optional(),
+})
 
 export const getMessages = base
   .input(
@@ -27,9 +32,11 @@ export const getMessages = base
     return getMessagesForConversation(context, input)
   })
 
-export const getThreads = base.handler(async ({ context }) => {
-  return getThreadsForUser(context)
-})
+export const getThreads = base
+  .input(threadsInputSchema.optional())
+  .handler(async ({ context, input }) => {
+    return getThreadsForUser(context, input)
+  })
 
 export const markThreadViewed = base
   .input(

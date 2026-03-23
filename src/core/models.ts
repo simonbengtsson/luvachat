@@ -46,3 +46,9 @@ export const ActivityPage = z.object({
   activity: z.array(ActivityFeedItem),
   nextCursor: z.string().optional(),
 })
+
+export type ThreadPage = z.infer<typeof ThreadPage>
+export const ThreadPage = z.object({
+  threads: z.array(EnrichedMessage),
+  nextCursor: z.string().optional(),
+})
