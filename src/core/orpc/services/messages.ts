@@ -514,6 +514,7 @@ export async function createMessageInConversation(
     trimmedContent ? input.tiptapJson : null,
   )
   let threadRootMessageId: string | null = null
+  let threadRootMessageUserId: string | null = null
 
   if (input.threadRootMessageId) {
     const threadRootMessage = await context.db
@@ -521,6 +522,7 @@ export async function createMessageInConversation(
         id: messagesTable.id,
         conversationId: messagesTable.conversationId,
         threadRootMessageId: messagesTable.threadRootMessageId,
+        userId: messagesTable.userId,
       })
       .from(messagesTable)
       .where(eq(messagesTable.id, input.threadRootMessageId))
@@ -535,6 +537,7 @@ export async function createMessageInConversation(
     }
 
     threadRootMessageId = threadRootMessage[0].id
+    threadRootMessageUserId = threadRootMessage[0].userId
   }
 
   const messageRecord: Message = {
@@ -588,6 +591,20 @@ export async function createMessageInConversation(
 
     context.db.transaction((tx) => {
       tx.insert(messagesTable).values(messageRecord).run()
+
+      if (threadRootMessageId && threadRootMessageUserId) {
+        tx.insert(threadMembersTable)
+          .values({
+            id: `${threadRootMessageUserId}_${threadRootMessageId}`,
+            userId: threadRootMessageUserId,
+            conversationId: input.conversationId,
+            threadRootMessageId,
+            joinedAt: createdAt,
+            lastViewedAt: null,
+          })
+          .onConflictDoNothing()
+          .run()
+      }
 
       if (attachmentRecords.length > 0) {
         tx.insert(messageAttachmentsTable).values(attachmentRecords).run()
