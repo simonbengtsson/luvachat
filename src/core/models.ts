@@ -60,3 +60,19 @@ export const ThreadPage = z.object({
   threads: z.array(EnrichedMessage),
   nextCursor: z.string().optional(),
 })
+
+export type MessageSearchResult = z.infer<typeof MessageSearchResult>
+export const MessageSearchResult = z.object({
+  messageId: z.string().min(1),
+  conversationId: z.string().min(1),
+  threadRootMessageId: z.string().nullable(),
+  userId: z.string().min(1),
+  createdAt: z.string().min(1),
+  contentPreview: z.string(),
+})
+
+export type MessageSearchPage = z.infer<typeof MessageSearchPage>
+export const MessageSearchPage = z.object({
+  results: z.array(MessageSearchResult),
+  nextOffset: z.number().int().nonnegative().optional(),
+})

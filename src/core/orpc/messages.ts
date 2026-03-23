@@ -5,6 +5,7 @@ import {
   createMessageInConversation,
   getLatestThreadMessageCreatedAt,
   getMessagesForConversation,
+  searchMessagesForUser,
   getThreadsForUser,
   markThreadAsViewed,
   toggleReactionForMessage,
@@ -37,6 +38,18 @@ export const getThreads = base
   .input(threadsInputSchema.optional())
   .handler(async ({ context, input }) => {
     return getThreadsForUser(context, input)
+  })
+
+export const searchMessages = base
+  .input(
+    z.object({
+      query: z.string(),
+      offset: z.number().int().nonnegative().optional(),
+      limit: z.number().int().positive().optional(),
+    }),
+  )
+  .handler(async ({ context, input }) => {
+    return searchMessagesForUser(context, input)
   })
 
 export const markThreadViewed = base

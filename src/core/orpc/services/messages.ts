@@ -10,7 +10,12 @@ import {
   or,
   sql,
 } from "drizzle-orm"
-import type { EnrichedMessage, ThreadPage } from "../../models"
+import type {
+  EnrichedMessage,
+  MessageSearchPage,
+  MessageSearchResult,
+  ThreadPage,
+} from "../../models"
 import {
   activityEventsTable,
   messageAttachmentsTable,
@@ -47,6 +52,32 @@ type ThreadListRecord = MessageListRecord & {
 }
 
 type ReactionSummary = EnrichedMessage["reactions"][number]
+type MessageSearchRow = {
+  messageId: string
+  conversationId: string
+  threadRootMessageId: string | null
+  userId: string
+  createdAt: string
+  content: string
+  contentPreview: string | null
+}
+const searchSnippetStartMarker = "__match_start__"
+const searchSnippetEndMarker = "__match_end__"
+
+function getMessageSearchPreview(
+  content: string,
+  contentPreview: string | null,
+): string {
+  if (contentPreview) {
+    return contentPreview
+  }
+
+  if (content.length <= 160) {
+    return content
+  }
+
+  return `${content.slice(0, 157)}...`
+}
 
 function createThreadCursor(
   threadActivityAt: string,
@@ -688,6 +719,74 @@ export async function getThreadsForUser(
   return {
     threads: await enrichMessages(context, threadRecords),
     nextCursor,
+  }
+}
+
+export async function searchMessagesForUser(
+  context: OrpcContext,
+  input: {
+    query: string
+    offset?: number
+    limit?: number
+  },
+): Promise<MessageSearchPage> {
+  const query = input.query.trim()
+  if (!query) {
+    return {
+      results: [],
+    }
+  }
+
+  const limit = input.limit ?? 20
+  const offset = input.offset ?? 0
+  const rows = context.db.$client.sql
+    .exec(
+      `
+        select
+          message_id as messageId,
+          conversation_id as conversationId,
+          thread_root_message_id as threadRootMessageId,
+          user_id as userId,
+          created_at as createdAt,
+          content,
+          snippet(
+            message_search,
+            5,
+            '${searchSnippetStartMarker}',
+            '${searchSnippetEndMarker}',
+            ' ... ',
+            18
+          ) as contentPreview,
+          bm25(message_search) as rank
+        from message_search
+        where message_search match ?
+        order by rank, created_at desc, message_id desc
+        limit ? offset ?
+      `,
+      query,
+      limit + 1,
+      offset,
+    )
+    .toArray() as MessageSearchRow[]
+
+  let nextOffset: number | undefined
+  if (rows.length > limit) {
+    rows.pop()
+    nextOffset = offset + limit
+  }
+
+  const results: MessageSearchResult[] = rows.map((row) => ({
+    messageId: row.messageId,
+    conversationId: row.conversationId,
+    threadRootMessageId: row.threadRootMessageId,
+    userId: row.userId,
+    createdAt: row.createdAt,
+    contentPreview: getMessageSearchPreview(row.content, row.contentPreview),
+  }))
+
+  return {
+    results,
+    nextOffset,
   }
 }
 
