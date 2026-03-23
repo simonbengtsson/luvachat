@@ -189,7 +189,7 @@ export const activityEventsTable = sqliteTable(
   {
     id: text("id").primaryKey(),
     userId: text("user_id").notNull(),
-    type: text("type").notNull(), // mention | thread_reply | reaction
+    type: text("type").notNull(), // mention | reaction
     actorUserId: text("actor_user_id").notNull(),
     conversationId: text("conversation_id")
       .notNull()
@@ -197,7 +197,7 @@ export const activityEventsTable = sqliteTable(
     messageId: text("message_id")
       .notNull()
       .references(() => messagesTable.id, { onDelete: "cascade" }),
-    sourceType: text("source_type").notNull(), // mention | reply | reaction
+    sourceType: text("source_type").notNull(), // mention | reaction
     sourceId: text("source_id").notNull(),
     createdAt: text("created_at").notNull(),
   },

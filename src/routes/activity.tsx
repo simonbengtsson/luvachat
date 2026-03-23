@@ -55,8 +55,6 @@ function getActivityLabel(type: ActivityFeedItem["type"]) {
       return "Mention"
     case "reaction":
       return "Reaction"
-    case "thread_reply":
-      return "Thread"
   }
 }
 
@@ -66,8 +64,6 @@ function getActivityIcon(type: ActivityFeedItem["type"]) {
       return AtSignIcon
     case "reaction":
       return SmileIcon
-    case "thread_reply":
-      return MessageSquareTextIcon
   }
 }
 
@@ -83,8 +79,6 @@ function getActivitySummary(activity: ActivityFeedItem, actorName: string) {
       return `${actorSummary} mentioned you`
     case "reaction":
       return `${actorSummary} reacted to a message`
-    case "thread_reply":
-      return `${actorSummary} replied in a thread`
   }
 }
 
@@ -289,7 +283,7 @@ function RouteComponent() {
               <EmptyDescription>
                 {showUnreadOnly
                   ? "You're all caught up."
-                  : "Mentions and thread replies will show up here."}
+                  : "Mentions and reactions will show up here."}
               </EmptyDescription>
             </EmptyHeader>
           </Empty>

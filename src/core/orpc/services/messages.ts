@@ -230,33 +230,6 @@ function extractMessageMentions(
   }))
 }
 
-async function listThreadParticipantUserIds(
-  context: OrpcContext,
-  conversationId: string,
-  threadRootMessageId: string,
-  actorUserId: string,
-): Promise<string[]> {
-  const participants = await context.db
-    .select({
-      userId: messagesTable.userId,
-    })
-    .from(messagesTable)
-    .where(
-      and(
-        eq(messagesTable.conversationId, conversationId),
-        or(
-          eq(messagesTable.id, threadRootMessageId),
-          eq(messagesTable.threadRootMessageId, threadRootMessageId),
-        ),
-        sql`${messagesTable.userId} <> ${actorUserId}`,
-      ),
-    )
-    .groupBy(messagesTable.userId)
-    .orderBy(asc(messagesTable.userId))
-
-  return participants.map((participant) => participant.userId)
-}
-
 function buildMentionActivityEvents(
   mentionRecords: MessageMention[],
   message: Message,
@@ -281,24 +254,6 @@ function buildMentionActivityEvents(
       },
     ]
   })
-}
-
-function buildThreadReplyActivityEvents(
-  participantUserIds: string[],
-  message: Message,
-  actorUserId: string,
-): ActivityEvent[] {
-  return participantUserIds.map((participantUserId) => ({
-    id: crypto.randomUUID(),
-    userId: participantUserId,
-    type: "thread_reply",
-    actorUserId,
-    conversationId: message.conversationId,
-    messageId: message.id,
-    sourceType: "reply",
-    sourceId: message.id,
-    createdAt: message.createdAt,
-  }))
 }
 
 export async function getLatestThreadMessageCreatedAt(
@@ -598,22 +553,11 @@ export async function createMessageInConversation(
     messageRecord.id,
     createdAt,
   )
-  const threadParticipantUserIds = threadRootMessageId
-    ? await listThreadParticipantUserIds(
-        context,
-        input.conversationId,
-        threadRootMessageId,
-        context.userId,
-      )
-    : []
-  const activityEventRecords = [
-    ...buildMentionActivityEvents(mentionRecords, messageRecord, context.userId),
-    ...buildThreadReplyActivityEvents(
-      threadParticipantUserIds,
-      messageRecord,
-      context.userId,
-    ),
-  ]
+  const activityEventRecords = buildMentionActivityEvents(
+    mentionRecords,
+    messageRecord,
+    context.userId,
+  )
 
   try {
     for (const attachment of attachments) {

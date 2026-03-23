@@ -27,7 +27,7 @@ export const EnrichedMessage = createSelectSchema(messagesTable).extend({
 export type ActivityFeedItem = z.infer<typeof ActivityFeedItem>
 export const ActivityFeedItem = z.object({
   id: z.string().min(1),
-  type: z.enum(["mention", "reaction", "thread_reply"]),
+  type: z.enum(["mention", "reaction"]),
   conversationId: z.string().min(1),
   messageId: z.string().min(1),
   threadRootMessageId: z.string().nullable(),

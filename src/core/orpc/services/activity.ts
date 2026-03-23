@@ -33,10 +33,6 @@ function truncatePreviewText(content: string) {
 }
 
 function getActivityGroupId(record: ActivityEventRecord) {
-  if (record.type === "thread_reply") {
-    return `thread:${record.threadRootMessageId ?? record.messageId}`
-  }
-
   return `${record.type}:${record.messageId}`
 }
 
@@ -218,7 +214,12 @@ export async function getActivityForUser(
     })
     .from(activityEventsTable)
     .innerJoin(messagesTable, eq(messagesTable.id, activityEventsTable.messageId))
-    .where(eq(activityEventsTable.userId, context.userId))
+    .where(
+      and(
+        eq(activityEventsTable.userId, context.userId),
+        inArray(activityEventsTable.type, ["mention", "reaction"]),
+      ),
+    )
     .orderBy(desc(activityEventsTable.createdAt), desc(activityEventsTable.id))
 
   const attachmentCountByMessageId = await listAttachmentCountsByMessageIds(
@@ -274,10 +275,7 @@ export async function getActivityForUser(
       conversationId: eventRecord.conversationId,
       messageId: eventRecord.messageId,
       latestEventId: eventRecord.id,
-      threadRootMessageId:
-        eventRecord.type === "thread_reply"
-          ? (eventRecord.threadRootMessageId ?? eventRecord.messageId)
-          : eventRecord.threadRootMessageId,
+      threadRootMessageId: eventRecord.threadRootMessageId,
       isUnread,
       latestCreatedAt: eventRecord.createdAt,
       latestActorUserId: eventRecord.actorUserId,
