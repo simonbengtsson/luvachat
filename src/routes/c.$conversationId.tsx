@@ -63,7 +63,9 @@ import { orpcClient } from "@/core/orpcClient"
 import {
   applyMessageCreatedToCache,
   markConversationViewedInCache,
+  markThreadViewedInCache,
 } from "@/core/realtimeCache"
+import { threadsQueryKey } from "@/core/threadsQuery"
 import { getScrollRestorationKey } from "@/core/scrollRestorationKey"
 import {
   useInfiniteQuery,
@@ -396,11 +398,20 @@ function ConversationView({
         threadRootMessageId: threadMessageId,
       })
     },
+    onMutate: () => {
+      if (!threadMessageId) {
+        return
+      }
+
+      markThreadViewedInCache(queryClient, threadMessageId)
+    },
     onError: () => {
       lastPersistedViewedMessageIdRef.current = null
+      void queryClient.invalidateQueries({ queryKey: threadsQueryKey })
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: activityQueryKey })
+      void queryClient.invalidateQueries({ queryKey: threadsQueryKey })
     },
   })
 

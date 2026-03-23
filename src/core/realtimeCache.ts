@@ -9,6 +9,7 @@ import {
   type MessagesPage,
 } from "./messagesQuery"
 import type { EnrichedConversation, EnrichedMessage } from "./models"
+import { threadsQueryKey } from "./threadsQuery"
 
 type MessagesInfiniteData = InfiniteData<MessagesPage, string | undefined>
 
@@ -21,6 +22,7 @@ export function applyMessageCreatedToCache(
     void queryClient.invalidateQueries({
       queryKey: conversationMessagesQueryKey(message.conversationId),
     })
+    void queryClient.invalidateQueries({ queryKey: threadsQueryKey })
   } else {
     upsertMessageInConversationCache(queryClient, message)
     updateConversationMetadata(queryClient, message)
@@ -143,5 +145,23 @@ export function markConversationViewedInCache(
             lastViewedAt,
           }
         : conversation,
+  )
+}
+
+export function markThreadViewedInCache(
+  queryClient: QueryClient,
+  threadRootMessageId: string,
+): void {
+  queryClient.setQueryData<EnrichedMessage[]>(
+    threadsQueryKey,
+    (threads) =>
+      threads?.map((thread) =>
+        thread.id === threadRootMessageId
+          ? {
+              ...thread,
+              threadIsUnread: false,
+            }
+          : thread,
+      ) ?? threads,
   )
 }

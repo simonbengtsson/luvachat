@@ -22,6 +22,7 @@ export const EnrichedMessage = createSelectSchema(messagesTable).extend({
   mentions: z.array(createSelectSchema(messageMentionsTable)),
   threadReplyCount: z.number().int().nonnegative(),
   threadLastReplyAt: z.string().nullable(),
+  threadIsUnread: z.boolean(),
 })
 
 export type ActivityFeedItem = z.infer<typeof ActivityFeedItem>

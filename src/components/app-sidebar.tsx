@@ -34,6 +34,7 @@ import {
   supportsPushNotifications,
   syncPushSubscription,
 } from "@/core/push-client"
+import { threadsQueryOptions } from "@/core/threadsQuery"
 import { cn } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
@@ -187,6 +188,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   const membersQuery = useWorkspaceMembers()
   const conversationsQuery = useConversations()
   const activityQuery = useActivity()
+  const threadsQuery = useQuery(threadsQueryOptions())
   const sessionQuery = useQuery({
     queryKey: ["sidebar-session"],
     queryFn: () => getSession(),
@@ -380,6 +382,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
     sessionQuery.error ??
     conversationsQuery.error ??
     membersQuery.error ??
+    threadsQuery.error ??
     activityQuery.error
 
   if (sidebarError) {
@@ -396,6 +399,8 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
 
   const currentUserId = sessionData.session.user.id
   const canSwitchDevUser = sessionData.canSwitchDevUser
+  const hasUnreadThreads =
+    threadsQuery.data?.some((thread) => thread.threadIsUnread) ?? false
   const hasUnreadActivity = (activityQuery.data?.activity.length ?? 0) > 0
   const membersById = new Map(members.map((member) => [member.id, member]))
   const channelConversations = conversations.filter(
@@ -476,7 +481,20 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
                   render={<Link to="/threads" />}
                 >
                   <MessageSquareTextIcon />
-                  <span>Threads</span>
+                  <span
+                    className={cn(
+                      "truncate",
+                      hasUnreadThreads && "font-semibold",
+                    )}
+                  >
+                    Threads
+                  </span>
+                  {hasUnreadThreads ? (
+                    <span
+                      aria-hidden
+                      className="ml-auto size-2 rounded-full bg-sidebar-foreground"
+                    />
+                  ) : null}
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>

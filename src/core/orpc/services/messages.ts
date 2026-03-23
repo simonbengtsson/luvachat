@@ -37,6 +37,7 @@ type AttachmentUploadInput = {
 type MessageListRecord = Message & {
   threadReplyCount: number
   threadLastReplyAt: string | null
+  threadIsUnread?: boolean | number
 }
 
 function normalizeTiptapJson(tiptapJson: string | null | undefined) {
@@ -170,6 +171,7 @@ async function enrichMessages(
     ...message,
     attachments: attachmentsByMessageId.get(message.id) ?? [],
     mentions: mentionsByMessageId.get(message.id) ?? [],
+    threadIsUnread: Boolean(message.threadIsUnread),
   }))
 }
 
@@ -461,6 +463,13 @@ export async function getThreadsForUser(
           "thread_reply_count",
         ),
       threadLastReplyAt: threadSummarySubquery.threadLastReplyAt,
+      threadIsUnread: sql<number>`
+        case
+          when ${threadMembersTable.lastViewedAt} is null then 1
+          when ${threadMembersTable.lastViewedAt} < coalesce(${threadSummarySubquery.threadLastReplyAt}, ${messagesTable.createdAt}) then 1
+          else 0
+        end
+      `.as("thread_is_unread"),
     })
     .from(threadMembersTable)
     .innerJoin(
@@ -629,6 +638,7 @@ export async function createMessageInConversation(
     mentions: mentionRecords,
     threadReplyCount: 0,
     threadLastReplyAt: null,
+    threadIsUnread: false,
   }
 
   if (threadRootMessageId) {
