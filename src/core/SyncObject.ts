@@ -23,7 +23,6 @@ export class SyncObject extends DurableObject {
 
   async fetch(request: Request): Promise<Response> {
     const userId = request.headers.get("x-user-id")!
-    console.log("SyncObject fetch", userId)
     const rpcResponse = await orpcHandler.handle(request, {
       prefix: "/sync/orpc",
       context: {

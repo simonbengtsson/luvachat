@@ -4,6 +4,7 @@ import {
 } from "@/components/app-chat-input"
 import EmojiPicker from "@/components/shadcnblocks/emoji-picker"
 import { SiteHeader } from "@/components/site-header"
+import { ThreadSummaryDialog } from "@/components/thread-summary-dialog"
 import { Button } from "@/components/ui/button"
 import {
   ChatMessage,
@@ -41,12 +42,12 @@ import {
   serializeTiptapContentAsHtml,
   TiptapContent,
 } from "@/components/ui/tiptap-content"
+import { activityQueryKey } from "@/core/activityQuery"
 import {
   getSyncConnectionStatus,
   subscribeToSyncConnectionStatus,
 } from "@/core/clientConnection"
 import { getConversationDisplayName } from "@/core/conversationDisplay"
-import { activityQueryKey } from "@/core/activityQuery"
 import {
   conversationQueryKey,
   conversationQueryOptions,
@@ -67,9 +68,9 @@ import {
   markConversationViewedInCache,
   markThreadViewedInCache,
 } from "@/core/realtimeCache"
+import { getScrollRestorationKey } from "@/core/scrollRestorationKey"
 import { threadsQueryKey } from "@/core/threadsQuery"
 import { cn } from "@/lib/utils"
-import { getScrollRestorationKey } from "@/core/scrollRestorationKey"
 import {
   useInfiniteQuery,
   useMutation,
@@ -91,6 +92,7 @@ import {
   LoaderCircleIcon,
   MessageSquareTextIcon,
   SmileIcon,
+  SparklesIcon,
 } from "lucide-react"
 import {
   useEffect,
@@ -201,10 +203,7 @@ async function copyMessageContent(
   if (content && tiptapDocument) {
     const html = serializeTiptapContentAsHtml(tiptapDocument)
 
-    if (
-      typeof ClipboardItem !== "undefined" &&
-      navigator.clipboard.write
-    ) {
+    if (typeof ClipboardItem !== "undefined" && navigator.clipboard.write) {
       await navigator.clipboard.write([
         new ClipboardItem({
           "text/plain": new Blob([content], {
@@ -279,6 +278,10 @@ function MessageReactionChips({
       ))}
     </div>
   )
+}
+
+function canSummarizeThread(message: EnrichedMessage) {
+  return !message.threadRootMessageId && message.threadReplyCount > 0
 }
 
 function RouteComponent() {
@@ -379,6 +382,8 @@ function ConversationView({
   const isSyncConnected = syncConnectionStatus === "connected"
 
   const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false)
+  const [activeSummaryMessage, setActiveSummaryMessage] =
+    useState<EnrichedMessage | null>(null)
   const composerRef = useRef<AppChatInputHandle>(null)
   const loadMoreRef = useRef<HTMLDivElement>(null)
   const lastPersistedViewedMessageIdRef = useRef<string | null>(null)
@@ -459,10 +464,8 @@ function ConversationView({
   })
 
   const markConversationViewedMutation = useMutation({
-    mutationFn: (_input: {
-      lastViewedAt: string
-      messageId: string
-    }) => orpcClient.markConversationViewed({ conversationId }),
+    mutationFn: (_input: { lastViewedAt: string; messageId: string }) =>
+      orpcClient.markConversationViewed({ conversationId }),
     onMutate: ({ lastViewedAt }) => {
       markConversationViewedInCache(queryClient, conversationId, lastViewedAt)
     },
@@ -573,13 +576,8 @@ function ConversationView({
   })
 
   const toggleMessageReactionMutation = useMutation({
-    mutationFn: ({
-      messageId,
-      emoji,
-    }: {
-      messageId: string
-      emoji: string
-    }) => orpcClient.toggleMessageReaction({ messageId, emoji }),
+    mutationFn: ({ messageId, emoji }: { messageId: string; emoji: string }) =>
+      orpcClient.toggleMessageReaction({ messageId, emoji }),
     onSuccess: (message) => {
       applyMessageUpdatedToCache(queryClient, message)
       void queryClient.invalidateQueries({ queryKey: activityQueryKey })
@@ -769,9 +767,7 @@ function ConversationView({
       return
     }
 
-    if (
-      lastPersistedViewedMessageIdRef.current === latestViewedMessage.id
-    ) {
+    if (lastPersistedViewedMessageIdRef.current === latestViewedMessage.id) {
       return
     }
 
@@ -900,6 +896,16 @@ function ConversationView({
                           toggleMessageReaction(threadRootMessage.id, emoji)
                         }
                       />
+                      {canSummarizeThread(threadRootMessage) ? (
+                        <ChatMessageAction
+                          label="Summarize thread with AI"
+                          onClick={() =>
+                            setActiveSummaryMessage(threadRootMessage)
+                          }
+                        >
+                          <SparklesIcon className="size-4" />
+                        </ChatMessageAction>
+                      ) : null}
                       <ChatMessageActionCopy
                         onClick={() =>
                           copyMessageContent(
@@ -1029,6 +1035,14 @@ function ConversationView({
                           <MessageSquareTextIcon className="size-4" />
                         </ChatMessageAction>
                       ) : null}
+                      {canSummarizeThread(message) ? (
+                        <ChatMessageAction
+                          label="Summarize thread with AI"
+                          onClick={() => setActiveSummaryMessage(message)}
+                        >
+                          <SparklesIcon className="size-4" />
+                        </ChatMessageAction>
+                      ) : null}
                       <ChatMessageActionCopy
                         onClick={() =>
                           copyMessageContent(message.content, tiptapDocument)
@@ -1155,6 +1169,18 @@ function ConversationView({
             ) : null}
           </div>
         </div>
+
+        {activeSummaryMessage ? (
+          <ThreadSummaryDialog
+            conversationId={conversationId}
+            message={activeSummaryMessage}
+            onOpenChange={(open) => {
+              if (!open) {
+                setActiveSummaryMessage(null)
+              }
+            }}
+          />
+        ) : null}
       </div>
     </div>
   )
