@@ -1,4 +1,5 @@
 import { SiteHeader } from "@/components/site-header"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Empty,
@@ -7,20 +8,35 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty"
-import { Input } from "@/components/ui/input"
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { getConversationDisplayName } from "@/core/conversationDisplay"
 import { useConversations } from "@/core/conversationsQuery"
-import { getSession as getLuvaSession } from "@/core/luvabase"
+import { getSession as getLuvaSession, type Member } from "@/core/luvabase"
 import { messageSearchInfiniteQueryOptions } from "@/core/messageSearchQuery"
 import { useWorkspaceMembers } from "@/core/members"
-import type { MessageSearchResult } from "@/core/models"
+import type { EnrichedConversation, MessageSearchResult } from "@/core/models"
 import { cn } from "@/lib/utils"
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
-import { MessageSquareTextIcon, SearchIcon } from "lucide-react"
+import {
+  CircleHelpIcon,
+  MessageSquareTextIcon,
+  SearchIcon,
+  XIcon,
+} from "lucide-react"
 import { type FormEvent, useEffect, useState } from "react"
 import { z } from "zod"
 
@@ -29,6 +45,7 @@ const searchSnippetEndMarker = "__match_end__"
 
 const searchRouteSchema = z.object({
   q: z.string().optional(),
+  conversationId: z.string().optional(),
 })
 
 export const Route = createFileRoute("/search")({
@@ -62,6 +79,26 @@ function formatSearchTime(createdAt: string) {
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date(createdAt))
+}
+
+function getConversationSearchLabel(
+  conversationId: string,
+  currentUserId: string,
+  conversationsById: Map<string, EnrichedConversation>,
+  membersById: Map<string, Member>,
+) {
+  const conversation = conversationsById.get(conversationId)
+  if (!conversation) {
+    return conversationId
+  }
+
+  const displayName = getConversationDisplayName(
+    conversation,
+    currentUserId,
+    membersById,
+  )
+
+  return conversation.type === "channel" ? `#${displayName}` : displayName
 }
 
 function SearchPreview({ preview }: { preview: string }) {
@@ -188,9 +225,10 @@ function RouteComponent() {
   const navigate = useNavigate()
   const search = Route.useSearch()
   const submittedQuery = search.q?.trim() ?? ""
+  const filteredConversationId = search.conversationId
   const [query, setQuery] = useState(search.q ?? "")
   const searchQuery = useInfiniteQuery(
-    messageSearchInfiniteQueryOptions(submittedQuery),
+    messageSearchInfiniteQueryOptions(submittedQuery, filteredConversationId),
   )
   const conversationsQuery = useConversations()
   const membersQuery = useWorkspaceMembers()
@@ -234,6 +272,14 @@ function RouteComponent() {
         (membersQuery.isPending ||
           conversationsQuery.isPending ||
           sessionQuery.isPending)))
+  const scopedConversationLabel = filteredConversationId
+    ? getConversationSearchLabel(
+        filteredConversationId,
+        currentUserId,
+        conversationsById,
+        membersById,
+      )
+    : null
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -241,7 +287,22 @@ function RouteComponent() {
     const nextQuery = query.trim()
     await navigate({
       to: "/search",
-      search: nextQuery ? { q: nextQuery } : {},
+      search:
+        nextQuery || filteredConversationId
+          ? {
+              ...(nextQuery ? { q: nextQuery } : {}),
+              ...(filteredConversationId
+                ? { conversationId: filteredConversationId }
+                : {}),
+            }
+          : {},
+    })
+  }
+
+  async function clearConversationFilter() {
+    await navigate({
+      to: "/search",
+      search: submittedQuery ? { q: submittedQuery } : {},
     })
   }
 
@@ -255,18 +316,70 @@ function RouteComponent() {
             className="flex flex-col gap-3 sm:flex-row"
             onSubmit={handleSubmit}
           >
-            <Input
-              value={query}
-              onChange={(event) => setQuery(event.currentTarget.value)}
-              placeholder="Search messages with FTS5 query syntax"
-              aria-label="Search messages"
-              className="h-10"
-            />
+            <InputGroup className="h-10 flex-1">
+              <InputGroupInput
+                value={query}
+                onChange={(event) => setQuery(event.currentTarget.value)}
+                placeholder="Search messages"
+                aria-label="Search messages"
+                autoFocus
+              />
+              <InputGroupAddon align="inline-end">
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <InputGroupButton
+                        variant="ghost"
+                        size="icon-xs"
+                        className="text-muted-foreground hover:text-foreground"
+                        aria-label="Search query help"
+                      />
+                    }
+                  >
+                    <CircleHelpIcon className="size-3.5" />
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="bottom"
+                    align="end"
+                    className="max-w-sm"
+                  >
+                    <div className="space-y-1">
+                      <p>FTS queries supported.</p>
+                      <p>
+                        Try plain text, <code>"exact phrase"</code>,{" "}
+                        <code>deploy*</code>, <code>error OR failure</code>, or{" "}
+                        <code>error NOT warning</code>.
+                      </p>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </InputGroupAddon>
+            </InputGroup>
             <Button type="submit" size="lg" className="sm:self-start">
               <SearchIcon />
               Search
             </Button>
           </form>
+          {scopedConversationLabel ? (
+            <div className="mt-3">
+              <Badge
+                variant="secondary"
+                className="h-auto gap-1.5 py-1 pr-1 text-xs"
+              >
+                <span>Search in {scopedConversationLabel}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void clearConversationFilter()
+                  }}
+                  className="inline-flex size-4 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-background/70 hover:text-foreground"
+                  aria-label="Remove conversation filter"
+                >
+                  <XIcon className="size-3" />
+                </button>
+              </Badge>
+            </div>
+          ) : null}
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col p-4 lg:p-6">

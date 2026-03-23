@@ -726,6 +726,7 @@ export async function searchMessagesForUser(
   context: OrpcContext,
   input: {
     query: string
+    conversationId?: string
     offset?: number
     limit?: number
   },
@@ -739,6 +740,12 @@ export async function searchMessagesForUser(
 
   const limit = input.limit ?? 20
   const offset = input.offset ?? 0
+  const conversationFilterClause = input.conversationId
+    ? "and conversation_id = ?"
+    : ""
+  const queryParams = input.conversationId
+    ? [query, input.conversationId, limit + 1, offset]
+    : [query, limit + 1, offset]
   const rows = context.db.$client.sql
     .exec(
       `
@@ -760,12 +767,11 @@ export async function searchMessagesForUser(
           bm25(message_search) as rank
         from message_search
         where message_search match ?
+        ${conversationFilterClause}
         order by rank, created_at desc, message_id desc
         limit ? offset ?
       `,
-      query,
-      limit + 1,
-      offset,
+      ...queryParams,
     )
     .toArray() as MessageSearchRow[]
 

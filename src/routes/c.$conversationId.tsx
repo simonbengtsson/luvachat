@@ -91,6 +91,7 @@ import {
   FileIcon,
   LoaderCircleIcon,
   MessageSquareTextIcon,
+  SearchIcon,
   SmileIcon,
   SparklesIcon,
 } from "lucide-react"
@@ -806,25 +807,44 @@ function ConversationView({
             : conversationTitle
         }`}
         actions={
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground"
-              aria-label="Channel options"
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => {
+                void navigate({
+                  to: "/search",
+                  search: { conversationId },
+                })
+              }}
+              aria-label={`Search in ${
+                conversationType === "channel"
+                  ? `#${conversationTitle}`
+                  : conversationTitle
+              }`}
             >
-              <EllipsisVerticalIcon className="size-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-40">
-              <DropdownMenuItem
-                variant="destructive"
-                disabled={deleteConversationMutation.isPending}
-                onClick={() => deleteConversationMutation.mutate()}
+              <SearchIcon className="size-4" />
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground"
+                aria-label="Channel options"
               >
-                {conversationType === "channel"
-                  ? "Delete Channel"
-                  : "Delete Conversation"}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <EllipsisVerticalIcon className="size-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-40">
+                <DropdownMenuItem
+                  variant="destructive"
+                  disabled={deleteConversationMutation.isPending}
+                  onClick={() => deleteConversationMutation.mutate()}
+                >
+                  {conversationType === "channel"
+                    ? "Delete Channel"
+                    : "Delete Conversation"}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         }
       />
 

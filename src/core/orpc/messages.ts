@@ -44,6 +44,7 @@ export const searchMessages = base
   .input(
     z.object({
       query: z.string(),
+      conversationId: z.string().min(1).optional(),
       offset: z.number().int().nonnegative().optional(),
       limit: z.number().int().positive().optional(),
     }),

@@ -3,15 +3,22 @@ import { orpcClient } from "./orpcClient"
 
 const messageSearchPageSize = 20
 
-export const messageSearchQueryKey = (query: string) =>
-  ["message-search", query] as const
+export const messageSearchQueryKey = (query: string, conversationId?: string) =>
+  ["message-search", query, conversationId ?? null] as const
 
-export function messageSearchInfiniteQueryOptions(query: string) {
+export function messageSearchInfiniteQueryOptions(
+  query: string,
+  conversationId?: string,
+) {
   return infiniteQueryOptions({
-    queryKey: [...messageSearchQueryKey(query), "infinite"] as const,
+    queryKey: [
+      ...messageSearchQueryKey(query, conversationId),
+      "infinite",
+    ] as const,
     queryFn: ({ pageParam }) =>
       orpcClient.searchMessages({
         query,
+        conversationId,
         offset: pageParam,
         limit: messageSearchPageSize,
       }),
