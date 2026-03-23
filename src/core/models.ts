@@ -39,3 +39,9 @@ export const ActivityFeedItem = z.object({
   previewText: z.string(),
   previewAttachmentCount: z.number().int().nonnegative(),
 })
+
+export type ActivityPage = z.infer<typeof ActivityPage>
+export const ActivityPage = z.object({
+  activity: z.array(ActivityFeedItem),
+  nextCursor: z.string().optional(),
+})

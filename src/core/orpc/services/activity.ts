@@ -1,5 +1,5 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm"
-import type { ActivityFeedItem } from "../../models"
+import type { ActivityFeedItem, ActivityPage } from "../../models"
 import {
   activityEventsTable,
   conversationMembersTable,
@@ -12,6 +12,9 @@ import {
 import type { OrpcContext } from "../context"
 
 type ActivityEventType = ActivityFeedItem["type"]
+type ActivityGroupRecord = ActivityFeedItem & {
+  latestEventId: string
+}
 
 type ActivityEventRecord = Pick<
   ActivityEvent,
@@ -141,9 +144,67 @@ function isUnreadActivityEvent(
   return !lastViewedAt || lastViewedAt < eventRecord.createdAt
 }
 
+function createActivityCursor(createdAt: string, eventId: string) {
+  return JSON.stringify({ createdAt, eventId })
+}
+
+function parseActivityCursor(cursor?: string) {
+  if (!cursor) {
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(cursor)
+
+    if (
+      typeof parsed?.createdAt === "string" &&
+      typeof parsed?.eventId === "string"
+    ) {
+      return parsed as {
+        createdAt: string
+        eventId: string
+      }
+    }
+  } catch {}
+
+  return null
+}
+
+function getActivityPageStartIndex(
+  activity: ActivityGroupRecord[],
+  cursor?: string,
+) {
+  const parsedCursor = parseActivityCursor(cursor)
+  if (!parsedCursor) {
+    return 0
+  }
+
+  const exactMatchIndex = activity.findIndex(
+    (activityItem) =>
+      activityItem.latestCreatedAt === parsedCursor.createdAt &&
+      activityItem.latestEventId === parsedCursor.eventId,
+  )
+
+  if (exactMatchIndex >= 0) {
+    return exactMatchIndex + 1
+  }
+
+  const fallbackIndex = activity.findIndex(
+    (activityItem) => activityItem.latestCreatedAt < parsedCursor.createdAt,
+  )
+
+  return fallbackIndex >= 0 ? fallbackIndex : activity.length
+}
+
 export async function getActivityForUser(
   context: OrpcContext,
-): Promise<ActivityFeedItem[]> {
+  input: {
+    cursor?: string
+    limit?: number
+    unreadOnly?: boolean
+  } = {},
+): Promise<ActivityPage> {
+  const limit = input.limit ?? 20
   const eventRecords = await context.db
     .select({
       id: activityEventsTable.id,
@@ -185,16 +246,16 @@ export async function getActivityForUser(
         ),
       ),
     )
-  const activityGroups = new Map<string, ActivityFeedItem>()
+  const activityGroups = new Map<string, ActivityGroupRecord>()
 
   for (const eventRecord of eventRecords) {
     const groupId = getActivityGroupId(eventRecord)
-    const existingGroup = activityGroups.get(groupId)
     const isUnread = isUnreadActivityEvent(
       eventRecord,
       conversationLastViewedAtByConversationId,
       threadLastViewedAtByThreadRootMessageId,
     )
+    const existingGroup = activityGroups.get(groupId)
 
     if (existingGroup) {
       existingGroup.eventCount += 1
@@ -212,6 +273,7 @@ export async function getActivityForUser(
       type: eventRecord.type as ActivityEventType,
       conversationId: eventRecord.conversationId,
       messageId: eventRecord.messageId,
+      latestEventId: eventRecord.id,
       threadRootMessageId:
         eventRecord.type === "thread_reply"
           ? (eventRecord.threadRootMessageId ?? eventRecord.messageId)
@@ -227,5 +289,24 @@ export async function getActivityForUser(
     })
   }
 
-  return Array.from(activityGroups.values())
+  const activity = Array.from(activityGroups.values()).filter(
+    (activityItem) => !input.unreadOnly || activityItem.isUnread,
+  )
+  const startIndex = getActivityPageStartIndex(activity, input.cursor)
+  const pageActivity = activity.slice(startIndex, startIndex + limit)
+  const lastActivityItem = pageActivity.at(-1)
+  const nextCursor =
+    startIndex + pageActivity.length < activity.length && lastActivityItem
+      ? createActivityCursor(
+          lastActivityItem.latestCreatedAt,
+          lastActivityItem.latestEventId,
+        )
+      : undefined
+
+  return {
+    activity: pageActivity.map(
+      ({ latestEventId: _latestEventId, ...item }) => item,
+    ),
+    nextCursor,
+  }
 }

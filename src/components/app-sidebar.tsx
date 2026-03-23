@@ -389,8 +389,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
 
   const currentUserId = sessionData.session.user.id
   const canSwitchDevUser = sessionData.canSwitchDevUser
-  const hasUnreadActivity =
-    activityQuery.data?.some((activityItem) => activityItem.isUnread) ?? false
+  const hasUnreadActivity = (activityQuery.data?.activity.length ?? 0) > 0
   const membersById = new Map(members.map((member) => [member.id, member]))
   const channelConversations = conversations.filter(
     (conversation) => conversation.type === "channel",

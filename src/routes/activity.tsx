@@ -9,17 +9,17 @@ import {
 import { Toggle } from "@/components/ui/toggle"
 import { cn } from "@/lib/utils"
 import { SiteHeader } from "@/components/site-header"
-import { activityQueryOptions } from "@/core/activityQuery"
+import { activityInfiniteQueryOptions } from "@/core/activityQuery"
 import type { ActivityFeedItem } from "@/core/models"
 import { useWorkspaceMembers } from "@/core/members"
-import { useQuery } from "@tanstack/react-query"
+import { useInfiniteQuery } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import {
   AtSignIcon,
   MessageSquareTextIcon,
   SmileIcon,
 } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 export const Route = createFileRoute("/activity")({
   component: RouteComponent,
@@ -183,9 +183,63 @@ function ActivityListItem({
 }
 
 function RouteComponent() {
-  const activityQuery = useQuery(activityQueryOptions())
-  const membersQuery = useWorkspaceMembers()
   const [showUnreadOnly, setShowUnreadOnly] = useState(false)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const loadMoreRef = useRef<HTMLDivElement>(null)
+  const activityQuery = useInfiniteQuery(
+    activityInfiniteQueryOptions(showUnreadOnly),
+  )
+  const membersQuery = useWorkspaceMembers()
+
+  const activity = activityQuery.data?.activity ?? []
+  const members = membersQuery.data ?? []
+  const membersById = new Map(members.map((member) => [member.id, member]))
+
+  useEffect(() => {
+    scrollContainerRef.current?.scrollTo({ top: 0 })
+  }, [showUnreadOnly])
+
+  useEffect(() => {
+    const loadMoreElement = loadMoreRef.current
+    const scrollContainer = scrollContainerRef.current
+
+    if (
+      !loadMoreElement ||
+      !scrollContainer ||
+      !activityQuery.hasNextPage ||
+      activityQuery.isPending
+    ) {
+      return
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (
+          entries[0]?.isIntersecting &&
+          activityQuery.hasNextPage &&
+          !activityQuery.isFetchingNextPage
+        ) {
+          void activityQuery.fetchNextPage()
+        }
+      },
+      {
+        root: scrollContainer,
+        rootMargin: "200px",
+        threshold: 0,
+      },
+    )
+
+    observer.observe(loadMoreElement)
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [
+    activityQuery.fetchNextPage,
+    activityQuery.hasNextPage,
+    activityQuery.isFetchingNextPage,
+    activityQuery.isPending,
+  ])
 
   if (activityQuery.error) {
     throw activityQuery.error
@@ -194,13 +248,6 @@ function RouteComponent() {
   if (membersQuery.error) {
     throw membersQuery.error
   }
-
-  const activity = activityQuery.data ?? []
-  const filteredActivity = showUnreadOnly
-    ? activity.filter((activityItem) => activityItem.isUnread)
-    : activity
-  const members = membersQuery.data ?? []
-  const membersById = new Map(members.map((member) => [member.id, member]))
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -217,7 +264,10 @@ function RouteComponent() {
           </Toggle>
         }
       />
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 lg:px-6">
+      <div
+        ref={scrollContainerRef}
+        className="min-h-0 flex-1 overflow-y-auto px-4 py-5 lg:px-6"
+      >
         {activityQuery.isPending || membersQuery.isPending ? (
           <div className="space-y-3">
             {Array.from({ length: 5 }).map((_, index) => (
@@ -227,7 +277,7 @@ function RouteComponent() {
               />
             ))}
           </div>
-        ) : filteredActivity.length === 0 ? (
+        ) : activity.length === 0 ? (
           <Empty className="border border-dashed border-border/70 bg-muted/20">
             <EmptyHeader>
               <EmptyMedia variant="icon">
@@ -245,7 +295,7 @@ function RouteComponent() {
           </Empty>
         ) : (
           <div className="space-y-3">
-            {filteredActivity.map((activityItem) => {
+            {activity.map((activityItem) => {
               const actor = membersById.get(activityItem.latestActorUserId)
               const actorName = actor?.name ?? activityItem.latestActorUserId
 
@@ -258,6 +308,16 @@ function RouteComponent() {
                 />
               )
             })}
+            {activityQuery.hasNextPage ? (
+              <div
+                ref={loadMoreRef}
+                className="flex justify-center py-2 text-sm text-muted-foreground"
+              >
+                {activityQuery.isFetchingNextPage
+                  ? "Loading more activity..."
+                  : "Scroll for more"}
+              </div>
+            ) : null}
           </div>
         )}
       </div>
