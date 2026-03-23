@@ -36,7 +36,12 @@ import {
 } from "@/core/push-client"
 import { cn } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Link, useMatchRoute, useNavigate } from "@tanstack/react-router"
+import {
+  Link,
+  useMatchRoute,
+  useNavigate,
+  useSearch,
+} from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
 import {
@@ -178,6 +183,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
+  const search = useSearch({ strict: false })
   const membersQuery = useWorkspaceMembers()
   const conversationsQuery = useConversations()
   const activityQuery = useActivity()
@@ -449,6 +455,59 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={Boolean(
+                    matchRoute({ to: "/new" }) &&
+                    Object.keys(search).length === 0,
+                  )}
+                  render={<Link to="/new" search={{}} />}
+                >
+                  <SquarePenIcon />
+                  <span>New message</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={Boolean(matchRoute({ to: "/threads", search: {} }))}
+                  render={<Link to="/threads" />}
+                >
+                  <MessageSquareTextIcon />
+                  <span>Threads</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={Boolean(
+                    matchRoute({
+                      to: "/activity",
+                    }),
+                  )}
+                  render={<Link to="/activity" />}
+                >
+                  <ActivityIcon />
+                  <span
+                    className={cn(
+                      "truncate",
+                      hasUnreadActivity && "font-semibold",
+                    )}
+                  >
+                    Activity
+                  </span>
+                  {hasUnreadActivity ? (
+                    <span
+                      aria-hidden
+                      className="ml-auto size-2 rounded-full bg-sidebar-foreground"
+                    />
+                  ) : null}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
         <SidebarGroup className="group-data-[collapsible=icon]:hidden">
           <SidebarGroupLabel>Channels</SidebarGroupLabel>
           <SidebarMenu>
@@ -528,10 +587,13 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
                   <SidebarMenuItem key={member.id}>
                     <SidebarMenuButton
                       isActive={Boolean(
-                        conversation &&
                         matchRoute({
                           to: "/c/$conversationId",
-                          params: { conversationId: conversation.id } as any,
+                          params: { conversationId: conversation?.id ?? "" },
+                        }) ||
+                        matchRoute({
+                          to: "/new",
+                          search: { members: member.id },
                         }),
                       )}
                       onClick={() => {
@@ -593,42 +655,6 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
               </section>
             ) : null}
             <SidebarMenu>
-              <SidebarMenuButton render={<Link to="/threads" />}>
-                <MessageSquareTextIcon />
-                <span>Threads</span>
-              </SidebarMenuButton>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={Boolean(
-                    matchRoute({
-                      to: "/activity",
-                    }),
-                  )}
-                  render={<Link to="/activity" />}
-                >
-                  <ActivityIcon />
-                  <span
-                    className={cn(
-                      "truncate",
-                      hasUnreadActivity && "font-semibold",
-                    )}
-                  >
-                    Activity
-                  </span>
-                  {hasUnreadActivity ? (
-                    <span
-                      aria-hidden
-                      className="ml-auto size-2 rounded-full bg-sidebar-foreground"
-                    />
-                  ) : null}
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton render={<Link to="/new" search={{}} />}>
-                  <SquarePenIcon />
-                  <span>New message</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton render={<Link to="/aichat" />}>
                   <MessageCircleIcon />
