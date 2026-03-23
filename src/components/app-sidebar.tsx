@@ -1,4 +1,3 @@
-import { useActivity } from "@/core/activityQuery"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Sidebar,
@@ -13,6 +12,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { useActivity } from "@/core/activityQuery"
 import { getConversationDisplayName } from "@/core/conversationDisplay"
 import {
   conversationQueryKey,
@@ -48,6 +48,7 @@ import {
   LogOutIcon,
   type LucideIcon,
   MessageCircleIcon,
+  MessageSquareTextIcon,
   PlusIcon,
   SearchIcon,
   Settings2Icon,
@@ -592,6 +593,10 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
               </section>
             ) : null}
             <SidebarMenu>
+              <SidebarMenuButton render={<Link to="/threads" />}>
+                <MessageSquareTextIcon />
+                <span>Threads</span>
+              </SidebarMenuButton>
               <SidebarMenuItem>
                 <SidebarMenuButton
                   isActive={Boolean(

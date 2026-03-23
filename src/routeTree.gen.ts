@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ThreadsRouteImport } from './routes/threads'
 import { Route as NewRouteImport } from './routes/new'
 import { Route as AichatRouteImport } from './routes/aichat'
 import { Route as ActivityRouteImport } from './routes/activity'
@@ -17,6 +18,11 @@ import { Route as CConversationIdRouteImport } from './routes/c.$conversationId'
 import { Route as AssetsSplatRouteImport } from './routes/assets.$'
 import { Route as ApiAichatRouteImport } from './routes/api/aichat'
 
+const ThreadsRoute = ThreadsRouteImport.update({
+  id: '/threads',
+  path: '/threads',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const NewRoute = NewRouteImport.update({
   id: '/new',
   path: '/new',
@@ -58,6 +64,7 @@ export interface FileRoutesByFullPath {
   '/activity': typeof ActivityRoute
   '/aichat': typeof AichatRoute
   '/new': typeof NewRoute
+  '/threads': typeof ThreadsRoute
   '/api/aichat': typeof ApiAichatRoute
   '/assets/$': typeof AssetsSplatRoute
   '/c/$conversationId': typeof CConversationIdRoute
@@ -67,6 +74,7 @@ export interface FileRoutesByTo {
   '/activity': typeof ActivityRoute
   '/aichat': typeof AichatRoute
   '/new': typeof NewRoute
+  '/threads': typeof ThreadsRoute
   '/api/aichat': typeof ApiAichatRoute
   '/assets/$': typeof AssetsSplatRoute
   '/c/$conversationId': typeof CConversationIdRoute
@@ -77,6 +85,7 @@ export interface FileRoutesById {
   '/activity': typeof ActivityRoute
   '/aichat': typeof AichatRoute
   '/new': typeof NewRoute
+  '/threads': typeof ThreadsRoute
   '/api/aichat': typeof ApiAichatRoute
   '/assets/$': typeof AssetsSplatRoute
   '/c/$conversationId': typeof CConversationIdRoute
@@ -88,6 +97,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/aichat'
     | '/new'
+    | '/threads'
     | '/api/aichat'
     | '/assets/$'
     | '/c/$conversationId'
@@ -97,6 +107,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/aichat'
     | '/new'
+    | '/threads'
     | '/api/aichat'
     | '/assets/$'
     | '/c/$conversationId'
@@ -106,6 +117,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/aichat'
     | '/new'
+    | '/threads'
     | '/api/aichat'
     | '/assets/$'
     | '/c/$conversationId'
@@ -116,6 +128,7 @@ export interface RootRouteChildren {
   ActivityRoute: typeof ActivityRoute
   AichatRoute: typeof AichatRoute
   NewRoute: typeof NewRoute
+  ThreadsRoute: typeof ThreadsRoute
   ApiAichatRoute: typeof ApiAichatRoute
   AssetsSplatRoute: typeof AssetsSplatRoute
   CConversationIdRoute: typeof CConversationIdRoute
@@ -123,6 +136,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/threads': {
+      id: '/threads'
+      path: '/threads'
+      fullPath: '/threads'
+      preLoaderRoute: typeof ThreadsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/new': {
       id: '/new'
       path: '/new'
@@ -180,6 +200,7 @@ const rootRouteChildren: RootRouteChildren = {
   ActivityRoute: ActivityRoute,
   AichatRoute: AichatRoute,
   NewRoute: NewRoute,
+  ThreadsRoute: ThreadsRoute,
   ApiAichatRoute: ApiAichatRoute,
   AssetsSplatRoute: AssetsSplatRoute,
   CConversationIdRoute: CConversationIdRoute,
