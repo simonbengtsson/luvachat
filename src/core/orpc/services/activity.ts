@@ -125,6 +125,10 @@ function isUnreadActivityEvent(
   conversationLastViewedAtByConversationId: Map<string, string | null>,
   threadLastViewedAtByThreadRootMessageId: Map<string, string | null>,
 ) {
+  if (eventRecord.type === "reaction") {
+    return false
+  }
+
   if (eventRecord.threadRootMessageId) {
     const lastViewedAt = threadLastViewedAtByThreadRootMessageId.get(
       eventRecord.threadRootMessageId,
