@@ -21,11 +21,14 @@ export function activityQueryOptions({
   })
 }
 
-export function useActivity() {
+export function useHasUnreadActivity() {
   return useQuery(
-    activityQueryOptions({
-      unreadOnly: true,
-      limit: 1,
+    queryOptions({
+      ...activityQueryOptions({
+        unreadOnly: true,
+        limit: 1,
+      }),
+      select: (data) => data.activity.length > 0,
     }),
   )
 }

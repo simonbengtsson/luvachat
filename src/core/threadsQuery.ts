@@ -21,11 +21,14 @@ export function threadsQueryOptions({
   })
 }
 
-export function useUnreadThreads() {
+export function useHasUnreadThreads() {
   return useQuery(
-    threadsQueryOptions({
-      unreadOnly: true,
-      limit: 1,
+    queryOptions({
+      ...threadsQueryOptions({
+        unreadOnly: true,
+        limit: 1,
+      }),
+      select: (data) => data.threads.length > 0,
     }),
   )
 }

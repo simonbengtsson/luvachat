@@ -12,7 +12,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { useActivity } from "@/core/activityQuery"
+import { useHasUnreadActivity } from "@/core/activityQuery"
 import { getConversationDisplayName } from "@/core/conversationDisplay"
 import {
   conversationQueryKey,
@@ -34,7 +34,7 @@ import {
   supportsPushNotifications,
   syncPushSubscription,
 } from "@/core/push-client"
-import { useUnreadThreads } from "@/core/threadsQuery"
+import { useHasUnreadThreads } from "@/core/threadsQuery"
 import { cn } from "@/lib/utils"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
@@ -187,8 +187,8 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   const search = useSearch({ strict: false })
   const membersQuery = useWorkspaceMembers()
   const conversationsQuery = useConversations()
-  const activityQuery = useActivity()
-  const threadsQuery = useUnreadThreads()
+  const hasUnreadActivityQuery = useHasUnreadActivity()
+  const hasUnreadThreadsQuery = useHasUnreadThreads()
   const sessionQuery = useQuery({
     queryKey: ["sidebar-session"],
     queryFn: () => getSession(),
@@ -382,8 +382,8 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
     sessionQuery.error ??
     conversationsQuery.error ??
     membersQuery.error ??
-    threadsQuery.error ??
-    activityQuery.error
+    hasUnreadThreadsQuery.error ??
+    hasUnreadActivityQuery.error
 
   if (sidebarError) {
     throw sidebarError
@@ -399,9 +399,8 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
 
   const currentUserId = sessionData.session.user.id
   const canSwitchDevUser = sessionData.canSwitchDevUser
-  const hasUnreadThreads =
-    threadsQuery.data?.threads.some((thread) => thread.threadIsUnread) ?? false
-  const hasUnreadActivity = (activityQuery.data?.activity.length ?? 0) > 0
+  const hasUnreadThreads = hasUnreadThreadsQuery.data ?? false
+  const hasUnreadActivity = hasUnreadActivityQuery.data ?? false
   const membersById = new Map(members.map((member) => [member.id, member]))
   const channelConversations = conversations.filter(
     (conversation) => conversation.type === "channel",
