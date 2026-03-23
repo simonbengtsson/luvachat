@@ -1,5 +1,16 @@
 "use client";
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { MarkdownContent } from "@/components/ui/markdown-content";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 import {
 	Check,
 	ChevronRight,
@@ -8,17 +19,6 @@ import {
 	UserIcon,
 } from "lucide-react";
 import { type ComponentProps, type ReactNode, useState } from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipProvider,
-	TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
-import { MarkdownContent } from "@/components/ui/markdown-content";
 
 function ChatMessage({ className, ...props }: ComponentProps<"div">) {
 	return (
@@ -228,8 +228,16 @@ function ChatMessageThread({
 	);
 }
 
-function ChatMessageThreadReplyCount(props: ComponentProps<"span">) {
-	return <span className="text-sm font-medium" {...props} />;
+function ChatMessageThreadReplyCount({
+	className,
+	...props
+}: ComponentProps<"span">) {
+	return (
+		<span
+			className={cn("text-sm font-medium text-sky-600", className)}
+			{...props}
+		/>
+	);
 }
 
 interface ChatMessageThreadTimestampProps extends ComponentProps<"span"> {
@@ -266,24 +274,8 @@ function ChatMessageThreadAction(props: ComponentProps<"span">) {
 }
 
 export {
-	ChatMessage,
-	ChatMessageAvatar,
-	ChatMessageAvatarImage,
-	ChatMessageAvatarFallback,
-	ChatMessageAvatarUserIcon,
-	ChatMessageAvatarAssistantIcon,
-	ChatMessageContainer,
-	ChatMessageHeader,
-	ChatMessageAuthor,
-	ChatMessageTimestamp,
-	ChatMessageContent,
-	ChatMessageMarkdown,
-	ChatMessageFooter,
-	ChatMessageActions,
-	ChatMessageAction,
-	ChatMessageActionCopy,
-	ChatMessageThread,
-	ChatMessageThreadReplyCount,
-	ChatMessageThreadTimestamp,
-	ChatMessageThreadAction,
+	ChatMessage, ChatMessageAction,
+	ChatMessageActionCopy, ChatMessageActions, ChatMessageAuthor, ChatMessageAvatar, ChatMessageAvatarAssistantIcon, ChatMessageAvatarFallback, ChatMessageAvatarImage, ChatMessageAvatarUserIcon, ChatMessageContainer, ChatMessageContent, ChatMessageFooter, ChatMessageHeader, ChatMessageMarkdown, ChatMessageThread, ChatMessageThreadAction, ChatMessageThreadReplyCount,
+	ChatMessageThreadTimestamp, ChatMessageTimestamp
 };
+

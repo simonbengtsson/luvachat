@@ -48,6 +48,7 @@
     "drizzle-kit": "1.0.0-beta.16-ea816b6",
     "drizzle-orm": "1.0.0-beta.16-ea816b6",
     "embla-carousel-react": "^8.6.0",
+    "emojibase-data": "^17.0.0",
     "input-otp": "^1.4.2",
     "jotai": "^2.18.1",
     "lucide-react": "^0.577.0",
