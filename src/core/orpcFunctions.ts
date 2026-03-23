@@ -10,6 +10,7 @@ import {
 } from "./orpc/conversations"
 import {
   getMessages,
+  getThreads,
   markThreadViewed,
   sendDirectMessage,
   sendMessage,
@@ -27,6 +28,7 @@ export const orpcRouter = {
   createConversation,
   deleteConversation,
   getMessages,
+  getThreads,
   sendMessage,
   getDirectConversationByMemberIds,
   sendDirectMessage,

@@ -476,6 +476,58 @@ export async function getMessagesForConversation(
   }
 }
 
+export async function getThreadsForUser(
+  context: OrpcContext,
+): Promise<EnrichedMessage[]> {
+  const threadSummarySubquery = context.db
+    .select({
+      threadRootMessageId: messagesTable.threadRootMessageId,
+      threadReplyCount: sql<number>`count(*)`.as("thread_reply_count"),
+      threadLastReplyAt: sql<string>`max(${messagesTable.createdAt})`.as(
+        "thread_last_reply_at",
+      ),
+    })
+    .from(messagesTable)
+    .where(isNotNull(messagesTable.threadRootMessageId))
+    .groupBy(messagesTable.threadRootMessageId)
+    .as("message_thread_summary")
+
+  const threadRecords = await context.db
+    .select({
+      id: messagesTable.id,
+      conversationId: messagesTable.conversationId,
+      threadRootMessageId: messagesTable.threadRootMessageId,
+      content: messagesTable.content,
+      tiptapJson: messagesTable.tiptapJson,
+      createdAt: messagesTable.createdAt,
+      userId: messagesTable.userId,
+      threadReplyCount:
+        sql<number>`coalesce(${threadSummarySubquery.threadReplyCount}, 0)`.as(
+          "thread_reply_count",
+        ),
+      threadLastReplyAt: threadSummarySubquery.threadLastReplyAt,
+    })
+    .from(threadMembersTable)
+    .innerJoin(
+      messagesTable,
+      eq(messagesTable.id, threadMembersTable.threadRootMessageId),
+    )
+    .leftJoin(
+      threadSummarySubquery,
+      eq(threadSummarySubquery.threadRootMessageId, messagesTable.id),
+    )
+    .where(eq(threadMembersTable.userId, context.userId))
+    .orderBy(
+      desc(
+        sql<string>`coalesce(${threadSummarySubquery.threadLastReplyAt}, ${messagesTable.createdAt})`,
+      ),
+      desc(messagesTable.createdAt),
+      desc(messagesTable.id),
+    )
+
+  return enrichMessages(context, threadRecords)
+}
+
 export async function createMessageInConversation(
   context: OrpcContext,
   input: {

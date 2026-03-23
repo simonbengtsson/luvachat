@@ -5,6 +5,7 @@ import {
   createMessageInConversation,
   getLatestThreadMessageCreatedAt,
   getMessagesForConversation,
+  getThreadsForUser,
   markThreadAsViewed,
 } from "./services/messages"
 
@@ -25,6 +26,10 @@ export const getMessages = base
   .handler(async ({ context, input }) => {
     return getMessagesForConversation(context, input)
   })
+
+export const getThreads = base.handler(async ({ context }) => {
+  return getThreadsForUser(context)
+})
 
 export const markThreadViewed = base
   .input(

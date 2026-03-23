@@ -467,7 +467,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
                   render={<Link to="/new" search={{}} />}
                 >
                   <SquarePenIcon />
-                  <span>New message</span>
+                  <span>New Message</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
