@@ -1,3 +1,4 @@
+import { useActivity } from "@/core/activityQuery"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Sidebar,
@@ -178,6 +179,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
 
   const membersQuery = useWorkspaceMembers()
   const conversationsQuery = useConversations()
+  const activityQuery = useActivity()
   const sessionQuery = useQuery({
     queryKey: ["sidebar-session"],
     queryFn: () => getSession(),
@@ -368,7 +370,10 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   }
 
   const sidebarError =
-    sessionQuery.error ?? conversationsQuery.error ?? membersQuery.error
+    sessionQuery.error ??
+    conversationsQuery.error ??
+    membersQuery.error ??
+    activityQuery.error
 
   if (sidebarError) {
     throw sidebarError
@@ -384,6 +389,8 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
 
   const currentUserId = sessionData.session.user.id
   const canSwitchDevUser = sessionData.canSwitchDevUser
+  const hasUnreadActivity =
+    activityQuery.data?.some((activityItem) => activityItem.isUnread) ?? false
   const membersById = new Map(members.map((member) => [member.id, member]))
   const channelConversations = conversations.filter(
     (conversation) => conversation.type === "channel",
@@ -587,9 +594,29 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
             ) : null}
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton render={<Link to="/activity" />}>
+                <SidebarMenuButton
+                  isActive={Boolean(
+                    matchRoute({
+                      to: "/activity",
+                    }),
+                  )}
+                  render={<Link to="/activity" />}
+                >
                   <ActivityIcon />
-                  <span>Activity</span>
+                  <span
+                    className={cn(
+                      "truncate",
+                      hasUnreadActivity && "font-semibold",
+                    )}
+                  >
+                    Activity
+                  </span>
+                  {hasUnreadActivity ? (
+                    <span
+                      aria-hidden
+                      className="ml-auto size-2 rounded-full bg-sidebar-foreground"
+                    />
+                  ) : null}
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>

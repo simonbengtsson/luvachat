@@ -45,6 +45,7 @@ import {
   subscribeToSyncConnectionStatus,
 } from "@/core/clientConnection"
 import { getConversationDisplayName } from "@/core/conversationDisplay"
+import { activityQueryKey } from "@/core/activityQuery"
 import {
   conversationQueryKey,
   conversationQueryOptions,
@@ -379,6 +380,9 @@ function ConversationView({
         queryKey: conversationQueryKey(conversationId),
       })
     },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: activityQueryKey })
+    },
   })
 
   const markThreadViewedMutation = useMutation({
@@ -394,6 +398,9 @@ function ConversationView({
     },
     onError: () => {
       lastPersistedViewedMessageIdRef.current = null
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: activityQueryKey })
     },
   })
 

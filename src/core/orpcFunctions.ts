@@ -1,4 +1,5 @@
 import { RPCHandler } from "@orpc/server/fetch"
+import { getActivity } from "./orpc/activity"
 import {
   createConversation,
   deleteConversation,
@@ -20,6 +21,7 @@ import {
 } from "./orpc/push"
 
 export const orpcRouter = {
+  getActivity,
   getConversations,
   getConversationById,
   createConversation,

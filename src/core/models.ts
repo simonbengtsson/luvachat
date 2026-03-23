@@ -23,3 +23,19 @@ export const EnrichedMessage = createSelectSchema(messagesTable).extend({
   threadReplyCount: z.number().int().nonnegative(),
   threadLastReplyAt: z.string().nullable(),
 })
+
+export type ActivityFeedItem = z.infer<typeof ActivityFeedItem>
+export const ActivityFeedItem = z.object({
+  id: z.string().min(1),
+  type: z.enum(["mention", "reaction", "thread_reply"]),
+  conversationId: z.string().min(1),
+  messageId: z.string().min(1),
+  threadRootMessageId: z.string().nullable(),
+  isUnread: z.boolean(),
+  latestCreatedAt: z.string().min(1),
+  latestActorUserId: z.string().min(1),
+  actorUserIds: z.array(z.string().min(1)),
+  eventCount: z.number().int().nonnegative(),
+  previewText: z.string(),
+  previewAttachmentCount: z.number().int().nonnegative(),
+})
