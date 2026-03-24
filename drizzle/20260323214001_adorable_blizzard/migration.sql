@@ -1,0 +1,1 @@
+ALTER TABLE `conversation_members` ADD `notification_level` text DEFAULT 'all' NOT NULL;

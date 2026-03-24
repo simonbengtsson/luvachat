@@ -93,6 +93,7 @@ export const conversationMembersTable = sqliteTable(
       .references(() => conversationsTable.id),
     joinedAt: text("joined_at").notNull(),
     lastViewedAt: text("last_viewed_at"),
+    notificationLevel: text("notification_level").notNull().default("all"), // all | muted
   },
   (table) => [
     index("conversation_members_conversation_user_idx").on(
