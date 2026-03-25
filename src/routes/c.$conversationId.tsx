@@ -67,6 +67,7 @@ import {
   applyMessageUpdatedToCache,
   markConversationViewedInCache,
   markThreadViewedInCache,
+  updateConversationNotificationLevelInCache,
 } from "@/core/realtimeCache"
 import { getScrollRestorationKey } from "@/core/scrollRestorationKey"
 import { threadsQueryKey } from "@/core/threadsQuery"
@@ -87,6 +88,7 @@ import { getRequest } from "@tanstack/react-start/server"
 import type { JSONContent } from "@tiptap/react"
 import {
   ArrowLeftIcon,
+  BellOffIcon,
   EllipsisVerticalIcon,
   FileIcon,
   LoaderCircleIcon,
@@ -314,6 +316,9 @@ function RouteComponent() {
       conversationId={conversationId}
       conversationType={conversationQuery.data?.type ?? null}
       conversationTitle={conversationTitle}
+      conversationNotificationLevel={
+        conversationQuery.data?.notificationLevel ?? "all"
+      }
       threadMessageId={threadMessageId}
       members={members}
       membersById={membersById}
@@ -325,6 +330,7 @@ function ConversationView({
   conversationId,
   conversationType,
   conversationTitle,
+  conversationNotificationLevel,
   threadMessageId,
   members,
   membersById,
@@ -332,6 +338,7 @@ function ConversationView({
   conversationId: string
   conversationType: string | null
   conversationTitle: string
+  conversationNotificationLevel: EnrichedConversation["notificationLevel"]
   threadMessageId?: string
   members: Member[]
   membersById: Map<string, Member>
@@ -573,6 +580,60 @@ function ConversationView({
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: conversationsQueryKey })
+    },
+  })
+  const isConversationMuted = conversationNotificationLevel === "muted"
+  const setConversationNotificationLevelMutation = useMutation({
+    mutationFn: (notificationLevel: EnrichedConversation["notificationLevel"]) =>
+      orpcClient.setConversationNotificationLevel({
+        conversationId,
+        notificationLevel,
+      }),
+    onMutate: async (notificationLevel) => {
+      await queryClient.cancelQueries({ queryKey: conversationsQueryKey })
+      await queryClient.cancelQueries({
+        queryKey: conversationQueryKey(conversationId),
+      })
+
+      const previousConversations = queryClient.getQueryData<
+        EnrichedConversation[]
+      >(conversationsQueryKey)
+      const previousConversation =
+        queryClient.getQueryData<EnrichedConversation | null>(
+          conversationQueryKey(conversationId),
+        )
+
+      updateConversationNotificationLevelInCache(
+        queryClient,
+        conversationId,
+        notificationLevel,
+      )
+
+      return {
+        previousConversations,
+        previousConversation,
+      }
+    },
+    onError: (_error, _notificationLevel, context) => {
+      if (context?.previousConversations !== undefined) {
+        queryClient.setQueryData(
+          conversationsQueryKey,
+          context.previousConversations,
+        )
+      }
+
+      if (context?.previousConversation !== undefined) {
+        queryClient.setQueryData(
+          conversationQueryKey(conversationId),
+          context.previousConversation,
+        )
+      }
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: conversationsQueryKey })
+      void queryClient.invalidateQueries({
+        queryKey: conversationQueryKey(conversationId),
+      })
     },
   })
 
@@ -828,14 +889,30 @@ function ConversationView({
             <DropdownMenu>
               <DropdownMenuTrigger
                 className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground"
-                aria-label="Channel options"
+                aria-label="Conversation options"
               >
                 <EllipsisVerticalIcon className="size-4" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="min-w-40">
                 <DropdownMenuItem
+                  disabled={setConversationNotificationLevelMutation.isPending}
+                  onClick={() =>
+                    setConversationNotificationLevelMutation.mutate(
+                      isConversationMuted ? "all" : "muted",
+                    )
+                  }
+                >
+                  <BellOffIcon className="size-4" />
+                  {isConversationMuted
+                    ? "Unmute Notifications"
+                    : "Mute Notifications"}
+                </DropdownMenuItem>
+                <DropdownMenuItem
                   variant="destructive"
-                  disabled={deleteConversationMutation.isPending}
+                  disabled={
+                    deleteConversationMutation.isPending ||
+                    setConversationNotificationLevelMutation.isPending
+                  }
                   onClick={() => deleteConversationMutation.mutate()}
                 >
                   {conversationType === "channel"

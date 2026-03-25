@@ -158,6 +158,7 @@ function RouteComponent() {
         memberIds,
         lastViewedAt: message.createdAt,
         lastMessageAt: message.createdAt,
+        notificationLevel: "all",
       }
 
       queryClient.setQueryData<EnrichedConversation[]>(

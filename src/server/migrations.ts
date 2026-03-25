@@ -12,6 +12,7 @@ import spookyFamine from "../../drizzle/20260322212217_spooky_famine/migration.s
 import breezyTheFury from "../../drizzle/20260322212855_breezy_the_fury/migration.sql"
 import quietNomad from "../../drizzle/20260323113000_quiet_nomad/migration.sql"
 import nimbleNebula from "../../drizzle/20260323154000_nimble_nebula/migration.sql"
+import adorableBlizzard from "../../drizzle/20260323214001_adorable_blizzard/migration.sql"
 
 export const migrations = {
   "20260308112408_pretty_silver_fox": prettySilverFox,
@@ -28,4 +29,5 @@ export const migrations = {
   "20260322212855_breezy_the_fury": breezyTheFury,
   "20260323113000_quiet_nomad": quietNomad,
   "20260323154000_nimble_nebula": nimbleNebula,
+  "20260323214001_adorable_blizzard": adorableBlizzard,
 }

@@ -8,7 +8,12 @@ import {
   messagesQueryKey,
   type MessagesPage,
 } from "./messagesQuery"
-import type { EnrichedConversation, EnrichedMessage, ThreadPage } from "./models"
+import type {
+  ConversationNotificationLevel,
+  EnrichedConversation,
+  EnrichedMessage,
+  ThreadPage,
+} from "./models"
 import { threadsQueryKey } from "./threadsQuery"
 
 type MessagesInfiniteData = InfiniteData<MessagesPage, string | undefined>
@@ -175,6 +180,36 @@ export function markConversationViewedInCache(
         ? {
             ...conversation,
             lastViewedAt,
+          }
+        : conversation,
+  )
+}
+
+export function updateConversationNotificationLevelInCache(
+  queryClient: QueryClient,
+  conversationId: string,
+  notificationLevel: ConversationNotificationLevel,
+): void {
+  queryClient.setQueryData<EnrichedConversation[]>(
+    conversationsQueryKey,
+    (conversations) =>
+      conversations?.map((conversation) =>
+        conversation.id === conversationId
+          ? {
+              ...conversation,
+              notificationLevel,
+            }
+          : conversation,
+      ) ?? conversations,
+  )
+
+  queryClient.setQueryData<EnrichedConversation | null>(
+    conversationQueryKey(conversationId),
+    (conversation) =>
+      conversation
+        ? {
+            ...conversation,
+            notificationLevel,
           }
         : conversation,
   )

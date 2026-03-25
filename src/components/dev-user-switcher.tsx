@@ -1,17 +1,14 @@
 import {
   DEV_USER_COOKIE_NAME,
   getMembers as getLuvaMembers,
+  hasLuvaEnv,
   type Member,
-  shouldUseLuvabase,
 } from "@/core/luvabase"
 import { useMutation } from "@tanstack/react-query"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequest, setCookie } from "@tanstack/react-start/server"
 import { z } from "zod"
-import {
-  NativeSelect,
-  NativeSelectOption,
-} from "./ui/native-select"
+import { NativeSelect, NativeSelectOption } from "./ui/native-select"
 
 const switchDevUser = createServerFn({ method: "POST" })
   .inputValidator(
@@ -20,7 +17,7 @@ const switchDevUser = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
-    if (shouldUseLuvabase()) {
+    if (hasLuvaEnv()) {
       return
     }
 

@@ -5,6 +5,7 @@ import {
   createPushRequestDetails,
 } from "../../push-server"
 import {
+  conversationMembersTable,
   conversationsTable,
   messagesTable,
   pushSubscriptionsTable,
@@ -50,6 +51,31 @@ async function listPushSubscriptionsByUserIds(
     .select()
     .from(pushSubscriptionsTable)
     .where(inArray(pushSubscriptionsTable.userId, userIds))
+}
+
+async function listMutedConversationUserIds(
+  context: OrpcContext,
+  conversationId: string,
+  userIds: string[],
+): Promise<Set<string>> {
+  if (userIds.length === 0) {
+    return new Set()
+  }
+
+  const mutedMemberships = await context.db
+    .select({
+      userId: conversationMembersTable.userId,
+    })
+    .from(conversationMembersTable)
+    .where(
+      and(
+        eq(conversationMembersTable.conversationId, conversationId),
+        inArray(conversationMembersTable.userId, userIds),
+        eq(conversationMembersTable.notificationLevel, "muted"),
+      ),
+    )
+
+  return new Set(mutedMemberships.map((membership) => membership.userId))
 }
 
 async function deletePushSubscriptionByEndpoint(
@@ -111,9 +137,17 @@ export async function sendPushNotifications(
     context,
     message,
   )
+  const mutedUserIds = await listMutedConversationUserIds(
+    context,
+    message.conversationId,
+    participantUserIds,
+  )
+  const enabledParticipantUserIds = participantUserIds.filter(
+    (userId) => !mutedUserIds.has(userId),
+  )
   const subscriptions = await listPushSubscriptionsByUserIds(
     context,
-    participantUserIds,
+    enabledParticipantUserIds,
   )
   if (subscriptions.length === 0) {
     return

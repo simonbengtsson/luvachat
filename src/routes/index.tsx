@@ -25,6 +25,7 @@ export const Route = createFileRoute("/")({
             memberIds: [],
             lastViewedAt: null,
             lastMessageAt: null,
+            notificationLevel: "all",
           }
         }
 

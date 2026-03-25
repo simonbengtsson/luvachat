@@ -1,7 +1,10 @@
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm"
 import { alias } from "drizzle-orm/sqlite-core"
 import { generateId } from "../../generateId"
-import type { EnrichedConversation } from "../../models"
+import type {
+  ConversationNotificationLevel,
+  EnrichedConversation,
+} from "../../models"
 import {
   conversationMembersTable,
   conversationsTable,
@@ -56,6 +59,7 @@ async function getConversationMemberForUser(
     .select({
       id: conversationMembersTable.id,
       lastViewedAt: conversationMembersTable.lastViewedAt,
+      notificationLevel: conversationMembersTable.notificationLevel,
     })
     .from(conversationMembersTable)
     .where(
@@ -88,6 +92,36 @@ async function upsertConversationMemberLastViewedAt(
     conversationId,
     joinedAt: lastViewedAt,
     lastViewedAt,
+  })
+}
+
+export async function setConversationNotificationLevel(
+  context: OrpcContext,
+  conversationId: string,
+  userId: string,
+  notificationLevel: ConversationNotificationLevel,
+): Promise<void> {
+  const existingMember = (await getConversationMemberForUser(
+    context,
+    conversationId,
+    userId,
+  ))[0]
+
+  if (existingMember?.id) {
+    await context.db
+      .update(conversationMembersTable)
+      .set({ notificationLevel })
+      .where(eq(conversationMembersTable.id, existingMember.id))
+    return
+  }
+
+  await context.db.insert(conversationMembersTable).values({
+    id: `${userId}_${conversationId}`,
+    userId,
+    conversationId,
+    joinedAt: new Date().toISOString(),
+    lastViewedAt: null,
+    notificationLevel,
   })
 }
 
@@ -144,6 +178,9 @@ export async function getConversationsForUser(
       memberIds: conversationMembersSubquery.memberIds,
       lastViewedAt: currentUserConversationMembershipTable.lastViewedAt,
       lastMessageAt: conversationLastMessageSubquery.lastMessageAt,
+      notificationLevel: sql<ConversationNotificationLevel>`coalesce(${currentUserConversationMembershipTable.notificationLevel}, 'all')`.as(
+        "notification_level",
+      ),
     })
     .from(conversationsTable)
     .leftJoin(
@@ -187,6 +224,9 @@ export async function getConversationByIdForUser(
       name: conversationsTable.name,
       createdAt: conversationsTable.createdAt,
       lastViewedAt: currentUserConversationMembershipTable.lastViewedAt,
+      notificationLevel: sql<ConversationNotificationLevel>`coalesce(${currentUserConversationMembershipTable.notificationLevel}, 'all')`.as(
+        "notification_level",
+      ),
     })
     .from(conversationsTable)
     .leftJoin(

@@ -7,6 +7,11 @@ import {
   messagesTable,
 } from "./schema"
 
+export const ConversationNotificationLevel = z.enum(["all", "muted"])
+export type ConversationNotificationLevel = z.infer<
+  typeof ConversationNotificationLevel
+>
+
 export type EnrichedConversation = z.infer<typeof EnrichedConversation>
 export const EnrichedConversation = createSelectSchema(
   conversationsTable,
@@ -14,6 +19,7 @@ export const EnrichedConversation = createSelectSchema(
   memberIds: z.array(z.string()),
   lastViewedAt: z.string().nullable(),
   lastMessageAt: z.string().nullable(),
+  notificationLevel: ConversationNotificationLevel,
 })
 
 export type MessageReactionSummary = z.infer<typeof MessageReactionSummary>

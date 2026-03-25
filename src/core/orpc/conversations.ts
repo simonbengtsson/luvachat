@@ -9,6 +9,7 @@ import {
   getConversationsForUser,
   getLatestRootMessageCreatedAt,
   markConversationAsViewed,
+  setConversationNotificationLevel as setConversationNotificationLevelRecord,
 } from "./services/conversations"
 
 const directConversationMembersInputSchema = z.object({
@@ -79,6 +80,22 @@ export const markConversationViewed = base
       input.conversationId,
       context.userId,
       latestMessageCreatedAt,
+    )
+  })
+
+export const setConversationNotificationLevel = base
+  .input(
+    z.object({
+      conversationId: z.string().min(1),
+      notificationLevel: z.enum(["all", "muted"]),
+    }),
+  )
+  .handler(async ({ context, input }) => {
+    await setConversationNotificationLevelRecord(
+      context,
+      input.conversationId,
+      context.userId,
+      input.notificationLevel,
     )
   })
 

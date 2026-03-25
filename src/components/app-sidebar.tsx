@@ -24,7 +24,7 @@ import {
   type Member,
   getAdminUrl,
   getSession as getLuvaSession,
-  shouldUseLuvabase,
+  hasLuvaEnv,
 } from "@/core/luvabase"
 import { useWorkspaceMembers } from "@/core/members"
 import type { EnrichedConversation } from "@/core/models"
@@ -48,6 +48,7 @@ import { getRequest } from "@tanstack/react-start/server"
 import {
   ActivityIcon,
   BellIcon,
+  BellOffIcon,
   CommandIcon,
   EllipsisVerticalIcon,
   ExternalLinkIcon,
@@ -106,6 +107,44 @@ function hasUnreadMessages(conversation: EnrichedConversation) {
   return conversation.lastViewedAt < conversation.lastMessageAt
 }
 
+function isConversationMuted(conversation: EnrichedConversation) {
+  return conversation.notificationLevel === "muted"
+}
+
+function isConversationMutedIfPresent(conversation?: EnrichedConversation) {
+  return conversation?.notificationLevel === "muted"
+}
+
+function sortConversationsForSidebar(conversations: EnrichedConversation[]) {
+  return [
+    ...conversations.filter(
+      (conversation) => !isConversationMuted(conversation),
+    ),
+    ...conversations.filter((conversation) =>
+      isConversationMuted(conversation),
+    ),
+  ]
+}
+
+function sortMembersForSidebar(
+  members: Member[],
+  directConversationsByMemberId: Map<string, EnrichedConversation>,
+) {
+  return [
+    ...members.filter(
+      (member) =>
+        !isConversationMutedIfPresent(
+          directConversationsByMemberId.get(member.id),
+        ),
+    ),
+    ...members.filter((member) =>
+      isConversationMutedIfPresent(
+        directConversationsByMemberId.get(member.id),
+      ),
+    ),
+  ]
+}
+
 function getDirectConversationMemberId(
   conversation: EnrichedConversation,
   currentUserId: string,
@@ -135,17 +174,19 @@ function SidebarConversationItem({
   icon: LucideIcon
   matchRoute: ReturnType<typeof useMatchRoute>
 }) {
-  const hasUnread = hasUnreadMessages(conversation)
+  const isMuted = isConversationMuted(conversation)
+  const hasUnread = !isMuted && hasUnreadMessages(conversation)
+  const isActive = Boolean(
+    matchRoute({
+      to: "/c/$conversationId",
+      params: { conversationId: conversation.id } as any,
+    }),
+  )
 
   return (
     <SidebarMenuItem>
       <SidebarMenuButton
-        isActive={Boolean(
-          matchRoute({
-            to: "/c/$conversationId",
-            params: { conversationId: conversation.id } as any,
-          }),
-        )}
+        isActive={isActive}
         render={
           <Link
             to="/c/$conversationId"
@@ -153,10 +194,29 @@ function SidebarConversationItem({
           />
         }
       >
-        <Icon />
-        <span className={cn("truncate", hasUnread && "font-semibold")}>
+        <Icon
+          className={cn(isMuted && !isActive && "text-sidebar-foreground/55")}
+        />
+        <span
+          className={cn(
+            "truncate",
+            hasUnread && "font-semibold",
+            isMuted && !isActive && "text-sidebar-foreground/60",
+          )}
+        >
           {label ?? conversation.name ?? conversation.id}
         </span>
+        {isMuted ? (
+          <BellOffIcon
+            aria-hidden
+            className={cn(
+              "ml-auto size-3.5",
+              isActive
+                ? "text-sidebar-foreground/70"
+                : "text-sidebar-foreground/40",
+            )}
+          />
+        ) : null}
         {hasUnread ? (
           <span
             aria-hidden
@@ -175,7 +235,7 @@ const getSession = createServerFn({ method: "GET" }).handler(async () => {
   return {
     session,
     adminUrl: getAdminUrl(),
-    canSwitchDevUser: !shouldUseLuvabase(),
+    canSwitchDevUser: !hasLuvaEnv(),
   }
 })
 
@@ -274,6 +334,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
         memberIds: [],
         lastViewedAt: null,
         lastMessageAt: null,
+        notificationLevel: "all",
       }
 
       queryClient.setQueryData<EnrichedConversation[]>(
@@ -328,6 +389,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
             memberIds: [],
             lastViewedAt: null,
             lastMessageAt: null,
+            notificationLevel: "all",
           }
           const withoutOptimistic = context?.optimisticConversationId
             ? conversations.filter(
@@ -347,6 +409,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
         memberIds: [],
         lastViewedAt: null,
         lastMessageAt: null,
+        notificationLevel: "all",
       }
       queryClient.setQueryData(
         conversationQueryKey(createdChannel.id),
@@ -421,6 +484,15 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
     }
     directConversationsByMemberId.set(memberId, conversation)
   }
+
+  const sortedChannelConversations =
+    sortConversationsForSidebar(channelConversations)
+  const sortedGroupConversations =
+    sortConversationsForSidebar(groupConversations)
+  const sortedMembers = sortMembersForSidebar(
+    members,
+    directConversationsByMemberId,
+  )
 
   async function handleOpenMemberConversation(
     memberId: string,
@@ -536,7 +608,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
                 </div>
               </SidebarMenuItem>
             ) : (
-              channelConversations.map((conversation) => (
+              sortedChannelConversations.map((conversation) => (
                 <SidebarConversationItem
                   key={conversation.id}
                   conversation={conversation}
@@ -567,7 +639,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
             <>
               <SidebarGroupLabel className="mt-4">Groups</SidebarGroupLabel>
               <SidebarMenu>
-                {groupConversations.map((conversation) => (
+                {sortedGroupConversations.map((conversation) => (
                   <SidebarConversationItem
                     key={conversation.id}
                     conversation={conversation}
@@ -593,27 +665,31 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
                 </div>
               </SidebarMenuItem>
             ) : (
-              members.map((member) => {
+              sortedMembers.map((member) => {
                 const conversation = directConversationsByMemberId.get(
                   member.id,
                 )
+                const isActive = Boolean(
+                  matchRoute({
+                    to: "/c/$conversationId",
+                    params: { conversationId: conversation?.id ?? "" },
+                  }) ||
+                  matchRoute({
+                    to: "/new",
+                    search: { members: member.id },
+                  }),
+                )
+                const isMuted = conversation
+                  ? isConversationMuted(conversation)
+                  : false
                 const hasUnread = conversation
-                  ? hasUnreadMessages(conversation)
+                  ? !isMuted && hasUnreadMessages(conversation)
                   : false
 
                 return (
                   <SidebarMenuItem key={member.id}>
                     <SidebarMenuButton
-                      isActive={Boolean(
-                        matchRoute({
-                          to: "/c/$conversationId",
-                          params: { conversationId: conversation?.id ?? "" },
-                        }) ||
-                        matchRoute({
-                          to: "/new",
-                          search: { members: member.id },
-                        }),
-                      )}
+                      isActive={isActive}
                       onClick={() => {
                         void handleOpenMemberConversation(
                           member.id,
@@ -631,10 +707,25 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
                         </AvatarFallback>
                       </Avatar>
                       <span
-                        className={cn("truncate", hasUnread && "font-semibold")}
+                        className={cn(
+                          "truncate",
+                          hasUnread && "font-semibold",
+                          isMuted && !isActive && "text-sidebar-foreground/60",
+                        )}
                       >
                         {member.name}
                       </span>
+                      {isMuted ? (
+                        <BellOffIcon
+                          aria-hidden
+                          className={cn(
+                            "ml-auto size-3.5",
+                            isActive
+                              ? "text-sidebar-foreground/70"
+                              : "text-sidebar-foreground/40",
+                          )}
+                        />
+                      ) : null}
                       {hasUnread ? (
                         <span
                           aria-hidden

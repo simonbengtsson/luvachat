@@ -7,6 +7,7 @@ import {
   getConversations,
   getDirectConversationByMemberIds,
   markConversationViewed,
+  setConversationNotificationLevel,
 } from "./orpc/conversations"
 import {
   getMessages,
@@ -37,6 +38,7 @@ export const orpcRouter = {
   getDirectConversationByMemberIds,
   sendDirectMessage,
   markConversationViewed,
+  setConversationNotificationLevel,
   markThreadViewed,
   getVapidPublicKey,
   savePushSubscription,

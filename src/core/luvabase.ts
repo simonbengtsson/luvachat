@@ -10,7 +10,7 @@ import {
 
 export const DEV_USER_COOKIE_NAME = "luvachat-dev-user"
 
-export function shouldUseLuvabase() {
+export function hasLuvaEnv() {
   return Boolean(process.env.luvaEnv)
 }
 
@@ -54,8 +54,7 @@ function getDevUserIdFromRequest(request: Request): string | null {
 export async function getSession(
   request: Request,
 ): Promise<Session & { user: Member }> {
-  console.log("getSession", shouldUseLuvabase())
-  if (shouldUseLuvabase()) {
+  if (hasLuvaEnv()) {
     const session = await getSdkSessionInfo(request)
     if (!session.user) {
       throw new Error("No user, but required")
@@ -77,8 +76,7 @@ export async function getSession(
 }
 
 export async function getMembers(request: Request): Promise<Member[]> {
-  console.log("getMembers", shouldUseLuvabase())
-  if (shouldUseLuvabase()) {
+  if (hasLuvaEnv()) {
     return getSdkMembers(request)
   }
 
@@ -86,8 +84,7 @@ export async function getMembers(request: Request): Promise<Member[]> {
 }
 
 export function getLuvaEnv(): LuvaEnv {
-  console.log("getLuvaEnv", shouldUseLuvabase())
-  if (shouldUseLuvabase()) {
+  if (hasLuvaEnv()) {
     return getSdkLuvaEnv()
   }
 
@@ -108,8 +105,8 @@ export function getLuvaEnv(): LuvaEnv {
 }
 
 export function getAdminUrl(): string {
-  console.log("getAdminUrl", shouldUseLuvabase())
-  if (shouldUseLuvabase()) {
+  console.log("getAdminUrl", hasLuvaEnv())
+  if (hasLuvaEnv()) {
     return getSdkAdminUrl()
   }
   return `https://luvabase.com/dash/pods/${getLuvaEnv().podId}`
