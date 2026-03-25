@@ -33,6 +33,7 @@ import { createServerFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
 import {
   CircleHelpIcon,
+  HashIcon,
   MessageSquareTextIcon,
   SearchIcon,
   XIcon,
@@ -81,7 +82,7 @@ function formatSearchTime(createdAt: string) {
   }).format(new Date(createdAt))
 }
 
-function getConversationSearchLabel(
+function getConversationSearchMeta(
   conversationId: string,
   currentUserId: string,
   conversationsById: Map<string, EnrichedConversation>,
@@ -89,16 +90,16 @@ function getConversationSearchLabel(
 ) {
   const conversation = conversationsById.get(conversationId)
   if (!conversation) {
-    return conversationId
+    return {
+      label: conversationId,
+      isChannel: false,
+    }
   }
 
-  const displayName = getConversationDisplayName(
-    conversation,
-    currentUserId,
-    membersById,
-  )
-
-  return conversation.type === "channel" ? `#${displayName}` : displayName
+  return {
+    label: getConversationDisplayName(conversation, currentUserId, membersById),
+    isChannel: conversation.type === "channel",
+  }
 }
 
 function SearchPreview({ preview }: { preview: string }) {
@@ -136,11 +137,13 @@ function SearchResultRow({
   authorName,
   authorImageUrl,
   conversationName,
+  isChannel,
 }: {
   result: MessageSearchResult
   authorName: string
   authorImageUrl?: string | null
   conversationName: string
+  isChannel: boolean
 }) {
   return (
     <Link
@@ -172,7 +175,9 @@ function SearchResultRow({
                   {authorName}
                 </p>
                 <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                  <span className="truncate">{conversationName}</span>
+                  <span className="truncate">
+                    {isChannel ? `#${conversationName}` : conversationName}
+                  </span>
                   {result.threadRootMessageId ? (
                     <>
                       <span aria-hidden>•</span>
@@ -272,8 +277,8 @@ function RouteComponent() {
         (membersQuery.isPending ||
           conversationsQuery.isPending ||
           sessionQuery.isPending)))
-  const scopedConversationLabel = filteredConversationId
-    ? getConversationSearchLabel(
+  const scopedConversationMeta = filteredConversationId
+    ? getConversationSearchMeta(
         filteredConversationId,
         currentUserId,
         conversationsById,
@@ -360,13 +365,19 @@ function RouteComponent() {
               Search
             </Button>
           </form>
-          {scopedConversationLabel ? (
+          {scopedConversationMeta ? (
             <div className="mt-3">
               <Badge
                 variant="secondary"
                 className="h-auto gap-1.5 py-1 pr-1 text-xs"
               >
-                <span>Search in {scopedConversationLabel}</span>
+                <span className="flex items-center gap-1">
+                  <span>Search in</span>
+                  {scopedConversationMeta.isChannel ? (
+                    <HashIcon className="size-3 shrink-0" />
+                  ) : null}
+                  <span>{scopedConversationMeta.label}</span>
+                </span>
                 <button
                   type="button"
                   onClick={() => {
@@ -436,6 +447,7 @@ function RouteComponent() {
                           )
                         : result.conversationId
                     }
+                    isChannel={conversation?.type === "channel"}
                   />
                 )
               })}

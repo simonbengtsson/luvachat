@@ -765,13 +765,14 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
             ) : null}
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton render={<Link to="/aichat" />}>
-                  <MessageCircleIcon />
-                  <span>AI Chat</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton render={<Link to="/search" />}>
+                <SidebarMenuButton
+                  isActive={Boolean(
+                    matchRoute({
+                      to: "/search",
+                    }),
+                  )}
+                  render={<Link to="/search" />}
+                >
                   <SearchIcon />
                   <span>Search</span>
                 </SidebarMenuButton>
