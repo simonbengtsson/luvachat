@@ -1,6 +1,6 @@
+import { getLuvaEnv, getMembers, getSession } from "@/core/luvabase"
 import type { EnrichedMessage } from "@/core/models"
 import { createServerOrpcClient } from "@/core/orpcClient"
-import { getLuvaEnv, getMembers, getSession } from "@/core/luvabase"
 import { chat, toServerSentEventsResponse } from "@tanstack/ai"
 import { createOpenRouterText } from "@tanstack/ai-openrouter"
 import { createFileRoute } from "@tanstack/react-router"
@@ -76,8 +76,7 @@ function buildThreadPrompt(
     "Transcript",
     ...sortedMessages.map((message, index) => {
       const authorName = membersById.get(message.userId) ?? message.userId
-      const messageLabel =
-        index === 0 ? "Root message" : `Reply ${index}`
+      const messageLabel = index === 0 ? "Root message" : `Reply ${index}`
 
       return [
         `${messageLabel}`,
@@ -123,7 +122,7 @@ export const Route = createFileRoute("/api/thread-summary")({
         const syncObject = env.SyncObject.getByName("workspace")
         const serverOrpcClient = createServerOrpcClient(
           syncObject,
-          session.user.id,
+          session.member.id,
         )
         const conversation = await serverOrpcClient.getConversationById({
           conversationId: parsedBody.data.conversationId,
@@ -131,7 +130,7 @@ export const Route = createFileRoute("/api/thread-summary")({
 
         if (
           !conversation ||
-          !conversation.memberIds.includes(session.user.id)
+          !conversation.memberIds.includes(session.member.id)
         ) {
           return new Response(
             JSON.stringify({ error: "Conversation not found" }),

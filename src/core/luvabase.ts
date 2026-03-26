@@ -18,16 +18,22 @@ const members = {
   abc: {
     id: "abc",
     name: "John Doe",
+    type: "user" as const,
+    role: "admin" as const,
     imageUrl: "https://i.pravatar.cc/150?u=123",
   },
   def: {
     id: "def",
     name: "Charlie Smith",
+    type: "user" as const,
+    role: "admin" as const,
     imageUrl: "https://i.pravatar.cc/150?u=def",
   },
   ghi: {
     id: "ghi",
     name: "David Johnson",
+    type: "user" as const,
+    role: "admin" as const,
     imageUrl: "https://i.pravatar.cc/150?u=ghi",
   },
 }
@@ -53,14 +59,15 @@ function getDevUserIdFromRequest(request: Request): string | null {
 
 export async function getSession(
   request: Request,
-): Promise<Session & { user: Member }> {
+): Promise<Session & { member: Member }> {
   if (hasLuvaEnv()) {
     const session = await getSdkSessionInfo(request)
-    if (!session.user) {
+    if (!session.member) {
       throw new Error("No user, but required")
     }
     return {
-      user: session.user,
+      isAuthenticated: session.isAuthenticated,
+      member: session.member,
     }
   }
 
@@ -68,7 +75,8 @@ export async function getSession(
   const envUserId = import.meta.env.VITE_DEV_USER
 
   return {
-    user:
+    isAuthenticated: true,
+    member:
       members[cookieUserId as keyof typeof members] ??
       members[envUserId as keyof typeof members] ??
       members.abc,

@@ -23,11 +23,8 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty"
+import { parseTiptapJson, TiptapContent } from "@/components/ui/tiptap-content"
 import { Toggle } from "@/components/ui/toggle"
-import {
-  parseTiptapJson,
-  TiptapContent,
-} from "@/components/ui/tiptap-content"
 import { getConversationDisplayName } from "@/core/conversationDisplay"
 import { useConversations } from "@/core/conversationsQuery"
 import { getSession as getLuvaSession, type Member } from "@/core/luvabase"
@@ -189,7 +186,7 @@ function RouteComponent() {
 
   const conversations = conversationsQuery.data ?? []
   const members = membersQuery.data ?? []
-  const currentUserId = sessionQuery.data?.user.id ?? ""
+  const currentUserId = sessionQuery.data?.member.id ?? ""
   const conversationsById = new Map(
     conversations.map((conversation) => [conversation.id, conversation]),
   )
@@ -305,7 +302,9 @@ function RouteComponent() {
                                     attachment.storageKey,
                                   )
 
-                                  if (isImageAttachment(attachment.contentType)) {
+                                  if (
+                                    isImageAttachment(attachment.contentType)
+                                  ) {
                                     return (
                                       <a
                                         key={attachment.id}

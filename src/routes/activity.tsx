@@ -1,3 +1,4 @@
+import { SiteHeader } from "@/components/site-header"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Empty,
@@ -7,18 +8,13 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty"
 import { Toggle } from "@/components/ui/toggle"
-import { cn } from "@/lib/utils"
-import { SiteHeader } from "@/components/site-header"
 import { activityInfiniteQueryOptions } from "@/core/activityQuery"
-import type { ActivityFeedItem } from "@/core/models"
 import { useWorkspaceMembers } from "@/core/members"
+import type { ActivityFeedItem } from "@/core/models"
+import { cn } from "@/lib/utils"
 import { useInfiniteQuery } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import {
-  AtSignIcon,
-  MessageSquareTextIcon,
-  SmileIcon,
-} from "lucide-react"
+import { AtSignIcon, MessageSquareTextIcon, SmileIcon } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
 export const Route = createFileRoute("/activity")({

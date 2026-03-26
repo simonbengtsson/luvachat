@@ -15,7 +15,7 @@ export default {
       const session = await getSession(request)
       const syncObject = env.SyncObject.getByName("workspace")
       const headers = new Headers(request.headers)
-      headers.set("x-user-id", session.user!.id)
+      headers.set("x-user-id", session.member.id)
       return syncObject.fetch(new Request(request, { headers }))
     }
 

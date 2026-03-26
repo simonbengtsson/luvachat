@@ -461,7 +461,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
     throw new Error("Sidebar data missing")
   }
 
-  const currentUserId = sessionData.session.user.id
+  const currentUserId = sessionData.session.member.id
   const canSwitchDevUser = sessionData.canSwitchDevUser
   const hasUnreadThreads = hasUnreadThreadsQuery.data ?? false
   const hasUnreadActivity = hasUnreadActivityQuery.data ?? false
@@ -818,19 +818,19 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
                 <>
                   <Avatar className="size-8 rounded-lg">
                     <AvatarImage
-                      src={sessionData.session.user.imageUrl ?? undefined}
-                      alt={sessionData.session.user.name}
+                      src={sessionData.session.member.imageUrl ?? undefined}
+                      alt={sessionData.session.member.name}
                     />
                     <AvatarFallback className="rounded-lg">
-                      {getFallbackText(sessionData.session.user.name)}
+                      {getFallbackText(sessionData.session.member.name)}
                     </AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-medium">
-                      {sessionData.session.user.name}
+                      {sessionData.session.member.name}
                     </span>
                     <span className="truncate text-xs text-foreground/70">
-                      {sessionData.session.user.id}
+                      {sessionData.session.member.id}
                     </span>
                   </div>
                 </>

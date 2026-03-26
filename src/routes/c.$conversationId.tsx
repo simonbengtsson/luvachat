@@ -304,7 +304,7 @@ function RouteComponent() {
     [members],
   )
   const conversation = conversationQuery.data
-  const currentUserId = sessionQuery.data?.user.id
+  const currentUserId = sessionQuery.data?.member.id
   const conversationTitle =
     conversation && currentUserId
       ? getConversationDisplayName(conversation, currentUserId, membersById)
@@ -584,7 +584,9 @@ function ConversationView({
   })
   const isConversationMuted = conversationNotificationLevel === "muted"
   const setConversationNotificationLevelMutation = useMutation({
-    mutationFn: (notificationLevel: EnrichedConversation["notificationLevel"]) =>
+    mutationFn: (
+      notificationLevel: EnrichedConversation["notificationLevel"],
+    ) =>
       orpcClient.setConversationNotificationLevel({
         conversationId,
         notificationLevel,

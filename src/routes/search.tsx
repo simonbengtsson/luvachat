@@ -23,8 +23,8 @@ import {
 import { getConversationDisplayName } from "@/core/conversationDisplay"
 import { useConversations } from "@/core/conversationsQuery"
 import { getSession as getLuvaSession, type Member } from "@/core/luvabase"
-import { messageSearchInfiniteQueryOptions } from "@/core/messageSearchQuery"
 import { useWorkspaceMembers } from "@/core/members"
+import { messageSearchInfiniteQueryOptions } from "@/core/messageSearchQuery"
 import type { EnrichedConversation, MessageSearchResult } from "@/core/models"
 import { cn } from "@/lib/utils"
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query"
@@ -265,7 +265,7 @@ function RouteComponent() {
   const results = searchQuery.data?.results ?? []
   const members = membersQuery.data ?? []
   const conversations = conversationsQuery.data ?? []
-  const currentUserId = sessionQuery.data?.user.id ?? ""
+  const currentUserId = sessionQuery.data?.member.id ?? ""
   const membersById = new Map(members.map((member) => [member.id, member]))
   const conversationsById = new Map(
     conversations.map((conversation) => [conversation.id, conversation]),
@@ -430,7 +430,9 @@ function RouteComponent() {
             <div className="space-y-3">
               {results.map((result) => {
                 const author = membersById.get(result.userId)
-                const conversation = conversationsById.get(result.conversationId)
+                const conversation = conversationsById.get(
+                  result.conversationId,
+                )
 
                 return (
                   <SearchResultRow
