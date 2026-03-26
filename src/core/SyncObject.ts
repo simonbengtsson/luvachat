@@ -47,7 +47,7 @@ export class SyncObject extends DurableObject {
       userId,
       connectedOn: new Date().toISOString(),
     })
-    this.ctx.acceptWebSocket(server)
+    this.ctx.acceptWebSocket(server, [userId])
 
     return new Response(null, {
       status: 101,

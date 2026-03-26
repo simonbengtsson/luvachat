@@ -50,6 +50,78 @@ function getParticipantConversationType(participantIds: string[]) {
   return participantIds.length > 2 ? "group" : "direct"
 }
 
+type ConversationAccessRecord = {
+  conversation: Conversation
+  isMember: boolean
+}
+
+async function getConversationAccessRecord(
+  context: OrpcContext,
+  conversationId: string,
+  userId: string,
+): Promise<ConversationAccessRecord | null> {
+  const currentUserConversationMembershipTable = alias(
+    conversationMembersTable,
+    "current_user_conversation_membership",
+  )
+  const rows = await context.db
+    .select({
+      id: conversationsTable.id,
+      type: conversationsTable.type,
+      name: conversationsTable.name,
+      createdAt: conversationsTable.createdAt,
+      isMember: sql<number>`case when ${currentUserConversationMembershipTable.id} is null then 0 else 1 end`.as(
+        "is_member",
+      ),
+    })
+    .from(conversationsTable)
+    .leftJoin(
+      currentUserConversationMembershipTable,
+      and(
+        eq(
+          currentUserConversationMembershipTable.conversationId,
+          conversationsTable.id,
+        ),
+        eq(currentUserConversationMembershipTable.userId, userId),
+      ),
+    )
+    .where(eq(conversationsTable.id, conversationId))
+    .limit(1)
+
+  const record = rows[0]
+  if (!record) {
+    return null
+  }
+
+  return {
+    conversation: {
+      id: record.id,
+      type: record.type,
+      name: record.name,
+      createdAt: record.createdAt,
+    },
+    isMember: Boolean(record.isMember),
+  }
+}
+
+function hasConversationAccess(record: ConversationAccessRecord): boolean {
+  return record.conversation.type === "channel" || record.isMember
+}
+
+export async function requireConversationAccess(
+  context: OrpcContext,
+  conversationId: string,
+  userId: string = context.userId,
+): Promise<Conversation> {
+  const record = await getConversationAccessRecord(context, conversationId, userId)
+
+  if (!record || !hasConversationAccess(record)) {
+    throw new Error("Conversation not found")
+  }
+
+  return record.conversation
+}
+
 async function getConversationMemberForUser(
   context: OrpcContext,
   conversationId: string,
@@ -101,6 +173,7 @@ export async function setConversationNotificationLevel(
   userId: string,
   notificationLevel: ConversationNotificationLevel,
 ): Promise<void> {
+  await requireConversationAccess(context, conversationId, userId)
   const existingMember = (await getConversationMemberForUser(
     context,
     conversationId,
@@ -176,6 +249,7 @@ export async function getConversationsForUser(
       name: conversationsTable.name,
       createdAt: conversationsTable.createdAt,
       memberIds: conversationMembersSubquery.memberIds,
+      isMember: currentUserConversationMembershipTable.id,
       lastViewedAt: currentUserConversationMembershipTable.lastViewedAt,
       lastMessageAt: conversationLastMessageSubquery.lastMessageAt,
       notificationLevel: sql<ConversationNotificationLevel>`coalesce(${currentUserConversationMembershipTable.notificationLevel}, 'all')`.as(
@@ -201,9 +275,12 @@ export async function getConversationsForUser(
       conversationLastMessageSubquery,
       eq(conversationLastMessageSubquery.conversationId, conversationsTable.id),
     )
+    .where(
+      sql`${conversationsTable.type} = 'channel' or ${currentUserConversationMembershipTable.id} is not null`,
+    )
     .orderBy(desc(conversationsTable.createdAt))
 
-  return conversations.map((conversation) => ({
+  return conversations.map(({ isMember: _isMember, ...conversation }) => ({
     ...conversation,
     memberIds: parseConversationMemberIds(conversation.memberIds),
   }))
@@ -213,6 +290,15 @@ export async function getConversationByIdForUser(
   context: OrpcContext,
   conversationId: string,
 ): Promise<EnrichedConversation | null> {
+  const accessRecord = await getConversationAccessRecord(
+    context,
+    conversationId,
+    context.userId,
+  )
+  if (!accessRecord || !hasConversationAccess(accessRecord)) {
+    return null
+  }
+
   const currentUserConversationMembershipTable = alias(
     conversationMembersTable,
     "current_user_conversation_membership",
@@ -302,6 +388,18 @@ export async function deleteConversation(
   context: OrpcContext,
   conversationId: string,
 ): Promise<void> {
+  const conversation = await requireConversationAccess(context, conversationId)
+  const memberIds =
+    conversation.type === "channel"
+      ? []
+      : (
+          await context.db
+            .select({
+              userId: conversationMembersTable.userId,
+            })
+            .from(conversationMembersTable)
+            .where(eq(conversationMembersTable.conversationId, conversationId))
+        ).map((member) => member.userId)
   const attachmentRows = await context.db
     .select({
       storageKey: messageAttachmentsTable.storageKey,
@@ -326,13 +424,17 @@ export async function deleteConversation(
     context,
     attachmentRows.map((attachment) => attachment.storageKey),
   )
-  broadcastWorkspaceUpdated(context)
+  broadcastWorkspaceUpdated(
+    context,
+    conversation.type === "channel" ? undefined : memberIds,
+  )
 }
 
 export async function getLatestRootMessageCreatedAt(
   context: OrpcContext,
   conversationId: string,
 ): Promise<string | null> {
+  await requireConversationAccess(context, conversationId)
   const latestMessage = await context.db
     .select({
       createdAt: sql<string | null>`max(${messagesTable.createdAt})`.as(
@@ -357,6 +459,7 @@ export async function markConversationAsViewed(
   userId: string,
   mostRecentMessageCreatedAt: string,
 ): Promise<void> {
+  await requireConversationAccess(context, conversationId, userId)
   const existingMember = (await getConversationMemberForUser(
     context,
     conversationId,
@@ -509,7 +612,7 @@ export async function createDirectConversation(
       .run()
   })
 
-  broadcastWorkspaceUpdated(context)
+  broadcastWorkspaceUpdated(context, participantIds)
 
   return conversation
 }

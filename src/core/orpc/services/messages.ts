@@ -30,8 +30,11 @@ import {
   type MessageReaction,
 } from "../../schema"
 import type { OrpcContext } from "../context"
-import { broadcastEvent } from "../realtime"
-import { markConversationAsViewed } from "./conversations"
+import { broadcastConversationEvent } from "../realtime"
+import {
+  markConversationAsViewed,
+  requireConversationAccess,
+} from "./conversations"
 import { sendPushNotifications } from "./push"
 
 type AttachmentUploadInput = {
@@ -471,6 +474,7 @@ export async function getLatestThreadMessageCreatedAt(
   conversationId: string,
   threadRootMessageId: string,
 ): Promise<string | null> {
+  await requireConversationAccess(context, conversationId)
   const latestMessage = await context.db
     .select({
       createdAt: sql<string | null>`max(${messagesTable.createdAt})`.as(
@@ -547,6 +551,7 @@ export async function getMessagesForConversation(
   messages: EnrichedMessage[]
   nextCursor?: string
 }> {
+  await requireConversationAccess(context, input.conversationId)
   const limit = input.limit ?? 10
 
   const threadSummarySubquery = createThreadSummarySubquery(context)
@@ -741,21 +746,21 @@ export async function searchMessagesForUser(
   const limit = input.limit ?? 20
   const offset = input.offset ?? 0
   const conversationFilterClause = input.conversationId
-    ? "and conversation_id = ?"
+    ? "and message_search.conversation_id = ?"
     : ""
   const queryParams = input.conversationId
-    ? [query, input.conversationId, limit + 1, offset]
-    : [query, limit + 1, offset]
+    ? [context.userId, query, input.conversationId, limit + 1, offset]
+    : [context.userId, query, limit + 1, offset]
   const rows = context.db.$client.sql
     .exec(
       `
         select
-          message_id as messageId,
-          conversation_id as conversationId,
-          thread_root_message_id as threadRootMessageId,
-          user_id as userId,
-          created_at as createdAt,
-          content,
+          message_search.message_id as messageId,
+          message_search.conversation_id as conversationId,
+          message_search.thread_root_message_id as threadRootMessageId,
+          message_search.user_id as userId,
+          message_search.created_at as createdAt,
+          message_search.content,
           snippet(
             message_search,
             5,
@@ -766,9 +771,18 @@ export async function searchMessagesForUser(
           ) as contentPreview,
           bm25(message_search) as rank
         from message_search
+        inner join conversations
+          on conversations.id = message_search.conversation_id
+        left join conversation_members as current_user_conversation_membership
+          on current_user_conversation_membership.conversation_id = message_search.conversation_id
+         and current_user_conversation_membership.user_id = ?
         where message_search match ?
+          and (
+            conversations.type = 'channel'
+            or current_user_conversation_membership.user_id is not null
+          )
         ${conversationFilterClause}
-        order by rank, created_at desc, message_id desc
+        order by rank, message_search.created_at desc, message_search.message_id desc
         limit ? offset ?
       `,
       ...queryParams,
@@ -806,6 +820,7 @@ export async function createMessageInConversation(
     attachments: File[]
   },
 ): Promise<EnrichedMessage> {
+  await requireConversationAccess(context, input.conversationId)
   const trimmedContent = input.content.trim()
   const attachments = await Promise.all(
     input.attachments.map(
@@ -963,7 +978,7 @@ export async function createMessageInConversation(
     )
   }
 
-  broadcastEvent(context, {
+  await broadcastConversationEvent(context, input.conversationId, {
     type: "messageCreated",
     message,
   })
@@ -989,6 +1004,8 @@ export async function toggleReactionForMessage(
   if (!message) {
     throw new Error("Message not found")
   }
+
+  await requireConversationAccess(context, message.conversationId)
 
   const existingReactionRecord = await context.db
     .select()
@@ -1046,7 +1063,7 @@ export async function toggleReactionForMessage(
     throw new Error("Message not found")
   }
 
-  broadcastEvent(context, {
+  await broadcastConversationEvent(context, message.conversationId, {
     type: "messageUpdated",
     message: updatedMessage,
   })
