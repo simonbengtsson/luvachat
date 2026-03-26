@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/@luvabase/sdk/dist/manifest-schema.json",
   "name": "luvachat",
+  "icon": "icon.png",
   "description": "A chat application built with Luvabase",
   "services": [
     {
