@@ -1,9 +1,9 @@
 "use client";
 
+import { ClientOnly } from "@tanstack/react-router";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { MarkdownContent } from "@/components/ui/markdown-content";
 import {
 	Tooltip,
 	TooltipContent,
@@ -18,7 +18,18 @@ import {
 	SparklesIcon,
 	UserIcon,
 } from "lucide-react";
-import { type ComponentProps, type ReactNode, useState } from "react";
+import {
+	type ComponentProps,
+	type ReactNode,
+	Suspense,
+	lazy,
+	useState,
+} from "react";
+
+const MarkdownContent = lazy(async () => {
+	const module = await import("@/components/ui/markdown-content");
+	return { default: module.MarkdownContent };
+});
 
 function ChatMessage({ className, ...props }: ComponentProps<"div">) {
 	return (
@@ -102,7 +113,19 @@ interface ChatMessageMarkdownProps {
 }
 
 function ChatMessageMarkdown({ content, className }: ChatMessageMarkdownProps) {
-	return <MarkdownContent content={content || ""} className={className} />;
+	const fallback = (
+		<div className={cn("whitespace-pre-wrap break-words", className)}>
+			{content || ""}
+		</div>
+	);
+
+	return (
+		<ClientOnly fallback={fallback}>
+			<Suspense fallback={fallback}>
+				<MarkdownContent content={content || ""} className={className} />
+			</Suspense>
+		</ClientOnly>
+	);
 }
 
 function ChatMessageFooter({ className, ...props }: ComponentProps<"div">) {
@@ -278,4 +301,3 @@ export {
 	ChatMessageActionCopy, ChatMessageActions, ChatMessageAuthor, ChatMessageAvatar, ChatMessageAvatarAssistantIcon, ChatMessageAvatarFallback, ChatMessageAvatarImage, ChatMessageAvatarUserIcon, ChatMessageContainer, ChatMessageContent, ChatMessageFooter, ChatMessageHeader, ChatMessageMarkdown, ChatMessageThread, ChatMessageThreadAction, ChatMessageThreadReplyCount,
 	ChatMessageThreadTimestamp, ChatMessageTimestamp
 };
-

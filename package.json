@@ -6,7 +6,7 @@
     "#/*": "./src/*"
   },
   "scripts": {
-    "wrangler:build": "npx wrangler deploy --dry-run --bundle --outdir distwrangler",
+    "wrangler:build": "npx wrangler deploy --dry-run --bundle --outdir luvadist",
     "copy-dist": "cp -r luva.jsonc icon.png public dist/",
     "archive-luva": "cd dist && zip -r ../app.luva .",
     "luva": "bun run build && bun run wrangler:build && bun run copy-dist && bun run archive-luva",

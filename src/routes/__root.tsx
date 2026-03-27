@@ -4,12 +4,12 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { initializeSyncConnection } from "@/core/clientConnection"
 import { queryClient } from "@/core/queryClient"
+import emojiFontUrl from "@fontsource/noto-color-emoji/files/noto-color-emoji-emoji-400-normal.woff2?url"
 import { TanStackDevtools } from "@tanstack/react-devtools"
 import { QueryClientProvider } from "@tanstack/react-query"
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools"
 import { useEffect } from "react"
-import emojiFontUrl from "@fontsource/noto-color-emoji/files/noto-color-emoji-emoji-400-normal.woff2?url"
 import appCss from "../styles.css?url"
 
 export const Route = createRootRoute({
@@ -108,17 +108,19 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             <AppCommand />
           </TooltipProvider>
         </QueryClientProvider>
-        <TanStackDevtools
-          config={{
-            position: "bottom-right",
-          }}
-          plugins={[
-            {
-              name: "Tanstack Router",
-              render: <TanStackRouterDevtoolsPanel />,
-            },
-          ]}
-        />
+        {import.meta.env.DEV && (
+          <TanStackDevtools
+            config={{
+              position: "bottom-right",
+            }}
+            plugins={[
+              {
+                name: "Tanstack Router",
+                render: <TanStackRouterDevtoolsPanel />,
+              },
+            ]}
+          />
+        )}
         <Scripts />
       </body>
     </html>

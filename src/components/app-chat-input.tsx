@@ -1,10 +1,20 @@
 "use client"
 
 import type { Editor, JSONContent } from "@tiptap/react"
+import { ClientOnly } from "@tanstack/react-router"
 import { PaperclipIcon, SmileIcon, XIcon } from "lucide-react"
 import type { ChangeEvent, ClipboardEvent } from "react"
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react"
-import EmojiPicker from "@/components/shadcnblocks/emoji-picker"
+import {
+  forwardRef,
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import type { Member } from "@/core/luvabase"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -27,6 +37,8 @@ import {
   useChatInputContext,
 } from "@/components/ui/chat-input"
 import { cn } from "@/lib/utils"
+
+const EmojiPicker = lazy(() => import("@/components/shadcnblocks/emoji-picker"))
 
 export type AppChatInputHandle = {
   clear: () => void
@@ -353,22 +365,25 @@ function AppChatInputEmojiButton() {
     [disabled, editor],
   )
 
+  const trigger = (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon-sm"
+      className="rounded-full"
+      aria-label="Add emoji"
+      disabled={disabled}
+    >
+      <SmileIcon className="size-4" />
+    </Button>
+  )
+
   return (
-    <EmojiPicker
-      onEmojiSelect={handleEmojiSelect}
-      trigger={
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          className="rounded-full"
-          aria-label="Add emoji"
-          disabled={disabled}
-        >
-          <SmileIcon className="size-4" />
-        </Button>
-      }
-    />
+    <ClientOnly fallback={trigger}>
+      <Suspense fallback={trigger}>
+        <EmojiPicker onEmojiSelect={handleEmojiSelect} trigger={trigger} />
+      </Suspense>
+    </ClientOnly>
   )
 }
 

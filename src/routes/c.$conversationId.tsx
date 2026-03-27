@@ -2,7 +2,6 @@ import {
   AppChatInput,
   type AppChatInputHandle,
 } from "@/components/app-chat-input"
-import EmojiPicker from "@/components/shadcnblocks/emoji-picker"
 import { SiteHeader } from "@/components/site-header"
 import { ThreadSummaryDialog } from "@/components/thread-summary-dialog"
 import { Button } from "@/components/ui/button"
@@ -79,6 +78,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query"
 import {
+  ClientOnly,
   createFileRoute,
   useElementScrollRestoration,
   useNavigate,
@@ -98,6 +98,8 @@ import {
   SparklesIcon,
 } from "lucide-react"
 import {
+  lazy,
+  Suspense,
   useEffect,
   useMemo,
   useRef,
@@ -106,6 +108,8 @@ import {
 } from "react"
 import { useStickToBottom } from "use-stick-to-bottom"
 import { z } from "zod"
+
+const EmojiPicker = lazy(() => import("@/components/shadcnblocks/emoji-picker"))
 
 const conversationSearchSchema = z.object({
   thread: z.string().optional(),
@@ -231,21 +235,24 @@ function MessageReactionPicker({
 }: {
   onEmojiSelect: (emoji: string) => void
 }) {
+  const trigger = (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon-sm"
+      className="h-7 w-7"
+      aria-label="Add reaction"
+    >
+      <SmileIcon className="size-4" />
+    </Button>
+  )
+
   return (
-    <EmojiPicker
-      onEmojiSelect={onEmojiSelect}
-      trigger={
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          className="h-7 w-7"
-          aria-label="Add reaction"
-        >
-          <SmileIcon className="size-4" />
-        </Button>
-      }
-    />
+    <ClientOnly fallback={trigger}>
+      <Suspense fallback={trigger}>
+        <EmojiPicker onEmojiSelect={onEmojiSelect} trigger={trigger} />
+      </Suspense>
+    </ClientOnly>
   )
 }
 
