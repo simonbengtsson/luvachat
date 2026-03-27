@@ -6,10 +6,10 @@
     "#/*": "./src/*"
   },
   "scripts": {
-    "wrangler:build": "npx wrangler deploy --dry-run --bundle --outdir dist",
+    "wrangler:build": "npx wrangler deploy --dry-run --bundle --outdir distwrangler",
     "copy-dist": "cp -r luva.jsonc icon.png public dist/",
     "archive-luva": "cd dist && zip -r ../app.luva .",
-    "build:luva": "bun run build && bun run wrangler:build && bun run copy-dist && bun run archive-luva",
+    "luva": "bun run build && bun run wrangler:build && bun run copy-dist && bun run archive-luva",
     "d:gen": "drizzle-kit generate",
     "dev": "vite dev --port 3000",
     "build": "vite build",
