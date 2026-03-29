@@ -21,7 +21,7 @@
     "@cloudflare/vite-plugin": "^1.30.2",
     "@fontsource-variable/geist": "^5.2.8",
     "@fontsource/noto-color-emoji": "^5.2.12",
-    "@luvabase/sdk": "^0.0.21",
+    "@luvabase/sdk": "^0.0.22",
     "@orpc/client": "^1.13.13",
     "@orpc/server": "^1.13.13",
     "@tailwindcss/vite": "^4.2.2",
