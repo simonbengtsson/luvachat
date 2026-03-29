@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "luvachat2",
+  "name": "luvachat3",
+  "workers_dev": true,
   "compatibility_date": "2026-03-17",
   "compatibility_flags": ["nodejs_compat"],
   "main": "src/server.tsx",
