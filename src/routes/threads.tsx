@@ -184,9 +184,39 @@ function RouteComponent() {
     throw sessionQuery.error
   }
 
+  if (sessionQuery.isPending) {
+    return (
+      <div className="flex h-full flex-col overflow-hidden">
+        <SiteHeader
+          title="Threads"
+          actions={
+            <Toggle
+              aria-label="Show unread threads only"
+              pressed={showUnreadOnly}
+              onPressedChange={setShowUnreadOnly}
+              variant="outline"
+            >
+              Unread
+            </Toggle>
+          }
+        />
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 lg:px-6">
+          <div className="space-y-4">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div
+                key={`threads-loading-${index}`}
+                className="h-40 animate-pulse rounded-2xl border border-border/70 bg-muted/40"
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   const conversations = conversationsQuery.data ?? []
   const members = membersQuery.data ?? []
-  const currentUserId = sessionQuery.data!.id
+  const currentUserId = sessionQuery.data.id
   const conversationsById = new Map(
     conversations.map((conversation) => [conversation.id, conversation]),
   )

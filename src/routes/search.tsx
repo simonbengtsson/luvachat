@@ -262,10 +262,35 @@ function RouteComponent() {
     throw sessionQuery.error
   }
 
+  if (sessionQuery.isPending) {
+    return (
+      <div className="flex h-full flex-col overflow-hidden">
+        <SiteHeader title="Search" />
+
+        <div className="flex min-h-0 flex-1 flex-col overflow-auto">
+          <div className="border-b px-4 py-4 lg:px-6">
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Skeleton className="h-10 flex-1" />
+              <Skeleton className="h-10 sm:w-28" />
+            </div>
+          </div>
+
+          <div className="flex min-h-0 flex-1 flex-col p-4 lg:p-6">
+            <div className="space-y-3">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <SearchResultSkeleton key={index} />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   const results = searchQuery.data?.results ?? []
   const members = membersQuery.data ?? []
   const conversations = conversationsQuery.data ?? []
-  const currentUserId = sessionQuery.data!.id
+  const currentUserId = sessionQuery.data.id
   const membersById = new Map(members.map((member) => [member.id, member]))
   const conversationsById = new Map(
     conversations.map((conversation) => [conversation.id, conversation]),

@@ -4,7 +4,6 @@ import {
   getMembers as getSdkMembers,
   type LuvaEnv,
   type Member,
-  type Session,
 } from "@luvabase/sdk"
 
 export const DEV_USER_COOKIE_NAME = "luvachat-dev-user"
@@ -63,7 +62,7 @@ export async function getSession(
     return {
       id: request.headers.get("x-luvabase-user-id")!,
       name: request.headers.get("x-luvabase-user-name")!,
-      imageUrl: null,
+      imageUrl: request.headers.get("x-luvabase-user-image-url") || null,
     }
   }
 
@@ -82,11 +81,13 @@ export async function getSession(
 }
 
 export async function getMembers(request: Request): Promise<Member[]> {
-  if (hasLuvaEnv()) {
-    return getSdkMembers(request)
-  }
+  const workspaceMembers = hasLuvaEnv()
+    ? await getSdkMembers(request)
+    : Object.values(members)
 
-  return Object.values(members)
+  return workspaceMembers.filter(
+    (member): member is Member => Boolean(member?.id),
+  )
 }
 
 export function getLuvaEnv(): LuvaEnv {
@@ -118,4 +119,4 @@ export function getAdminUrl(): string {
   return `https://luvabase.com/dash/pods/${getLuvaEnv().podId}`
 }
 
-export type { LuvaEnv, Member, Session }
+export type { LuvaEnv, Member }
