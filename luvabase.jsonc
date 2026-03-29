@@ -7,7 +7,7 @@
     {
       "type": "openrouter",
       "name": "OPENROUTER",
-    }
+    },
     {
       "type": "durable-object",
       "name": "SyncObject",
