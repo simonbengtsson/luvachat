@@ -9,10 +9,7 @@ export const Route = createFileRoute("/")({
       GET: async ({ request }) => {
         const session = await getSession(request)
         const syncObject = env.SyncObject.getByName("workspace")
-        const serverOrpcClient = createServerOrpcClient(
-          syncObject,
-          session.member.id,
-        )
+        const serverOrpcClient = createServerOrpcClient(syncObject, session.id)
         const conversations = await serverOrpcClient.getConversations()
         let first = conversations.at(0)
 

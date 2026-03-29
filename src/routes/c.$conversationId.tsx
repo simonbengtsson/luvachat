@@ -311,7 +311,7 @@ function RouteComponent() {
     [members],
   )
   const conversation = conversationQuery.data
-  const currentUserId = sessionQuery.data?.member.id
+  const currentUserId = sessionQuery.data?.id
   const conversationTitle =
     conversation && currentUserId
       ? getConversationDisplayName(conversation, currentUserId, membersById)

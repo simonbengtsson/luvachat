@@ -120,18 +120,12 @@ export const Route = createFileRoute("/api/thread-summary")({
         }
 
         const syncObject = env.SyncObject.getByName("workspace")
-        const serverOrpcClient = createServerOrpcClient(
-          syncObject,
-          session.member.id,
-        )
+        const serverOrpcClient = createServerOrpcClient(syncObject, session.id)
         const conversation = await serverOrpcClient.getConversationById({
           conversationId: parsedBody.data.conversationId,
         })
 
-        if (
-          !conversation ||
-          !conversation.memberIds.includes(session.member.id)
-        ) {
+        if (!conversation || !conversation.memberIds.includes(session.id)) {
           return new Response(
             JSON.stringify({ error: "Conversation not found" }),
             {

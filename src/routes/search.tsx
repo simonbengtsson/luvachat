@@ -265,7 +265,7 @@ function RouteComponent() {
   const results = searchQuery.data?.results ?? []
   const members = membersQuery.data ?? []
   const conversations = conversationsQuery.data ?? []
-  const currentUserId = sessionQuery.data?.member.id ?? ""
+  const currentUserId = sessionQuery.data!.id
   const membersById = new Map(members.map((member) => [member.id, member]))
   const conversationsById = new Map(
     conversations.map((conversation) => [conversation.id, conversation]),

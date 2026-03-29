@@ -2,7 +2,6 @@ import {
   getAdminUrl as getSdkAdminUrl,
   getLuvaEnv as getSdkLuvaEnv,
   getMembers as getSdkMembers,
-  getSessionInfo as getSdkSessionInfo,
   type LuvaEnv,
   type Member,
   type Session,
@@ -59,27 +58,26 @@ function getDevUserIdFromRequest(request: Request): string | null {
 
 export async function getSession(
   request: Request,
-): Promise<Session & { member: Member }> {
+): Promise<{ id: string; name: string; imageUrl: string | null }> {
   if (hasLuvaEnv()) {
-    const session = await getSdkSessionInfo(request)
-    if (!session.member) {
-      throw new Error("No user, but required")
-    }
     return {
-      isAuthenticated: session.isAuthenticated,
-      member: session.member,
+      id: request.headers.get("x-luvabase-user-id")!,
+      name: request.headers.get("x-luvabase-user-name")!,
+      imageUrl: null,
     }
   }
 
   const cookieUserId = getDevUserIdFromRequest(request)
   const envUserId = import.meta.env.VITE_DEV_USER
 
+  const member =
+    members[cookieUserId as keyof typeof members] ??
+    members[envUserId as keyof typeof members] ??
+    members.abc
   return {
-    isAuthenticated: true,
-    member:
-      members[cookieUserId as keyof typeof members] ??
-      members[envUserId as keyof typeof members] ??
-      members.abc,
+    id: member.id,
+    name: member.name,
+    imageUrl: member.imageUrl,
   }
 }
 

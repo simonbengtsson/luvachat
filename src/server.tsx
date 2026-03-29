@@ -17,10 +17,10 @@ export default {
     try {
       if (url.pathname.startsWith("/sync")) {
         const session = await getSession(requestWithId)
-        userId = session.member.id
+        userId = session.id
         const syncObject = env.SyncObject.getByName("workspace")
         const headers = new Headers(requestWithId.headers)
-        headers.set("x-user-id", session.member.id)
+        headers.set("x-user-id", session.id)
         return await syncObject.fetch(new Request(requestWithId, { headers }))
       }
 
