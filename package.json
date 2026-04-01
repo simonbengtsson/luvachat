@@ -6,7 +6,7 @@
     "#/*": "./src/*"
   },
   "scripts": {
-    "deploy": "bun run bundle && bun run copy:bundle && open https://luvabase.com/dash",
+    "deploy": "bun run bundle && bun run copy:bundle && open https://luvabase.com/dash/submit-app",
     "copy:bundle": "osascript -e \"set the clipboard to (POSIX file \\\"$(realpath app.luva)\\\")\"",
     "bundle": "luvabase bundle",
     "d:gen": "drizzle-kit generate",
