@@ -599,7 +599,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
           </SidebarGroupContent>
         </SidebarGroup>
         <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-          <SidebarGroupLabel>Channels</SidebarGroupLabel>
+          <SidebarGroupLabel>Conversations</SidebarGroupLabel>
           <SidebarMenu>
             {channelConversations.length === 0 ? (
               <SidebarMenuItem>

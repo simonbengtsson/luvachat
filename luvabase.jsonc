@@ -3,19 +3,16 @@
   "name": "luvachat",
   "identifier": "io-flown-luvachat",
   "icon": "icon.png",
-  "description": "A chat application built with Luvabase",
-  "relatedApps": [
+  "description": "Messaging app similar to Slack",
+  "surfaces": [
+    {
+      "type": "web",
+    },
     {
       "type": "ios",
       "identifier": "io.flown.luvachat",
       "redirectUrls": ["io.flown.luvachat://oauth-callback"],
       "downloadLink": "https://apps.apple.com/us/app/peach-classes-workshops/id1518270776",
-    },
-    {
-      "type": "android",
-      "downloadLink": "https://play.google.com/store/apps/details?id=com.necito.peachfitness",
-      "identifier": "io.flown.luvachat",
-      "redirectUrls": ["io.flown.luvachat://oauth-callback"],
     },
   ],
   "services": [
