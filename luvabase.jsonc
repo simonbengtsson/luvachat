@@ -1,9 +1,10 @@
 {
   "$schema": "node_modules/@luvabase/sdk/dist/manifest-schema.json",
-  "name": "luvachat",
+  "name": "Luvachat",
+  "subtitle": "Team messaging & chat",
   "identifier": "io-flown-luvachat",
   "icon": "icon.png",
-  "description": "Messaging app similar to Slack",
+  "description": "Team messaging with channels and conversations, threaded replies, search, and an activity feed. Real-time sync, rich text and attachments, and workspace members—Slack-style collaboration.",
   "surfaces": [
     {
       "type": "web",
