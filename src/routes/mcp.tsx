@@ -10,12 +10,14 @@ export const Route = createFileRoute("/mcp")({
   server: {
     handlers: {
       ANY: async ({ request }) => {
-
         const url = new URL(request.url)
         console.log("MCP request", url.pathname)
-        const session = await getSession(request)
-        const syncObject = env.SyncObject.getByName("workspace")
-        const orpcClient = createServerOrpcClient(syncObject, session.id)
+
+        const getOrpcClient = async () => {
+          const session = await getSession(request)
+          const syncObject = env.SyncObject.getByName("workspace")
+          return createServerOrpcClient(syncObject, session.id)
+        }
 
         const server = new McpServer({ name: "luvachat", version: "1.0.0" })
 
@@ -24,6 +26,7 @@ export const Route = createFileRoute("/mcp")({
           { title: 'List Conversations', description: "List all conversations the current user is a member of, including public channels" },
           async () => {
             console.log("Listing conversations")
+            const orpcClient = await getOrpcClient()
             const conversations = await orpcClient.getConversations()
             return {
               content: [
@@ -41,6 +44,7 @@ export const Route = createFileRoute("/mcp")({
           }) },
           async ({ conversationId, message }) => {
             console.log("Sending message")
+            const orpcClient = await getOrpcClient()
             await orpcClient.sendMessage({
               conversationId,
               content: message,
