@@ -60,9 +60,9 @@ export async function getSession(
 ): Promise<{ id: string; name: string; imageUrl: string | null }> {
   if (hasLuvaEnv()) {
     return {
-      id: request.headers.get("x-luvabase-user-id")!,
-      name: request.headers.get("x-luvabase-user-name")!,
-      imageUrl: request.headers.get("x-luvabase-user-image-url") || null,
+      id: request.headers.get("x-luvabase-user-id") || request.headers.get("x-luvabase-actor-id")!,
+      name: request.headers.get("x-luvabase-user-name") || request.headers.get("x-luvabase-actor-name")!,
+      imageUrl: request.headers.get("x-luvabase-user-image-url") || request.headers.get("x-luvabase-actor-image-url") || null,
     }
   }
 

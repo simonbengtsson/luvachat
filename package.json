@@ -24,6 +24,7 @@
     "@fontsource-variable/geist": "^5.2.8",
     "@fontsource/noto-color-emoji": "^5.2.12",
     "@luvabase/sdk": "^0.0.26",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@orpc/client": "^1.13.13",
     "@orpc/server": "^1.13.13",
     "@tailwindcss/vite": "^4.2.2",
