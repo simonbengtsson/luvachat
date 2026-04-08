@@ -1,10 +1,7 @@
-import {
-  AppChatInput,
-  type AppChatInputHandle,
-} from "@/components/app-chat-input"
+import { ConversationReplyInput } from "@/components/conversation-reply-input"
 import { SiteHeader } from "@/components/site-header"
 import { ThreadSummaryDialog } from "@/components/thread-summary-dialog"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import {
   ChatMessage,
   ChatMessageAction,
@@ -42,6 +39,7 @@ import {
   TiptapContent,
 } from "@/components/ui/tiptap-content"
 import { activityQueryKey } from "@/core/activityQuery"
+import { conversationSearchSchema } from "@/core/conversationSearch"
 import {
   getSyncConnectionStatus,
   subscribeToSyncConnectionStatus,
@@ -62,7 +60,6 @@ import {
 import type { EnrichedConversation, EnrichedMessage } from "@/core/models"
 import { orpcClient } from "@/core/orpcClient"
 import {
-  applyMessageCreatedToCache,
   applyMessageUpdatedToCache,
   markConversationViewedInCache,
   markThreadViewedInCache,
@@ -70,6 +67,7 @@ import {
 } from "@/core/realtimeCache"
 import { getScrollRestorationKey } from "@/core/scrollRestorationKey"
 import { threadsQueryKey } from "@/core/threadsQuery"
+import { useIsTouchDevice } from "@/hooks/use-touch-device"
 import { cn } from "@/lib/utils"
 import {
   useInfiniteQuery,
@@ -79,8 +77,11 @@ import {
 } from "@tanstack/react-query"
 import {
   ClientOnly,
+  Link,
+  Outlet,
   createFileRoute,
   useElementScrollRestoration,
+  useMatchRoute,
   useNavigate,
 } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
@@ -107,13 +108,8 @@ import {
   useSyncExternalStore,
 } from "react"
 import { useStickToBottom } from "use-stick-to-bottom"
-import { z } from "zod"
 
 const EmojiPicker = lazy(() => import("@/components/shadcnblocks/emoji-picker"))
-
-const conversationSearchSchema = z.object({
-  thread: z.string().optional(),
-})
 
 export const Route = createFileRoute("/c/$conversationId")({
   validateSearch: conversationSearchSchema,
@@ -296,6 +292,7 @@ function canSummarizeThread(message: EnrichedMessage) {
 
 function RouteComponent() {
   const { conversationId } = Route.useParams()
+  const matchRoute = useMatchRoute()
   const search = Route.useSearch()
   const conversationQuery = useQuery(conversationQueryOptions(conversationId))
   const sessionQuery = useQuery({
@@ -316,6 +313,16 @@ function RouteComponent() {
     conversation && currentUserId
       ? getConversationDisplayName(conversation, currentUserId, membersById)
       : (conversation?.name ?? conversationId)
+  const isReplyRoute = Boolean(
+    matchRoute({
+      to: "/c/$conversationId/reply",
+      params: { conversationId },
+    }),
+  )
+
+  if (isReplyRoute) {
+    return <Outlet />
+  }
 
   return (
     <ConversationView
@@ -353,6 +360,8 @@ function ConversationView({
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const isThreadView = !!threadMessageId
+  const isTouchDevice = useIsTouchDevice()
+  const conversationSearch = threadMessageId ? { thread: threadMessageId } : {}
   const scrollRestorationId = `conversation-messages-${conversationId}-${threadMessageId ?? "root"}`
   const scrollRestorationEntry = useElementScrollRestoration({
     id: scrollRestorationId,
@@ -399,7 +408,6 @@ function ConversationView({
   const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false)
   const [activeSummaryMessage, setActiveSummaryMessage] =
     useState<EnrichedMessage | null>(null)
-  const composerRef = useRef<AppChatInputHandle>(null)
   const loadMoreRef = useRef<HTMLDivElement>(null)
   const lastPersistedViewedMessageIdRef = useRef<string | null>(null)
   const previousScrollHeightRef = useRef<number>(0)
@@ -411,10 +419,6 @@ function ConversationView({
     initial: false,
     resize: "smooth",
   })
-
-  const focusComposer = () => {
-    composerRef.current?.focus()
-  }
 
   const scrollMessagesToBottom = (behavior: ScrollBehavior = "auto") => {
     void messageArea.scrollToBottom(behavior)
@@ -441,42 +445,6 @@ function ConversationView({
       scrollMessagesToBottom(behavior)
     })
   }
-
-  const sendMessageMutation = useMutation({
-    mutationFn: ({
-      content,
-      tiptapJson,
-      attachments,
-    }: {
-      content: string
-      tiptapJson: string | null
-      attachments: File[]
-    }) =>
-      orpcClient.sendMessage({
-        conversationId,
-        threadRootMessageId: threadMessageId,
-        content,
-        tiptapJson,
-        attachments,
-      }),
-    onSuccess: (message) => {
-      applyMessageCreatedToCache(queryClient, message)
-      lastPersistedViewedMessageIdRef.current = message.id
-      if (!message.threadRootMessageId) {
-        markConversationViewedInCache(
-          queryClient,
-          conversationId,
-          message.createdAt,
-        )
-      }
-      shouldAutoScrollToBottomRef.current = true
-      composerRef.current?.clear()
-      // Scroll to bottom after sending without affecting page viewport
-      setTimeout(() => {
-        scrollMessagesToBottom("smooth")
-      }, 100)
-    },
-  })
 
   const markConversationViewedMutation = useMutation({
     mutationFn: (_input: { lastViewedAt: string; messageId: string }) =>
@@ -655,26 +623,6 @@ function ConversationView({
     },
   })
 
-  const submitMessage = (
-    content: string,
-    attachments: File[],
-    tiptapDocument: JSONContent,
-  ) => {
-    if (
-      !isSyncConnected ||
-      sendMessageMutation.isPending ||
-      (!content.trim() && attachments.length === 0)
-    ) {
-      return
-    }
-
-    sendMessageMutation.mutate({
-      content,
-      tiptapJson: content.trim() ? JSON.stringify(tiptapDocument) : null,
-      attachments,
-    })
-  }
-
   const openThread = (messageId: string) => {
     navigate({
       to: "/c/$conversationId",
@@ -742,11 +690,6 @@ function ConversationView({
 
     ensureLatestMessageIsVisible()
   }, [hasLoadedMessages, messages.length])
-
-  // Focus input on route switch without scrolling the page.
-  useEffect(() => {
-    focusComposer()
-  }, [])
 
   // Preserve scroll position when loading older messages.
   useEffect(() => {
@@ -828,6 +771,7 @@ function ConversationView({
     isThreadView && threadMessageId
       ? messages.filter((message) => message.id !== threadMessageId)
       : messages
+  const composerPlaceholder = isThreadView ? "Reply in thread" : "Jot something down"
 
   useEffect(() => {
     if (
@@ -943,7 +887,10 @@ function ConversationView({
               overscrollBehaviorX: "auto",
               overscrollBehaviorY: "contain",
             }}
-            className="max-w-full px-6 pt-6 pb-4"
+            className={cn(
+              "max-w-full px-6 pt-6 pb-4",
+              isTouchDevice && "pb-24",
+            )}
           >
             {!isThreadView && hasNextPage && (
               <div ref={loadMoreRef} className="flex justify-center py-2">
@@ -1251,30 +1198,40 @@ function ConversationView({
           <ChatMessageAreaScrollButton />
         </ChatMessageArea>
 
-        <div className="shrink-0 bg-background px-4 pb-5">
-          <div className="flex flex-col gap-2">
-            <AppChatInput
-              ref={composerRef}
-              onSubmit={submitMessage}
-              members={members}
-              disabled={!isSyncConnected || sendMessageMutation.isPending}
-              placeholder={
-                isThreadView ? "Reply in thread" : "Jot something down"
-              }
-              clearOnSubmit={false}
-              allowAttachmentsWithoutText
-            />
-            {!isSyncConnected ? (
-              <div
-                className="flex items-center gap-1.5 px-1 text-xs text-muted-foreground"
-                aria-live="polite"
-              >
-                <LoaderCircleIcon className="size-3.5 animate-spin" />
-                <span>Not connected, retrying...</span>
-              </div>
-            ) : null}
+        {isTouchDevice ? (
+          <div className="pointer-events-none fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+1rem)] z-20">
+            <Link
+              to="/c/$conversationId/reply"
+              params={{ conversationId }}
+              search={conversationSearch}
+              preload="intent"
+              className={cn(
+                buttonVariants({ size: "lg" }),
+                "pointer-events-auto rounded-full px-4 shadow-lg",
+              )}
+            >
+              <MessageSquareTextIcon className="size-4" />
+              Reply
+            </Link>
           </div>
-        </div>
+        ) : (
+          <div className="shrink-0 bg-background px-4 pb-5">
+            <ConversationReplyInput
+              conversationId={conversationId}
+              threadMessageId={threadMessageId}
+              members={members}
+              placeholder={composerPlaceholder}
+              autoFocus
+              onMessageSent={(message) => {
+                lastPersistedViewedMessageIdRef.current = message.id
+                shouldAutoScrollToBottomRef.current = true
+                setTimeout(() => {
+                  scrollMessagesToBottom("smooth")
+                }, 100)
+              }}
+            />
+          </div>
+        )}
 
         {activeSummaryMessage ? (
           <ThreadSummaryDialog

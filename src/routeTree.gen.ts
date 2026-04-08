@@ -20,6 +20,7 @@ import { Route as CConversationIdRouteImport } from './routes/c.$conversationId'
 import { Route as AssetsSplatRouteImport } from './routes/assets.$'
 import { Route as ApiThreadSummaryRouteImport } from './routes/api/thread-summary'
 import { Route as ApiAichatRouteImport } from './routes/api/aichat'
+import { Route as CConversationIdReplyRouteImport } from './routes/c.$conversationId.reply'
 
 const ThreadsRoute = ThreadsRouteImport.update({
   id: '/threads',
@@ -76,6 +77,11 @@ const ApiAichatRoute = ApiAichatRouteImport.update({
   path: '/api/aichat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CConversationIdReplyRoute = CConversationIdReplyRouteImport.update({
+  id: '/reply',
+  path: '/reply',
+  getParentRoute: () => CConversationIdRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -88,7 +94,8 @@ export interface FileRoutesByFullPath {
   '/api/aichat': typeof ApiAichatRoute
   '/api/thread-summary': typeof ApiThreadSummaryRoute
   '/assets/$': typeof AssetsSplatRoute
-  '/c/$conversationId': typeof CConversationIdRoute
+  '/c/$conversationId': typeof CConversationIdRouteWithChildren
+  '/c/$conversationId/reply': typeof CConversationIdReplyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -101,7 +108,8 @@ export interface FileRoutesByTo {
   '/api/aichat': typeof ApiAichatRoute
   '/api/thread-summary': typeof ApiThreadSummaryRoute
   '/assets/$': typeof AssetsSplatRoute
-  '/c/$conversationId': typeof CConversationIdRoute
+  '/c/$conversationId': typeof CConversationIdRouteWithChildren
+  '/c/$conversationId/reply': typeof CConversationIdReplyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -115,7 +123,8 @@ export interface FileRoutesById {
   '/api/aichat': typeof ApiAichatRoute
   '/api/thread-summary': typeof ApiThreadSummaryRoute
   '/assets/$': typeof AssetsSplatRoute
-  '/c/$conversationId': typeof CConversationIdRoute
+  '/c/$conversationId': typeof CConversationIdRouteWithChildren
+  '/c/$conversationId/reply': typeof CConversationIdReplyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -131,6 +140,7 @@ export interface FileRouteTypes {
     | '/api/thread-summary'
     | '/assets/$'
     | '/c/$conversationId'
+    | '/c/$conversationId/reply'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -144,6 +154,7 @@ export interface FileRouteTypes {
     | '/api/thread-summary'
     | '/assets/$'
     | '/c/$conversationId'
+    | '/c/$conversationId/reply'
   id:
     | '__root__'
     | '/'
@@ -157,6 +168,7 @@ export interface FileRouteTypes {
     | '/api/thread-summary'
     | '/assets/$'
     | '/c/$conversationId'
+    | '/c/$conversationId/reply'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -170,7 +182,7 @@ export interface RootRouteChildren {
   ApiAichatRoute: typeof ApiAichatRoute
   ApiThreadSummaryRoute: typeof ApiThreadSummaryRoute
   AssetsSplatRoute: typeof AssetsSplatRoute
-  CConversationIdRoute: typeof CConversationIdRoute
+  CConversationIdRoute: typeof CConversationIdRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -252,8 +264,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAichatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/c/$conversationId/reply': {
+      id: '/c/$conversationId/reply'
+      path: '/reply'
+      fullPath: '/c/$conversationId/reply'
+      preLoaderRoute: typeof CConversationIdReplyRouteImport
+      parentRoute: typeof CConversationIdRoute
+    }
   }
 }
+
+interface CConversationIdRouteChildren {
+  CConversationIdReplyRoute: typeof CConversationIdReplyRoute
+}
+
+const CConversationIdRouteChildren: CConversationIdRouteChildren = {
+  CConversationIdReplyRoute: CConversationIdReplyRoute,
+}
+
+const CConversationIdRouteWithChildren = CConversationIdRoute._addFileChildren(
+  CConversationIdRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -266,7 +297,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAichatRoute: ApiAichatRoute,
   ApiThreadSummaryRoute: ApiThreadSummaryRoute,
   AssetsSplatRoute: AssetsSplatRoute,
-  CConversationIdRoute: CConversationIdRoute,
+  CConversationIdRoute: CConversationIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
