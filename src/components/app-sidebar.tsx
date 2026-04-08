@@ -22,9 +22,6 @@ import {
 } from "@/core/conversationsQuery"
 import {
   type Member,
-  getAdminUrl,
-  getSession as getLuvaSession,
-  hasLuvaEnv,
 } from "@/core/luvabase"
 import { useWorkspaceMembers } from "@/core/members"
 import type { EnrichedConversation } from "@/core/models"
@@ -36,6 +33,7 @@ import {
 } from "@/core/push-client"
 import { useHasUnreadThreads } from "@/core/threadsQuery"
 import { cn } from "@/lib/utils"
+import { getSidebarSession } from "@/route.functions"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   Link,
@@ -43,8 +41,6 @@ import {
   useNavigate,
   useSearch,
 } from "@tanstack/react-router"
-import { createServerFn } from "@tanstack/react-start"
-import { getRequest } from "@tanstack/react-start/server"
 import {
   ActivityIcon,
   BellIcon,
@@ -228,17 +224,6 @@ function SidebarConversationItem({
   )
 }
 
-const getSession = createServerFn({ method: "GET" }).handler(async () => {
-  const request = getRequest()
-  const session = await getLuvaSession(request)
-
-  return {
-    session,
-    adminUrl: getAdminUrl(),
-    canSwitchDevUser: !hasLuvaEnv(),
-  }
-})
-
 export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   const { isMobile } = useSidebar()
   const matchRoute = useMatchRoute()
@@ -252,7 +237,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   const hasUnreadThreadsQuery = useHasUnreadThreads()
   const sessionQuery = useQuery({
     queryKey: ["sidebar-session"],
-    queryFn: () => getSession(),
+    queryFn: () => getSidebarSession(),
   })
 
   const [notificationPermission, setNotificationPermission] =
@@ -537,7 +522,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
                     matchRoute({ to: "/new" }) &&
                     Object.keys(search).length === 0,
                   )}
-                  render={<Link to="/new" search={{}} />}
+                  render={<Link to="/new" search={{ members: "" }} />}
                 >
                   <SquarePenIcon />
                   <span>New Message</span>

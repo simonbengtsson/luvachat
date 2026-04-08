@@ -27,24 +27,18 @@ import { parseTiptapJson, TiptapContent } from "@/components/ui/tiptap-content"
 import { Toggle } from "@/components/ui/toggle"
 import { getConversationDisplayName } from "@/core/conversationDisplay"
 import { useConversations } from "@/core/conversationsQuery"
-import { getSession as getLuvaSession, type Member } from "@/core/luvabase"
+import type { Member } from "@/core/luvabase"
 import { useWorkspaceMembers } from "@/core/members"
 import type { EnrichedConversation } from "@/core/models"
 import { threadsInfiniteQueryOptions } from "@/core/threadsQuery"
+import { getSession } from "@/route.functions"
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { createServerFn } from "@tanstack/react-start"
-import { getRequest } from "@tanstack/react-start/server"
 import { FileIcon, MessageSquareTextIcon } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
 export const Route = createFileRoute("/threads")({
   component: RouteComponent,
-})
-
-const getSession = createServerFn({ method: "GET" }).handler(async () => {
-  const request = getRequest()
-  return getLuvaSession(request)
 })
 
 function getInitials(value?: string | null) {

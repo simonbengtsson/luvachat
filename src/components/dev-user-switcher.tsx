@@ -1,40 +1,9 @@
 import {
-  DEV_USER_COOKIE_NAME,
-  getMembers as getLuvaMembers,
-  hasLuvaEnv,
   type Member,
 } from "@/core/luvabase"
+import { switchDevUser } from "@/route.functions"
 import { useMutation } from "@tanstack/react-query"
-import { createServerFn } from "@tanstack/react-start"
-import { getRequest, setCookie } from "@tanstack/react-start/server"
-import { z } from "zod"
 import { NativeSelect, NativeSelectOption } from "./ui/native-select"
-
-const switchDevUser = createServerFn({ method: "POST" })
-  .inputValidator(
-    z.object({
-      userId: z.string().min(1),
-    }),
-  )
-  .handler(async ({ data }) => {
-    if (hasLuvaEnv()) {
-      return
-    }
-
-    const request = getRequest()
-    const members = await getLuvaMembers(request)
-    const selectedMember = members.find((member) => member.id === data.userId)
-
-    if (!selectedMember) {
-      throw new Error("Unknown dev user")
-    }
-
-    setCookie(DEV_USER_COOKIE_NAME, selectedMember.id, {
-      maxAge: 60 * 60 * 24 * 30,
-      path: "/",
-      sameSite: "lax",
-    })
-  })
 
 export function DevUserSwitcher({
   currentUserId,

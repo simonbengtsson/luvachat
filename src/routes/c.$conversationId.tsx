@@ -50,7 +50,7 @@ import {
   conversationQueryOptions,
   conversationsQueryKey,
 } from "@/core/conversationsQuery"
-import { getSession as getLuvaSession, type Member } from "@/core/luvabase"
+import type { Member } from "@/core/luvabase"
 import { useWorkspaceMembers } from "@/core/members"
 import {
   conversationMessagesQueryKey,
@@ -69,6 +69,7 @@ import { getScrollRestorationKey } from "@/core/scrollRestorationKey"
 import { threadsQueryKey } from "@/core/threadsQuery"
 import { useIsTouchDevice } from "@/hooks/use-touch-device"
 import { cn } from "@/lib/utils"
+import { getSession } from "@/route.functions"
 import {
   useInfiniteQuery,
   useMutation,
@@ -84,8 +85,6 @@ import {
   useMatchRoute,
   useNavigate,
 } from "@tanstack/react-router"
-import { createServerFn } from "@tanstack/react-start"
-import { getRequest } from "@tanstack/react-start/server"
 import type { JSONContent } from "@tiptap/react"
 import {
   ArrowLeftIcon,
@@ -113,11 +112,6 @@ const EmojiPicker = lazy(() => import("@/components/shadcnblocks/emoji-picker"))
 export const Route = createFileRoute("/c/$conversationId")({
   validateSearch: conversationSearchSchema,
   component: RouteComponent,
-})
-
-const getSession = createServerFn({ method: "GET" }).handler(async () => {
-  const request = getRequest()
-  return getLuvaSession(request)
 })
 
 function getInitials(value?: string | null) {

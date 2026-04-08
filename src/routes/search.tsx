@@ -22,15 +22,14 @@ import {
 } from "@/components/ui/tooltip"
 import { getConversationDisplayName } from "@/core/conversationDisplay"
 import { useConversations } from "@/core/conversationsQuery"
-import { getSession as getLuvaSession, type Member } from "@/core/luvabase"
+import type { Member } from "@/core/luvabase"
 import { useWorkspaceMembers } from "@/core/members"
 import { messageSearchInfiniteQueryOptions } from "@/core/messageSearchQuery"
 import type { EnrichedConversation, MessageSearchResult } from "@/core/models"
 import { cn } from "@/lib/utils"
+import { getSession } from "@/route.functions"
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
-import { createServerFn } from "@tanstack/react-start"
-import { getRequest } from "@tanstack/react-start/server"
 import {
   CircleHelpIcon,
   HashIcon,
@@ -52,11 +51,6 @@ const searchRouteSchema = z.object({
 export const Route = createFileRoute("/search")({
   validateSearch: searchRouteSchema,
   component: RouteComponent,
-})
-
-const getSession = createServerFn({ method: "GET" }).handler(async () => {
-  const request = getRequest()
-  return getLuvaSession(request)
 })
 
 function getInitials(value?: string | null) {

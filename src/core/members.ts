@@ -1,14 +1,8 @@
-import { getMembers, type Member } from "./luvabase"
+import type { Member } from "./luvabase"
 import { useQuery } from "@tanstack/react-query"
-import { createServerFn } from "@tanstack/react-start"
-import { getRequest } from "@tanstack/react-start/server"
+import { getWorkspaceMembers as getWorkspaceMembersServerFn } from "@/route.functions"
 
-export const getWorkspaceMembers = createServerFn({ method: "GET" }).handler(
-  async () => {
-    const request = getRequest()
-    return getMembers(request)
-  },
-)
+export const getWorkspaceMembers = getWorkspaceMembersServerFn
 
 export const workspaceMembersQueryKey = ["workspace-members"] as const
 

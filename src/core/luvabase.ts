@@ -112,7 +112,6 @@ export function getLuvaEnv(): LuvaEnv {
 }
 
 export function getAdminUrl(): string {
-  console.log("getAdminUrl", hasLuvaEnv())
   if (hasLuvaEnv()) {
     return getSdkAdminUrl()
   }
