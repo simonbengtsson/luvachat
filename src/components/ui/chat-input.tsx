@@ -159,7 +159,7 @@ export function ChatInput({
 		>
 			<InputGroup
 				className={cn(
-					"focus-within:ring-1 focus-within:ring-ring rounded-2xl",
+					"focus-within:ring-1 focus-within:ring-ring rounded-2xl overflow-hidden",
 					className,
 				)}
 				{...props}
@@ -759,7 +759,7 @@ export function ChatInputSubmitButton({
 			<InputGroupButton
 				variant="default"
 				size="icon-sm"
-				className={cn("rounded-full", className)}
+				className={cn("shrink-0 rounded-full", className)}
 				onClick={handleClick}
 				disabled={effectiveDisabled}
 				{...props}
@@ -776,7 +776,7 @@ export function ChatInputSubmitButton({
 			<InputGroupButton
 				variant="default"
 				size="icon-sm"
-				className={cn("rounded-full", className)}
+				className={cn("shrink-0 rounded-full", className)}
 				onClick={handleClick}
 				disabled={effectiveDisabled}
 				{...props}
@@ -791,7 +791,7 @@ export function ChatInputSubmitButton({
 		<InputGroupButton
 			variant="default"
 			size="icon-sm"
-			className={cn("rounded-full", className)}
+			className={cn("shrink-0 rounded-full", className)}
 			onClick={handleClick}
 			disabled={effectiveDisabled}
 			{...props}

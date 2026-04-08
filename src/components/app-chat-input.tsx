@@ -1,27 +1,11 @@
 "use client"
 
-import type { Editor, JSONContent } from "@tiptap/react"
-import { ClientOnly } from "@tanstack/react-router"
-import { PaperclipIcon, SmileIcon, XIcon } from "lucide-react"
-import type { ChangeEvent, ClipboardEvent } from "react"
-import {
-  forwardRef,
-  lazy,
-  Suspense,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useMemo,
-  useRef,
-  useState,
-} from "react"
-import type { Member } from "@/core/luvabase"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
-  ChatInputBoldButton,
-  ChatInputBlockquoteButton,
   ChatInput,
+  ChatInputBlockquoteButton,
+  ChatInputBoldButton,
   ChatInputBulletListButton,
   ChatInputCodeButton,
   ChatInputEditor,
@@ -36,7 +20,23 @@ import {
   useChatInput,
   useChatInputContext,
 } from "@/components/ui/chat-input"
+import type { Member } from "@/core/luvabase"
 import { cn } from "@/lib/utils"
+import { ClientOnly } from "@tanstack/react-router"
+import type { Editor, JSONContent } from "@tiptap/react"
+import { PaperclipIcon, SmileIcon, XIcon } from "lucide-react"
+import type { ChangeEvent, ClipboardEvent } from "react"
+import {
+  forwardRef,
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 
 const EmojiPicker = lazy(() => import("@/components/shadcnblocks/emoji-picker"))
 
@@ -601,7 +601,7 @@ export const AppChatInput = forwardRef<AppChatInputHandle, AppChatInputProps>(
             )}
           </ChatInputMention>
           <ChatInputEditor
-            placeholder={`${placeholder} Use @ for people, or start a list with "- "`}
+            placeholder={placeholder}
             className="max-h-48 min-h-0 px-4 py-3"
             onEditorChange={handleEditorChange}
           />
@@ -625,45 +625,50 @@ export const AppChatInput = forwardRef<AppChatInputHandle, AppChatInputProps>(
           ) : null}
           <ChatInputGroupAddon
             align="block-end"
-            className="gap-2 border-t border-border/70 px-2 py-2"
+            className="min-w-0 gap-2 border-t border-border/70 px-2 pt-2 pb-0"
           >
-            <div className="flex min-w-0 flex-1 items-center gap-1">
-              <div className="flex items-center gap-1">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  className="rounded-full"
-                  aria-label="Attach file"
-                  onClick={handleAttachmentButtonClick}
-                >
-                  <PaperclipIcon />
-                </Button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  className="hidden"
-                  onChange={handleAttachmentChange}
-                  aria-label="Select files to attach"
+            <div className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden">
+              <div className="flex min-w-max items-center gap-1 pr-1 pb-2">
+                <div className="flex items-center gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className="rounded-full"
+                    aria-label="Attach file"
+                    onClick={handleAttachmentButtonClick}
+                  >
+                    <PaperclipIcon />
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={handleAttachmentChange}
+                    aria-label="Select files to attach"
+                  />
+                  <AppChatInputEmojiButton />
+                  <ChatInputMentionButton />
+                </div>
+                <div
+                  className="h-5 w-px shrink-0 bg-border/70"
+                  aria-hidden="true"
                 />
-                <AppChatInputEmojiButton />
-                <ChatInputMentionButton />
-              </div>
-              <div className="h-5 w-px shrink-0 bg-border/70" aria-hidden="true" />
-              <div className="flex items-center gap-1 pl-1">
-                <ChatInputBoldButton />
-                <ChatInputItalicButton />
-                <ChatInputUnderlineButton />
-                <ChatInputCodeButton />
-                <ChatInputBlockquoteButton />
-                <ChatInputBulletListButton />
-                <ChatInputOrderedListButton />
+                <div className="flex items-center gap-1 pl-1">
+                  <ChatInputBoldButton />
+                  <ChatInputItalicButton />
+                  <ChatInputUnderlineButton />
+                  <ChatInputCodeButton />
+                  <ChatInputBlockquoteButton />
+                  <ChatInputBulletListButton />
+                  <ChatInputOrderedListButton />
+                </div>
               </div>
             </div>
             <ChatInputSubmitButton
               variant={isStreaming ? "secondary" : "default"}
-              className="rounded-full"
+              className="mb-2 shrink-0 rounded-full"
               disabled={isSendDisabled}
               aria-label={isStreaming ? "Stop response" : "Send message"}
             />
