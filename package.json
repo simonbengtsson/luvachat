@@ -10,7 +10,7 @@
     "copy:bundle": "osascript -e \"set the clipboard to (POSIX file \\\"$(realpath app.luva)\\\")\"",
     "bundle": "luvabase bundle",
     "d:gen": "drizzle-kit generate",
-    "dev": "vite dev --port 3000",
+    "dev": "vite dev --port 3000 --host",
     "build": "vite build",
     "preview": "bun run build && vite preview",
     "test": "vitest run",
