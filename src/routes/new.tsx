@@ -9,7 +9,6 @@ import {
   ChatMessageAreaContent,
   ChatMessageAreaScrollButton,
 } from "@/components/ui/chat-message-area"
-import { Skeleton } from "@/components/ui/skeleton"
 import {
   getSyncConnectionStatus,
   subscribeToSyncConnectionStatus,
@@ -19,23 +18,34 @@ import {
   conversationsQueryKey,
 } from "@/core/conversationsQuery"
 import type { Member } from "@/core/luvabase"
-import { useWorkspaceMembers } from "@/core/members"
+import { getWorkspaceMembers } from "@/core/members"
 import type { EnrichedConversation } from "@/core/models"
 import { orpcClient } from "@/core/orpcClient"
 import { applyMessageCreatedToCache } from "@/core/realtimeCache"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { createFileRoute, useNavigate } from "@tanstack/react-router"
+import {
+  createFileRoute,
+  notFound,
+  useNavigate
+} from "@tanstack/react-router"
 import type { JSONContent } from "@tiptap/react"
 import { LoaderCircleIcon, XIcon } from "lucide-react"
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
-import { z } from "zod"
-
-const newMessageSearchSchema = z.object({
-  members: z.string().optional(),
-})
 
 export const Route = createFileRoute("/new")({
-  validateSearch: newMessageSearchSchema,
+  validateSearch: (search) => ({ members: `${search.members || ''}`.trim() }),
+  loaderDeps: ({ search }) => ({ members: search.members }),
+  loader: async ({ deps }) => {
+    const members = await getWorkspaceMembers()
+    const memberIds = parseMemberIds(deps.members)
+    const memberIdsSet = new Set(members.map((member) => member.id))
+
+    if (memberIds.some((memberId) => !memberIdsSet.has(memberId))) {
+      throw notFound()
+    }
+
+    return { members }
+  },
   component: RouteComponent,
 })
 
@@ -58,7 +68,6 @@ function parseMemberIds(value?: string) {
     new Set(
       (value ?? "")
         .split(",")
-        .map((item) => item.trim())
         .filter(Boolean),
     ),
   )
@@ -80,7 +89,7 @@ function RouteComponent() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const search = Route.useSearch()
-  const membersQuery = useWorkspaceMembers()
+  const { members } = Route.useLoaderData()
   const pickerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const composerRef = useRef<AppChatInputHandle>(null)
@@ -97,7 +106,6 @@ function RouteComponent() {
   )
   const isSyncConnected = syncConnectionStatus === "connected"
 
-  const members = membersQuery.data ?? []
   const membersById = new Map(members.map((member) => [member.id, member]))
 
   useEffect(() => {
@@ -121,8 +129,9 @@ function RouteComponent() {
     id: memberId,
     member: membersById.get(memberId) ?? null,
   }))
+
   const conversationName = selectedMembers
-    .map(({ id, member }) => member?.name?.trim() || id)
+    .map(({ member }) => member?.name?.trim())
     .filter(Boolean)
     .join(", ")
 
@@ -350,19 +359,7 @@ function RouteComponent() {
 
                     {isOpen ? (
                       <div className="mt-1 overflow-hidden rounded-xl border border-border bg-popover shadow-md">
-                        {membersQuery.isLoading ? (
-                          <div className="space-y-2 p-2">
-                            {Array.from({ length: 4 }).map((_, index) => (
-                              <div
-                                key={`new-message-member-skeleton-${index}`}
-                                className="flex items-center gap-3 px-2 py-1.5"
-                              >
-                                <Skeleton className="size-8 rounded-full" />
-                                <Skeleton className="h-4 w-40" />
-                              </div>
-                            ))}
-                          </div>
-                        ) : filteredMembers.length > 0 ? (
+                        {filteredMembers.length > 0 ? (
                           <div className="max-h-80 overflow-y-auto p-1">
                             {filteredMembers.map((member) => (
                               <button

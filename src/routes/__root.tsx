@@ -1,3 +1,5 @@
+import { GlobalErrorPage } from "@/components/GlobalErrorPage"
+import { GlobalNotFoundPage } from "@/components/GlobalNotFoundPage"
 import { AppCommand } from "@/components/app-command"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
@@ -64,7 +66,8 @@ export const Route = createRootRoute({
       },
     ],
   }),
-  errorComponent: () => <div>Oops! Something went wrong.</div>,
+  errorComponent: GlobalErrorPage,
+  notFoundComponent: GlobalNotFoundPage,
   shellComponent: RootDocument,
 })
 

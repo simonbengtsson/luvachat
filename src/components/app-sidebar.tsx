@@ -240,7 +240,7 @@ const getSession = createServerFn({ method: "GET" }).handler(async () => {
 })
 
 export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
-  const { isMobile, setOpenMobile } = useSidebar()
+  const { isMobile } = useSidebar()
   const matchRoute = useMatchRoute()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -498,10 +498,6 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
     memberId: string,
     conversationId?: string,
   ) {
-    if (isMobile) {
-      setOpenMobile(false)
-    }
-
     if (conversationId) {
       await navigate({
         to: "/c/$conversationId",
@@ -626,7 +622,10 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
                   createConversationMutation.mutate(sanitized)
                 }}
                 trigger={
-                  <SidebarMenuButton className="text-sidebar-foreground/70">
+                  <SidebarMenuButton
+                    closeOnClick={false}
+                    className="text-sidebar-foreground/70"
+                  >
                     <PlusIcon className="text-sidebar-foreground/70" />
                     <span>Add Channel</span>
                   </SidebarMenuButton>
@@ -810,6 +809,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
               <DropdownMenuTrigger
                 render={
                   <SidebarMenuButton
+                    closeOnClick={false}
                     size="lg"
                     className="aria-expanded:bg-muted"
                   />

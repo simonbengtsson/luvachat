@@ -39,12 +39,12 @@ import {
   TiptapContent,
 } from "@/components/ui/tiptap-content"
 import { activityQueryKey } from "@/core/activityQuery"
-import { conversationSearchSchema } from "@/core/conversationSearch"
 import {
   getSyncConnectionStatus,
   subscribeToSyncConnectionStatus,
 } from "@/core/clientConnection"
 import { getConversationDisplayName } from "@/core/conversationDisplay"
+import { conversationSearchSchema } from "@/core/conversationSearch"
 import {
   conversationQueryKey,
   conversationQueryOptions,
@@ -77,9 +77,9 @@ import {
 } from "@tanstack/react-query"
 import {
   ClientOnly,
+  createFileRoute,
   Link,
   Outlet,
-  createFileRoute,
   useElementScrollRestoration,
   useMatchRoute,
   useNavigate,
@@ -92,11 +92,10 @@ import {
   BellOffIcon,
   EllipsisVerticalIcon,
   FileIcon,
-  LoaderCircleIcon,
   MessageSquareTextIcon,
   SearchIcon,
   SmileIcon,
-  SparklesIcon,
+  SparklesIcon
 } from "lucide-react"
 import {
   lazy,
