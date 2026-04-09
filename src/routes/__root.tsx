@@ -6,7 +6,6 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { initializeSyncConnection } from "@/core/clientConnection"
 import { queryClient } from "@/core/queryClient"
-import emojiFontUrl from "@fontsource/noto-color-emoji/files/noto-color-emoji-emoji-400-normal.woff2?url"
 import { QueryClientProvider } from "@tanstack/react-query"
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
 import { useEffect } from "react"
@@ -34,13 +33,6 @@ export const Route = createRootRoute({
       {
         rel: "stylesheet",
         href: appCss,
-      },
-      {
-        rel: "preload",
-        href: emojiFontUrl,
-        as: "font",
-        type: "font/woff2",
-        crossOrigin: "anonymous",
       },
       {
         rel: "icon",
