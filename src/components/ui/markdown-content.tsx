@@ -1,3 +1,5 @@
+import { createBundledHighlighter } from "@shikijs/core";
+import { createJavaScriptRegexEngine } from "@shikijs/engine-javascript";
 import { marked } from "marked";
 import type * as React from "react";
 import { isValidElement, memo, Suspense, useMemo } from "react";
@@ -8,6 +10,65 @@ import { cn } from "@/lib/utils";
 
 const DEFAULT_PRE_BLOCK_CLASS =
 	"my-4 overflow-x-auto w-fit rounded-xl bg-zinc-950 text-zinc-50 dark:bg-zinc-900 border border-border p-4";
+
+const supportedMarkdownLanguages = {
+	typescript: () => import("@shikijs/langs/typescript"),
+	tsx: () => import("@shikijs/langs/tsx"),
+	javascript: () => import("@shikijs/langs/javascript"),
+	jsx: () => import("@shikijs/langs/jsx"),
+	json: () => import("@shikijs/langs/json"),
+	bash: () => import("@shikijs/langs/bash"),
+	shell: () => import("@shikijs/langs/shell"),
+} as const;
+
+type SupportedMarkdownLanguage = keyof typeof supportedMarkdownLanguages;
+
+const supportedMarkdownLanguageAliases: Record<
+	string,
+	SupportedMarkdownLanguage
+> = {
+	ts: "typescript",
+	js: "javascript",
+	sh: "bash",
+	shellscript: "shell",
+};
+
+const markdownThemeName = "github-dark" as const;
+
+const createMarkdownHighlighter = createBundledHighlighter({
+	langs: supportedMarkdownLanguages,
+	themes: {
+		[markdownThemeName]: () => import("@shikijs/themes/github-dark"),
+	},
+	engine: createJavaScriptRegexEngine,
+});
+
+let markdownHighlighterPromise:
+	| ReturnType<typeof createMarkdownHighlighter>
+	| undefined;
+
+function getMarkdownHighlighter() {
+	markdownHighlighterPromise ??= createMarkdownHighlighter({
+		themes: [markdownThemeName],
+		langs: Object.keys(
+			supportedMarkdownLanguages,
+		) as SupportedMarkdownLanguage[],
+	});
+
+	return markdownHighlighterPromise;
+}
+
+function resolveMarkdownLanguage(
+	language: string,
+): SupportedMarkdownLanguage | null {
+	const normalizedLanguage = language.toLowerCase();
+
+	if (normalizedLanguage in supportedMarkdownLanguages) {
+		return normalizedLanguage as SupportedMarkdownLanguage;
+	}
+
+	return supportedMarkdownLanguageAliases[normalizedLanguage] ?? null;
+}
 
 const extractTextContent = (node: React.ReactNode): string => {
 	if (typeof node === "string") {
@@ -34,10 +95,10 @@ const HighlightedPre = memo(
 		language,
 		...props
 	}: HighlightedPreProps) => {
-		const { codeToTokens, bundledLanguages } = await import("shiki");
 		const code = extractTextContent(children);
+		const resolvedLanguage = resolveMarkdownLanguage(language);
 
-		if (!(language in bundledLanguages)) {
+		if (!resolvedLanguage) {
 			return (
 				<pre
 					{...props}
@@ -48,11 +109,12 @@ const HighlightedPre = memo(
 			);
 		}
 
-		const { tokens } = await codeToTokens(code, {
-			lang: language as keyof typeof bundledLanguages,
+		const highlighter = await getMarkdownHighlighter();
+		const { tokens } = highlighter.codeToTokens(code, {
+			lang: resolvedLanguage,
 			themes: {
-				light: "github-dark",
-				dark: "github-dark",
+				light: markdownThemeName,
+				dark: markdownThemeName,
 			},
 		});
 
