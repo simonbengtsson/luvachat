@@ -1,8 +1,6 @@
-import { createBundledHighlighter } from "@shikijs/core";
-import { createJavaScriptRegexEngine } from "@shikijs/engine-javascript";
 import { marked } from "marked";
 import type * as React from "react";
-import { isValidElement, memo, Suspense, useMemo } from "react";
+import { memo, useMemo } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
@@ -11,177 +9,17 @@ import { cn } from "@/lib/utils";
 const DEFAULT_PRE_BLOCK_CLASS =
 	"my-4 overflow-x-auto w-fit rounded-xl bg-zinc-950 text-zinc-50 dark:bg-zinc-900 border border-border p-4";
 
-const supportedMarkdownLanguages = {
-	typescript: () => import("@shikijs/langs/typescript"),
-	tsx: () => import("@shikijs/langs/tsx"),
-	javascript: () => import("@shikijs/langs/javascript"),
-	jsx: () => import("@shikijs/langs/jsx"),
-	json: () => import("@shikijs/langs/json"),
-	bash: () => import("@shikijs/langs/bash"),
-	shell: () => import("@shikijs/langs/shell"),
-} as const;
-
-type SupportedMarkdownLanguage = keyof typeof supportedMarkdownLanguages;
-
-const supportedMarkdownLanguageAliases: Record<
-	string,
-	SupportedMarkdownLanguage
-> = {
-	ts: "typescript",
-	js: "javascript",
-	sh: "bash",
-	shellscript: "shell",
-};
-
-const markdownThemeName = "github-dark" as const;
-
-const createMarkdownHighlighter = createBundledHighlighter({
-	langs: supportedMarkdownLanguages,
-	themes: {
-		[markdownThemeName]: () => import("@shikijs/themes/github-dark"),
-	},
-	engine: createJavaScriptRegexEngine,
-});
-
-let markdownHighlighterPromise:
-	| ReturnType<typeof createMarkdownHighlighter>
-	| undefined;
-
-function getMarkdownHighlighter() {
-	markdownHighlighterPromise ??= createMarkdownHighlighter({
-		themes: [markdownThemeName],
-		langs: Object.keys(
-			supportedMarkdownLanguages,
-		) as SupportedMarkdownLanguage[],
-	});
-
-	return markdownHighlighterPromise;
-}
-
-function resolveMarkdownLanguage(
-	language: string,
-): SupportedMarkdownLanguage | null {
-	const normalizedLanguage = language.toLowerCase();
-
-	if (normalizedLanguage in supportedMarkdownLanguages) {
-		return normalizedLanguage as SupportedMarkdownLanguage;
-	}
-
-	return supportedMarkdownLanguageAliases[normalizedLanguage] ?? null;
-}
-
-const extractTextContent = (node: React.ReactNode): string => {
-	if (typeof node === "string") {
-		return node;
-	}
-	if (Array.isArray(node)) {
-		return node.map(extractTextContent).join("");
-	}
-	if (isValidElement(node)) {
-		// @ts-expect-error
-		return extractTextContent(node.props.children);
-	}
-	return "";
-};
-
-interface HighlightedPreProps extends React.HTMLAttributes<HTMLPreElement> {
-	language: string;
-}
-
-const HighlightedPre = memo(
-	async ({
-		children,
-		className,
-		language,
-		...props
-	}: HighlightedPreProps) => {
-		const code = extractTextContent(children);
-		const resolvedLanguage = resolveMarkdownLanguage(language);
-
-		if (!resolvedLanguage) {
-			return (
-				<pre
-					{...props}
-					className={cn(DEFAULT_PRE_BLOCK_CLASS, className)}
-				>
-					<code className="whitespace-pre-wrap">{children}</code>
-				</pre>
-			);
-		}
-
-		const highlighter = await getMarkdownHighlighter();
-		const { tokens } = highlighter.codeToTokens(code, {
-			lang: resolvedLanguage,
-			themes: {
-				light: markdownThemeName,
-				dark: markdownThemeName,
-			},
-		});
-
-		return (
-			<pre {...props} className={cn(DEFAULT_PRE_BLOCK_CLASS, className)}>
-				<code className="whitespace-pre-wrap break-all">
-					{tokens.map((line, lineIndex) => (
-						<span
-							key={`line-${
-								// biome-ignore lint/suspicious/noArrayIndexKey: Needed for react key
-								lineIndex
-							}`}
-						>
-							{line.map((token, tokenIndex) => {
-								const style =
-									typeof token.htmlStyle === "string"
-										? undefined
-										: token.htmlStyle;
-
-								return (
-									<span
-										key={`token-${
-											// biome-ignore lint/suspicious/noArrayIndexKey: Needed for react key
-											tokenIndex
-										}`}
-										style={style}
-									>
-										{token.content}
-									</span>
-								);
-							})}
-							{lineIndex !== tokens.length - 1 && "\n"}
-						</span>
-					))}
-				</code>
-			</pre>
-		);
-	},
-);
-
-HighlightedPre.displayName = "HighlightedPre";
-
-interface CodeBlockProps extends React.HTMLAttributes<HTMLPreElement> {
-	language: string;
-}
-
 const CodeBlock = ({
 	children,
-	language,
 	className,
 	...props
-}: CodeBlockProps) => {
+}: React.HTMLAttributes<HTMLPreElement>) => {
 	return (
-		<Suspense
-			fallback={
-				<pre
-					{...props}
-					className={cn(DEFAULT_PRE_BLOCK_CLASS, className)}
-				>
-					<code className="whitespace-pre-wrap">{children}</code>
-				</pre>
-			}
-		>
-			<HighlightedPre language={language} {...props}>
+		<pre {...props} className={cn(DEFAULT_PRE_BLOCK_CLASS, className)}>
+			<code className="whitespace-pre-wrap break-all font-mono">
 				{children}
-			</HighlightedPre>
-		</Suspense>
+			</code>
+		</pre>
 	);
 };
 
@@ -365,11 +203,7 @@ const components: Partial<Components> = {
 	code: ({ children, node, className, ...props }) => {
 		const match = /language-(\w+)/.exec(className || "");
 		if (match) {
-			return (
-				<CodeBlock language={match[1]} className={className} {...props}>
-					{children}
-				</CodeBlock>
-			);
+			return <CodeBlock className={className} {...props}>{children}</CodeBlock>;
 		}
 		return (
 			<code
