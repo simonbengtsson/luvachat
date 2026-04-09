@@ -353,9 +353,15 @@ function RouteComponent() {
       <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {hasSelectedMembers ? (
           <>
-            <div className="shrink-0 bg-background px-4 py-4">
-              <div className="flex max-w-5xl flex-col gap-4">
-                {recipientPicker}
+            <div className="min-h-0 flex-1 overflow-auto bg-muted/10">
+              <div className="bg-background px-4 py-4">
+                <div className="max-w-5xl">
+                  {recipientPicker}
+                </div>
+              </div>
+            </div>
+            <div className="shrink-0 bg-background px-4 pb-5">
+              <div className="max-w-5xl">
                 <div className="flex flex-col gap-2">
                   <AppChatInput
                     ref={composerRef}
@@ -381,7 +387,6 @@ function RouteComponent() {
                 </div>
               </div>
             </div>
-            <div className="min-h-0 flex-1 bg-muted/10" />
           </>
         ) : (
           <div className="min-h-0 flex-1 overflow-auto">
