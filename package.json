@@ -6,7 +6,7 @@
     "#/*": "./src/*"
   },
   "scripts": {
-    "deploy": "bun run bundle && bun run copy:bundle && open https://luvabase.com/dash/submit-app",
+    "submit": "bun run bundle && bun run copy:bundle && open https://luvabase.com/dash/submit-app",
     "copy:bundle": "osascript -e \"set the clipboard to (POSIX file \\\"$(realpath app.luva)\\\")\"",
     "bundle": "luvabase bundle",
     "d:gen": "drizzle-kit generate",
@@ -83,7 +83,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
     "dotenv": "^17.4.1",
-    "luvabase": "^0.0.10",
+    "luvabase": "^0.0.11",
     "tidewave": "^0.6.0",
     "typescript": "^6.0.2",
     "vite": "^8.0.8",
