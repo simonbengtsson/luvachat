@@ -28,8 +28,8 @@ export class SyncObject extends DurableObject {
 
     state.blockConcurrencyWhile(async () => {
       try {
-        await this.ensureVapidDetails(state.storage)
         await migrate(this.db, { migrations })
+        await this.ensureVapidDetails()
       } catch (error) {
         logRuntimeError("sync.constructor", error, {
           durableObject: "SyncObject",
