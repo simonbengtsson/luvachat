@@ -17,6 +17,7 @@ import {
 // - conversation_members
 // - thread_members
 // - push_subscriptions
+// - kv
 
 export type Message = typeof messagesTable.$inferSelect
 export const messagesTable = sqliteTable(
@@ -229,3 +230,11 @@ export const pushSubscriptionsTable = sqliteTable(
   },
   (table) => [index("push_subscriptions_user_idx").on(table.userId)],
 )
+
+export type KvRecord = typeof kvTable.$inferSelect
+export const kvTable = sqliteTable("kv", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+})

@@ -1,5 +1,6 @@
 import { migrations } from "@/server/migrations"
 import { DurableObject } from "cloudflare:workers"
+import { eq } from "drizzle-orm"
 import { drizzle } from "drizzle-orm/durable-sqlite/driver"
 import { migrate } from "drizzle-orm/durable-sqlite/migrator"
 import { generateVAPIDKeys } from "web-push"
@@ -12,6 +13,9 @@ import {
 } from "./error-reporting"
 import { orpcHandler } from "./orpcFunctions"
 import type { VapidDetails } from "./push-server"
+import { kvTable } from "./schema"
+
+const vapidDetailsKey = "vapidDetails"
 
 export class SyncObject extends DurableObject {
   private db: ReturnType<typeof drizzle>
@@ -82,10 +86,8 @@ export class SyncObject extends DurableObject {
     }
   }
 
-  private async ensureVapidDetails(
-    storage: DurableObjectStorage,
-  ): Promise<void> {
-    const existing = await storage.get<VapidDetails>("vapidDetails2")
+  private async ensureVapidDetails(): Promise<void> {
+    const existing = await this.getKvRecord<VapidDetails>(vapidDetailsKey)
     if (existing) {
       this.vapidDetails = existing
       return
@@ -97,8 +99,44 @@ export class SyncObject extends DurableObject {
       publicKey: keys.publicKey,
       privateKey: keys.privateKey,
     }
-    await storage.put("vapidDetails2", newDetails)
+    await this.saveKvRecord(vapidDetailsKey, newDetails)
     this.vapidDetails = newDetails
+  }
+
+  private async getKvRecord<T>(key: string): Promise<T | null> {
+    const existingKvRecord = await this.db
+      .select({
+        value: kvTable.value,
+      })
+      .from(kvTable)
+      .where(eq(kvTable.key, key))
+      .limit(1)
+
+    const existing = existingKvRecord[0]
+    if (!existing) {
+      return null
+    }
+
+    return JSON.parse(existing.value) as T
+  }
+
+  private async saveKvRecord(key: string, value: unknown): Promise<void> {
+    const now = new Date().toISOString()
+    await this.db
+      .insert(kvTable)
+      .values({
+        key,
+        value: JSON.stringify(value),
+        createdAt: now,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: kvTable.key,
+        set: {
+          value: JSON.stringify(value),
+          updatedAt: now,
+        },
+      })
   }
 
   webSocketClose(ws: WebSocket, code: number, reason: string): void {
