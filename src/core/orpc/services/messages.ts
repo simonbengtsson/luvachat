@@ -746,48 +746,40 @@ export async function searchMessagesForUser(
   const limit = input.limit ?? 20
   const offset = input.offset ?? 0
   const conversationFilterClause = input.conversationId
-    ? "and message_search.conversation_id = ?"
-    : ""
-  const queryParams = input.conversationId
-    ? [context.userId, query, input.conversationId, limit + 1, offset]
-    : [context.userId, query, limit + 1, offset]
-  const rows = context.db.$client.sql
-    .exec(
-      `
-        select
-          message_search.message_id as messageId,
-          message_search.conversation_id as conversationId,
-          message_search.thread_root_message_id as threadRootMessageId,
-          message_search.user_id as userId,
-          message_search.created_at as createdAt,
-          message_search.content,
-          snippet(
-            message_search,
-            5,
-            '${searchSnippetStartMarker}',
-            '${searchSnippetEndMarker}',
-            ' ... ',
-            18
-          ) as contentPreview,
-          bm25(message_search) as rank
-        from message_search
-        inner join conversations
-          on conversations.id = message_search.conversation_id
-        left join conversation_members as current_user_conversation_membership
-          on current_user_conversation_membership.conversation_id = message_search.conversation_id
-         and current_user_conversation_membership.user_id = ?
-        where message_search match ?
-          and (
-            conversations.type = 'channel'
-            or current_user_conversation_membership.user_id is not null
-          )
-        ${conversationFilterClause}
-        order by rank, message_search.created_at desc, message_search.message_id desc
-        limit ? offset ?
-      `,
-      ...queryParams,
-    )
-    .toArray() as MessageSearchRow[]
+    ? sql`and message_search.conversation_id = ${input.conversationId}`
+    : sql``
+  const rows = await context.db.all<MessageSearchRow>(sql`
+    select
+      message_search.message_id as messageId,
+      message_search.conversation_id as conversationId,
+      message_search.thread_root_message_id as threadRootMessageId,
+      message_search.user_id as userId,
+      message_search.created_at as createdAt,
+      message_search.content,
+      snippet(
+        message_search,
+        5,
+        ${searchSnippetStartMarker},
+        ${searchSnippetEndMarker},
+        ${" ... "},
+        18
+      ) as contentPreview,
+      bm25(message_search) as rank
+    from message_search
+    inner join conversations
+      on conversations.id = message_search.conversation_id
+    left join conversation_members as current_user_conversation_membership
+      on current_user_conversation_membership.conversation_id = message_search.conversation_id
+     and current_user_conversation_membership.user_id = ${context.userId}
+    where message_search match ${query}
+      and (
+        conversations.type = 'channel'
+        or current_user_conversation_membership.user_id is not null
+      )
+    ${conversationFilterClause}
+    order by rank, message_search.created_at desc, message_search.message_id desc
+    limit ${limit + 1} offset ${offset}
+  `)
 
   let nextOffset: number | undefined
   if (rows.length > limit) {
@@ -917,11 +909,11 @@ export async function createMessageInConversation(
       })
     }
 
-    context.db.transaction((tx) => {
-      tx.insert(messagesTable).values(messageRecord).run()
+    await context.db.transaction(async (tx) => {
+      await tx.insert(messagesTable).values(messageRecord).run()
 
       if (threadRootMessageId && threadRootMessageUserId) {
-        tx.insert(threadMembersTable)
+        await tx.insert(threadMembersTable)
           .values({
             id: `${threadRootMessageUserId}_${threadRootMessageId}`,
             userId: threadRootMessageUserId,
@@ -935,15 +927,15 @@ export async function createMessageInConversation(
       }
 
       if (attachmentRecords.length > 0) {
-        tx.insert(messageAttachmentsTable).values(attachmentRecords).run()
+        await tx.insert(messageAttachmentsTable).values(attachmentRecords).run()
       }
 
       if (mentionRecords.length > 0) {
-        tx.insert(messageMentionsTable).values(mentionRecords).run()
+        await tx.insert(messageMentionsTable).values(mentionRecords).run()
       }
 
       if (activityEventRecords.length > 0) {
-        tx.insert(activityEventsTable).values(activityEventRecords).run()
+        await tx.insert(activityEventsTable).values(activityEventRecords).run()
       }
     })
   } catch (error) {
@@ -1020,13 +1012,13 @@ export async function toggleReactionForMessage(
     .limit(1)
   const existingReaction = existingReactionRecord[0]
 
-  context.db.transaction((tx) => {
+  await context.db.transaction(async (tx) => {
     if (existingReaction) {
-      tx.delete(messageReactionsTable)
+      await tx.delete(messageReactionsTable)
         .where(eq(messageReactionsTable.id, existingReaction.id))
         .run()
 
-      tx.delete(activityEventsTable)
+      await tx.delete(activityEventsTable)
         .where(
           and(
             eq(activityEventsTable.sourceType, "reaction"),
@@ -1051,10 +1043,10 @@ export async function toggleReactionForMessage(
       context.userId,
     )
 
-    tx.insert(messageReactionsTable).values(reactionRecord).run()
+    await tx.insert(messageReactionsTable).values(reactionRecord).run()
 
     if (reactionActivityEvent) {
-      tx.insert(activityEventsTable).values(reactionActivityEvent).run()
+      await tx.insert(activityEventsTable).values(reactionActivityEvent).run()
     }
   })
 

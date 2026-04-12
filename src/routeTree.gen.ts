@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ThreadsRouteImport } from './routes/threads'
 import { Route as SearchRouteImport } from './routes/search'
+import { Route as PlaygroundRouteImport } from './routes/playground'
 import { Route as NewRouteImport } from './routes/new'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as AichatRouteImport } from './routes/aichat'
@@ -30,6 +31,11 @@ const ThreadsRoute = ThreadsRouteImport.update({
 const SearchRoute = SearchRouteImport.update({
   id: '/search',
   path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlaygroundRoute = PlaygroundRouteImport.update({
+  id: '/playground',
+  path: '/playground',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NewRoute = NewRouteImport.update({
@@ -89,6 +95,7 @@ export interface FileRoutesByFullPath {
   '/aichat': typeof AichatRoute
   '/mcp': typeof McpRoute
   '/new': typeof NewRoute
+  '/playground': typeof PlaygroundRoute
   '/search': typeof SearchRoute
   '/threads': typeof ThreadsRoute
   '/api/aichat': typeof ApiAichatRoute
@@ -103,6 +110,7 @@ export interface FileRoutesByTo {
   '/aichat': typeof AichatRoute
   '/mcp': typeof McpRoute
   '/new': typeof NewRoute
+  '/playground': typeof PlaygroundRoute
   '/search': typeof SearchRoute
   '/threads': typeof ThreadsRoute
   '/api/aichat': typeof ApiAichatRoute
@@ -118,6 +126,7 @@ export interface FileRoutesById {
   '/aichat': typeof AichatRoute
   '/mcp': typeof McpRoute
   '/new': typeof NewRoute
+  '/playground': typeof PlaygroundRoute
   '/search': typeof SearchRoute
   '/threads': typeof ThreadsRoute
   '/api/aichat': typeof ApiAichatRoute
@@ -134,6 +143,7 @@ export interface FileRouteTypes {
     | '/aichat'
     | '/mcp'
     | '/new'
+    | '/playground'
     | '/search'
     | '/threads'
     | '/api/aichat'
@@ -148,6 +158,7 @@ export interface FileRouteTypes {
     | '/aichat'
     | '/mcp'
     | '/new'
+    | '/playground'
     | '/search'
     | '/threads'
     | '/api/aichat'
@@ -162,6 +173,7 @@ export interface FileRouteTypes {
     | '/aichat'
     | '/mcp'
     | '/new'
+    | '/playground'
     | '/search'
     | '/threads'
     | '/api/aichat'
@@ -177,6 +189,7 @@ export interface RootRouteChildren {
   AichatRoute: typeof AichatRoute
   McpRoute: typeof McpRoute
   NewRoute: typeof NewRoute
+  PlaygroundRoute: typeof PlaygroundRoute
   SearchRoute: typeof SearchRoute
   ThreadsRoute: typeof ThreadsRoute
   ApiAichatRoute: typeof ApiAichatRoute
@@ -199,6 +212,13 @@ declare module '@tanstack/react-router' {
       path: '/search'
       fullPath: '/search'
       preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/playground': {
+      id: '/playground'
+      path: '/playground'
+      fullPath: '/playground'
+      preLoaderRoute: typeof PlaygroundRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/new': {
@@ -292,6 +312,7 @@ const rootRouteChildren: RootRouteChildren = {
   AichatRoute: AichatRoute,
   McpRoute: McpRoute,
   NewRoute: NewRoute,
+  PlaygroundRoute: PlaygroundRoute,
   SearchRoute: SearchRoute,
   ThreadsRoute: ThreadsRoute,
   ApiAichatRoute: ApiAichatRoute,

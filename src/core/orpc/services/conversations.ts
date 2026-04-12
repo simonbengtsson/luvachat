@@ -597,9 +597,9 @@ export async function createDirectConversation(
     createdAt,
   }
 
-  context.db.transaction((tx) => {
-    tx.insert(conversationsTable).values(conversation).run()
-    tx.insert(conversationMembersTable)
+  await context.db.transaction(async (tx) => {
+    await tx.insert(conversationsTable).values(conversation).run()
+    await tx.insert(conversationMembersTable)
       .values(
         participantIds.map((userId) => ({
           id: `${userId}_${conversation.id}`,

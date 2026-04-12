@@ -1,9 +1,8 @@
 import { migrations } from "@/server/migrations"
 import { DurableObject } from "cloudflare:workers"
 import { eq } from "drizzle-orm"
-import { drizzle } from "drizzle-orm/durable-sqlite/driver"
-import { migrate } from "drizzle-orm/durable-sqlite/migrator"
 import { generateVAPIDKeys } from "web-push"
+import { createDatabase, migrateDatabase, type Database } from "./db"
 import {
   createInternalErrorResponse,
   getRequestId,
@@ -18,17 +17,17 @@ import { kvTable } from "./schema"
 const vapidDetailsKey = "vapidDetails"
 
 export class SyncObject extends DurableObject {
-  private db: ReturnType<typeof drizzle>
+  private db: Database
   private vapidDetails: VapidDetails | null = null
 
   constructor(state: DurableObjectState, env: Cloudflare.Env) {
     super(state, env)
 
-    this.db = drizzle(state.storage)
+    this.db = createDatabase()
 
     state.blockConcurrencyWhile(async () => {
       try {
-        await migrate(this.db, { migrations })
+        await migrateDatabase(this.db, { migrations })
         await this.ensureVapidDetails()
       } catch (error) {
         logRuntimeError("sync.constructor", error, {
