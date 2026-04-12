@@ -100,6 +100,14 @@ export function getLuvaEnv(): LuvaEnv {
     installedAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     services: {
+      MAINDB: {
+        type: "turso",
+        name: "MAINDB",
+        createdAt: new Date().toISOString(),
+        databaseName: "luvachat",
+        databaseApiToken: process.env.TURSO_AUTH_TOKEN!,
+        databaseHostname: process.env.TURSO_DATABASE_URL!,
+      },
       OPENROUTER: {
         type: "openrouter",
         name: "OPENROUTER",

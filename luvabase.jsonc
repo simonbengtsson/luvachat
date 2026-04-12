@@ -26,6 +26,10 @@
       "name": "SyncObject",
     },
     {
+      "type": "turso",
+      "name": "MAINDB",
+    },
+    {
       "type": "r2",
       "name": "MAIN_BUCKET",
     },
