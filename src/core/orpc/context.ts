@@ -1,9 +1,9 @@
 import { os } from "@orpc/server"
-import type { Database } from "../db"
+import type { drizzle } from "drizzle-orm/durable-sqlite/driver"
 import type { VapidDetails } from "../push-server"
 
 export type OrpcContext = {
-  db: Database
+  db: ReturnType<typeof drizzle>
   env: Cloudflare.Env
   getWebSockets: (tag?: string) => WebSocket[]
   userId: string
