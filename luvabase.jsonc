@@ -1,5 +1,5 @@
 {
-  "$schema": "node_modules/@luvabase/sdk/dist/manifest-schema.json",
+  "$schema": "node_modules/luvabase/manifest-schema.json",
   "name": "Luvachat",
   "subtitle": "Team messaging & chat",
   "identifier": "luvachat",

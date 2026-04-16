@@ -4,7 +4,7 @@ import {
   getMembers as getSdkMembers,
   type LuvaEnv,
   type Member,
-} from "@luvabase/sdk"
+} from "luvabase/runtime"
 
 export const DEV_USER_COOKIE_NAME = "luvachat-dev-user"
 
