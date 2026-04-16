@@ -16,6 +16,7 @@
     "test": "vitest run",
     "deploy:staging": "bun run build && wrangler deploy",
     "check": "bunx tsc --noEmit",
+    "deploy": "luvabase deploy",
     "cf-typegen": "wrangler types"
   },
   "dependencies": {
@@ -82,7 +83,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
     "dotenv": "^17.4.2",
-    "luvabase": "^0.0.12",
+    "luvabase": "^0.0.15",
     "tidewave": "^0.6.0",
     "typescript": "^6.0.2",
     "vite": "^8.0.8",

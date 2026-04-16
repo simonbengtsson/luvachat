@@ -16,7 +16,18 @@
       "downloadLink": "https://apps.apple.com/us/app/peach-classes-workshops/id1518270776",
     },
   ],
-  "services": [
+  "worker": {
+    "main": "src/server.tsx",
+    "compatibilityDate": "2026-03-17",
+    "compatibilityFlags": ["nodejs_compat"],
+    "migrations": [
+      {
+        "tag": "v1",
+        "newSqliteClasses": ["SyncObject"],
+      },
+    ],
+  },
+  "resources": [
     {
       "type": "openrouter",
       "name": "OPENROUTER",
@@ -24,6 +35,7 @@
     {
       "type": "durable-object",
       "name": "SyncObject",
+      "className": "SyncObject",
     },
     {
       "type": "turso",
