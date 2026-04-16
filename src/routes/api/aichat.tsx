@@ -1,8 +1,8 @@
 import { chat, toServerSentEventsResponse } from "@tanstack/ai"
 import { createOpenRouterText } from "@tanstack/ai-openrouter"
 import { createFileRoute } from "@tanstack/react-router"
+import { env } from "cloudflare:workers"
 import { z } from "zod"
-import { getLuvaEnv } from "@/core/luvabase"
 
 type AIChatModelMessage = {
   role: "user" | "assistant"
@@ -103,7 +103,7 @@ export const Route = createFileRoute("/api/aichat")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const openRouterService = getLuvaEnv().services.OPENROUTER
+        const openRouterService = (env as any).OPENROUTER
         if (!openRouterService || openRouterService.type !== "openrouter") {
           return new Response(
             JSON.stringify({ error: "OPENROUTER not configured" }),

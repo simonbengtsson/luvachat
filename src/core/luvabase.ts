@@ -1,9 +1,7 @@
 import {
-  getAdminUrl as getSdkAdminUrl,
-  getLuvaEnv as getSdkLuvaEnv,
   getMembers as getSdkMembers,
   type LuvaEnv,
-  type Member,
+  type Member
 } from "luvabase/runtime"
 
 export const DEV_USER_COOKIE_NAME = "luvachat-dev-user"
@@ -88,42 +86,6 @@ export async function getMembers(request: Request): Promise<Member[]> {
   return workspaceMembers.filter(
     (member): member is Member => Boolean(member?.id),
   )
-}
-
-export function getLuvaEnv(): LuvaEnv {
-  if (hasLuvaEnv()) {
-    return getSdkLuvaEnv()
-  }
-
-  return {
-    podId: "123",
-    installedAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    services: {
-      MAINDB: {
-        type: "turso",
-        name: "MAINDB",
-        createdAt: new Date().toISOString(),
-        databaseName: "luvachat",
-        databaseApiToken: process.env.TURSO_AUTH_TOKEN!,
-        databaseHostname: process.env.TURSO_DATABASE_URL!,
-      },
-      OPENROUTER: {
-        type: "openrouter",
-        name: "OPENROUTER",
-        createdAt: new Date().toISOString(),
-        apiKey: process.env.OPENROUTER_API_KEY!,
-        apiKeyLabel: "Luvachat test api key 2",
-      },
-    },
-  }
-}
-
-export function getAdminUrl(): string {
-  if (hasLuvaEnv()) {
-    return getSdkAdminUrl()
-  }
-  return `https://luvabase.com/dash/pods/${getLuvaEnv().podId}`
 }
 
 export type { LuvaEnv, Member }

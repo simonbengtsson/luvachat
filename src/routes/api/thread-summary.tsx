@@ -1,4 +1,4 @@
-import { getLuvaEnv, getMembers, getSession } from "@/core/luvabase"
+import { getMembers, getSession } from "@/core/luvabase"
 import type { EnrichedMessage } from "@/core/models"
 import { createServerOrpcClient } from "@/core/orpcClient"
 import { chat, toServerSentEventsResponse } from "@tanstack/ai"
@@ -94,7 +94,7 @@ export const Route = createFileRoute("/api/thread-summary")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const openRouterService = getLuvaEnv().services.OPENROUTER
+        const openRouterService = (env as any).OPENROUTER
         if (!openRouterService || openRouterService.type !== "openrouter") {
           return new Response(
             JSON.stringify({ error: "OPENROUTER not configured" }),

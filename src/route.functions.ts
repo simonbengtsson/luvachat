@@ -1,6 +1,5 @@
 import {
   DEV_USER_COOKIE_NAME,
-  getAdminUrl,
   getMembers as getLuvaMembers,
   getSession as getLuvaSession,
   hasLuvaEnv,
@@ -21,7 +20,7 @@ export const getSidebarSession = createServerFn({ method: "GET" }).handler(
 
     return {
       session,
-      adminUrl: getAdminUrl(),
+      adminUrl: `https://luvabase.com/dash/pods/123`,
       canSwitchDevUser: !hasLuvaEnv(),
     }
   },
