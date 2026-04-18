@@ -1,3 +1,4 @@
+import { AppShellErrorBoundary } from "@/components/AppShellErrorBoundary"
 import { GlobalErrorPage } from "@/components/GlobalErrorPage"
 import { GlobalNotFoundPage } from "@/components/GlobalNotFoundPage"
 import { AppCommand } from "@/components/app-command"
@@ -7,7 +8,12 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { initializeSyncConnection } from "@/core/clientConnection"
 import { queryClient } from "@/core/queryClient"
 import { QueryClientProvider } from "@tanstack/react-query"
-import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
+import {
+  HeadContent,
+  Scripts,
+  createRootRoute,
+  useLocation,
+} from "@tanstack/react-router"
 import { useEffect } from "react"
 import appCss from "../styles.css?url"
 
@@ -62,6 +68,8 @@ export const Route = createRootRoute({
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  const location = useLocation()
+
   useEffect(() => initializeSyncConnection(), [])
 
   return (
@@ -93,12 +101,14 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                 } as React.CSSProperties
               }
             >
-              <AppSidebar variant="inset" />
-              <SidebarInset className="flex h-screen flex-col overflow-hidden">
-                {children}
-              </SidebarInset>
+              <AppShellErrorBoundary resetKey={location.href}>
+                <AppSidebar variant="inset" />
+                <SidebarInset className="flex h-screen flex-col overflow-hidden">
+                  {children}
+                </SidebarInset>
+                <AppCommand />
+              </AppShellErrorBoundary>
             </SidebarProvider>
-            <AppCommand />
           </TooltipProvider>
         </QueryClientProvider>
         <Scripts />
