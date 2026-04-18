@@ -1,8 +1,7 @@
 import { GlobalStatusPage } from "@/components/GlobalStatusPage"
 import { AlertCircleIcon } from "lucide-react"
-import type { ErrorComponentProps } from "@tanstack/react-router"
 
-export function GlobalErrorPage({}: ErrorComponentProps) {
+export function GlobalErrorPage() {
   return (
     <GlobalStatusPage
       title="Something went wrong"

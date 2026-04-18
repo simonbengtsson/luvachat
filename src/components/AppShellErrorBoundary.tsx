@@ -1,5 +1,4 @@
-import { GlobalStatusPage } from "@/components/GlobalStatusPage"
-import { AlertCircleIcon } from "lucide-react"
+import { GlobalErrorPage } from "@/components/GlobalErrorPage"
 import { Component, type ReactNode } from "react"
 
 type AppShellErrorBoundaryProps = {
@@ -49,13 +48,7 @@ export class AppShellErrorBoundary extends Component<
 
   render() {
     if (this.state.hasError) {
-      return (
-        <GlobalStatusPage
-          title="Something went wrong"
-          message="Something went wrong. Please try again."
-          icon={<AlertCircleIcon />}
-        />
-      )
+      return <GlobalErrorPage />
     }
 
     return this.props.children

@@ -1,3 +1,4 @@
+import { GlobalErrorPage } from "@/components/GlobalErrorPage"
 import { createRouter as createTanStackRouter } from "@tanstack/react-router"
 import { getScrollRestorationKey } from "./core/scrollRestorationKey"
 import { routeTree } from "./routeTree.gen"
@@ -10,6 +11,7 @@ export function getRouter() {
     getScrollRestorationKey,
     defaultPreload: "intent",
     defaultPreloadStaleTime: 0,
+    defaultErrorComponent: GlobalErrorPage,
   })
 
   return router

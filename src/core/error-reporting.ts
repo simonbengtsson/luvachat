@@ -136,12 +136,90 @@ export function logRuntimeError(
   })
 }
 
+export function isDocumentRequest(request: Request): boolean {
+  if (request.headers.get("sec-fetch-dest") === "document") {
+    return true
+  }
+
+  const accept = request.headers.get("accept") ?? ""
+  return request.method === "GET" && accept.includes("text/html")
+}
+
 export function createInternalErrorResponse(requestId: string): Response {
-  return new Response(`Internal Server Error\nrequest_id=${requestId}`, {
+  return new Response("Internal Server Error", {
     status: 500,
     headers: {
       "content-type": "text/plain; charset=utf-8",
       "x-request-id": requestId,
     },
   })
+}
+
+export function createInternalErrorHtmlResponse(requestId: string): Response {
+  return new Response(
+    `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Luvachat</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: system-ui, sans-serif;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        background: #f8f8f7;
+        color: #161615;
+      }
+
+      main {
+        width: min(100%, 420px);
+        padding: 32px;
+        border: 1px solid #e3e3df;
+        border-radius: 16px;
+        background: #fff;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.05);
+      }
+
+      h1 {
+        margin: 0 0 12px;
+        font-size: 24px;
+        line-height: 1.2;
+      }
+
+      p {
+        margin: 0;
+        line-height: 1.5;
+        color: #4d4d49;
+      }
+
+      small {
+        display: block;
+        margin-top: 16px;
+        color: #6b6b67;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Something went wrong</h1>
+      <p>Please try again.</p>
+    </main>
+  </body>
+</html>`,
+    {
+      status: 500,
+      headers: {
+        "content-type": "text/html; charset=utf-8",
+        "x-request-id": requestId,
+      },
+    },
+  )
 }

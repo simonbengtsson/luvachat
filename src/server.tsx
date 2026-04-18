@@ -1,6 +1,8 @@
 import handler from "@tanstack/react-start/server-entry"
 import {
+  createInternalErrorHtmlResponse,
   createInternalErrorResponse,
+  isDocumentRequest,
   logRequestError,
   withRequestId,
 } from "./core/error-reporting"
@@ -31,6 +33,10 @@ export default {
       logRequestError("worker.fetch", requestWithId, error, {
         userId,
       })
+
+      if (isDocumentRequest(requestWithId)) {
+        return createInternalErrorHtmlResponse(requestId)
+      }
 
       return createInternalErrorResponse(requestId)
     }

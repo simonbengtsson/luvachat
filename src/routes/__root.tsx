@@ -1,5 +1,4 @@
 import { AppShellErrorBoundary } from "@/components/AppShellErrorBoundary"
-import { GlobalErrorPage } from "@/components/GlobalErrorPage"
 import { GlobalNotFoundPage } from "@/components/GlobalNotFoundPage"
 import { AppCommand } from "@/components/app-command"
 import { AppSidebar } from "@/components/app-sidebar"
@@ -62,15 +61,12 @@ export const Route = createRootRoute({
       },
     ],
   }),
-  errorComponent: GlobalErrorPage,
   notFoundComponent: GlobalNotFoundPage,
   shellComponent: RootDocument,
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   const location = useLocation()
-
-  useEffect(() => initializeSyncConnection(), [])
 
   return (
     <html lang="en">
@@ -91,28 +87,36 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         />
       </head>
       <body>
-        <QueryClientProvider client={queryClient}>
-          <TooltipProvider>
-            <SidebarProvider
-              style={
-                {
-                  "--sidebar-width": "calc(var(--spacing) * 72)",
-                  "--header-height": "calc(var(--spacing) * 12)",
-                } as React.CSSProperties
-              }
-            >
-              <AppShellErrorBoundary resetKey={location.href}>
-                <AppSidebar variant="inset" />
-                <SidebarInset className="flex h-screen flex-col overflow-hidden">
-                  {children}
-                </SidebarInset>
-                <AppCommand />
-              </AppShellErrorBoundary>
-            </SidebarProvider>
-          </TooltipProvider>
-        </QueryClientProvider>
+        <AppShellErrorBoundary resetKey={location.href}>
+          <RootAppShell>{children}</RootAppShell>
+        </AppShellErrorBoundary>
         <Scripts />
       </body>
     </html>
+  )
+}
+
+function RootAppShell({ children }: { children: React.ReactNode }) {
+  useEffect(() => initializeSyncConnection(), [])
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <SidebarProvider
+          style={
+            {
+              "--sidebar-width": "calc(var(--spacing) * 72)",
+              "--header-height": "calc(var(--spacing) * 12)",
+            } as React.CSSProperties
+          }
+        >
+          <AppSidebar variant="inset" />
+          <SidebarInset className="flex h-screen flex-col overflow-hidden">
+            {children}
+          </SidebarInset>
+          <AppCommand />
+        </SidebarProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
   )
 }
