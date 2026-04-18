@@ -13,10 +13,10 @@ import {
   conversationsQueryKey,
 } from "@/core/conversationsQuery"
 import type { Member } from "@/core/luvabase"
-import { getWorkspaceMembers } from "@/core/members"
 import type { EnrichedConversation } from "@/core/models"
 import { orpcClient } from "@/core/orpcClient"
 import { applyMessageCreatedToCache } from "@/core/realtimeCache"
+import { getWorkspaceMembers } from "@/route.functions"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router"
 import type { JSONContent } from "@tiptap/react"

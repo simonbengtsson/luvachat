@@ -2,7 +2,7 @@ import {
   DEV_USER_COOKIE_NAME,
   getMembers as getLuvaMembers,
   getSession as getLuvaSession,
-  useDevEnv,
+  isDevEnv,
 } from "@/core/luvabase"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequest, setCookie } from "@tanstack/react-start/server"
@@ -21,7 +21,7 @@ export const getSidebarSession = createServerFn({ method: "GET" }).handler(
     return {
       session,
       adminUrl: `https://luvabase.com/dash/pods/123`,
-      canSwitchDevUser: useDevEnv(),
+      canSwitchDevUser: isDevEnv(),
     }
   },
 )
@@ -40,7 +40,7 @@ export const switchDevUser = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
-    if (!useDevEnv()) {
+    if (!isDevEnv()) {
       return
     }
 

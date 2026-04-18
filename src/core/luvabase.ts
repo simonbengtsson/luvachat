@@ -1,12 +1,12 @@
 import {
-  getMembers as getSdkMembers,
+  getMembers as getRuntimeMembers,
   type LuvaEnv,
-  type Member
+  type Member,
 } from "luvabase/runtime"
 
 export const DEV_USER_COOKIE_NAME = "luvachat-dev-user"
 
-export function useDevEnv() {
+export function isDevEnv() {
   return Boolean(import.meta.env.DEV)
 }
 
@@ -56,7 +56,7 @@ function getDevUserIdFromRequest(request: Request): string | null {
 export async function getSession(
   request: Request,
 ): Promise<{ id: string; name: string; imageUrl: string | null }> {
-  if (!useDevEnv()) {
+  if (!isDevEnv()) {
     return {
       id: request.headers.get("x-luvabase-user-id") || request.headers.get("x-luvabase-actor-id")!,
       name: request.headers.get("x-luvabase-user-name") || request.headers.get("x-luvabase-actor-name")!,
@@ -79,8 +79,8 @@ export async function getSession(
 }
 
 export async function getMembers(request: Request): Promise<Member[]> {
-  const workspaceMembers = !useDevEnv()
-    ? await getSdkMembers(request)
+  const workspaceMembers = !isDevEnv()
+    ? await getRuntimeMembers(request)
     : Object.values(members)
 
   return workspaceMembers.filter(

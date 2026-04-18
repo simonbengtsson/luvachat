@@ -68,7 +68,7 @@
         "@types/react-dom": "^19.2.3",
         "@vitejs/plugin-react": "^6.0.1",
         "dotenv": "^17.4.2",
-        "luvabase": "^0.0.20",
+        "luvabase": "^0.0.22",
         "tidewave": "^0.6.0",
         "typescript": "^6.0.3",
         "vite": "^8.0.8",
@@ -1315,7 +1315,7 @@
 
     "lucide-react": ["lucide-react@1.8.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-WuvlsjngSk7TnTBJ1hsCy3ql9V9VOdcPkd3PKcSmM34vJD8KG6molxz7m7zbYFgICwsanQWmJ13JlYs4Zp7Arw=="],
 
-    "luvabase": ["luvabase@0.0.20", "", { "dependencies": { "commander": "^14.0.3", "jsonc-parser": "^3.3.1", "jszip": "^3.10.1", "keytar": "^7.9.0", "zod": "^4.3.6" }, "bin": { "luvabase": "dist/cli.mjs" } }, "sha512-WKbm/Sbb90IrumIuFXIOyVU43jW/l8htSDqxZCbTKYTbyk56KPYtiioO4NqbD+nHaXkWCXBAh+5kSu7QFBImyQ=="],
+    "luvabase": ["luvabase@0.0.22", "", { "dependencies": { "commander": "^14.0.3", "jsonc-parser": "^3.3.1", "jszip": "^3.10.1", "keytar": "^7.9.0", "zod": "^4.3.6" }, "bin": { "luvabase": "dist/cli.mjs" } }, "sha512-HVxe07Xw567ZtLgC5oHKGLRX2vxa9qgVxe9Z/s9s8eh/snsBA6W86HXbiTP6FmlMeMtvCLUdB3sVZNHb+KoKfA=="],
 
     "magic-string": ["magic-string@0.30.21", "", { "dependencies": { "@jridgewell/sourcemap-codec": "^1.5.5" } }, "sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ=="],
 

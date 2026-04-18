@@ -1,8 +1,6 @@
-import type { Member } from "./luvabase"
+import { getWorkspaceMembers } from "@/route.functions"
 import { useQuery } from "@tanstack/react-query"
-import { getWorkspaceMembers as getWorkspaceMembersServerFn } from "@/route.functions"
-
-export const getWorkspaceMembers = getWorkspaceMembersServerFn
+import type { Member } from "./luvabase"
 
 export const workspaceMembersQueryKey = ["workspace-members"] as const
 
