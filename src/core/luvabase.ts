@@ -6,8 +6,8 @@ import {
 
 export const DEV_USER_COOKIE_NAME = "luvachat-dev-user"
 
-export function hasLuvaEnv() {
-  return Boolean(process.env.luvaEnv)
+export function useDevEnv() {
+  return Boolean(import.meta.env.DEV)
 }
 
 const members = {
@@ -56,7 +56,7 @@ function getDevUserIdFromRequest(request: Request): string | null {
 export async function getSession(
   request: Request,
 ): Promise<{ id: string; name: string; imageUrl: string | null }> {
-  if (hasLuvaEnv()) {
+  if (!useDevEnv()) {
     return {
       id: request.headers.get("x-luvabase-user-id") || request.headers.get("x-luvabase-actor-id")!,
       name: request.headers.get("x-luvabase-user-name") || request.headers.get("x-luvabase-actor-name")!,
@@ -79,7 +79,7 @@ export async function getSession(
 }
 
 export async function getMembers(request: Request): Promise<Member[]> {
-  const workspaceMembers = hasLuvaEnv()
+  const workspaceMembers = !useDevEnv()
     ? await getSdkMembers(request)
     : Object.values(members)
 

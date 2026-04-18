@@ -68,9 +68,9 @@
         "@types/react-dom": "^19.2.3",
         "@vitejs/plugin-react": "^6.0.1",
         "dotenv": "^17.4.2",
-        "luvabase": "^0.0.15",
+        "luvabase": "^0.0.20",
         "tidewave": "^0.6.0",
-        "typescript": "^6.0.2",
+        "typescript": "^6.0.3",
         "vite": "^8.0.8",
         "wrangler": "^4.83.0",
       },
@@ -1315,7 +1315,7 @@
 
     "lucide-react": ["lucide-react@1.8.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-WuvlsjngSk7TnTBJ1hsCy3ql9V9VOdcPkd3PKcSmM34vJD8KG6molxz7m7zbYFgICwsanQWmJ13JlYs4Zp7Arw=="],
 
-    "luvabase": ["luvabase@0.0.15", "", { "dependencies": { "@cloudflare/vite-plugin": "^1.30.3", "commander": "^14.0.3", "jsonc-parser": "^3.3.1", "jszip": "^3.10.1", "keytar": "^7.9.0", "zod": "^4.3.6" }, "peerDependencies": { "vite": "^8.0.0" }, "bin": { "luvabase": "dist/cli.mjs" } }, "sha512-xWFblp+eSXyIf4adMk3jONS9hMyZP8OM7C93ApglzTgdMU/iLtvLIRNQ+amBYAtb5ApdrB1ky9P60NADTi7YSA=="],
+    "luvabase": ["luvabase@0.0.20", "", { "dependencies": { "commander": "^14.0.3", "jsonc-parser": "^3.3.1", "jszip": "^3.10.1", "keytar": "^7.9.0", "zod": "^4.3.6" }, "bin": { "luvabase": "dist/cli.mjs" } }, "sha512-WKbm/Sbb90IrumIuFXIOyVU43jW/l8htSDqxZCbTKYTbyk56KPYtiioO4NqbD+nHaXkWCXBAh+5kSu7QFBImyQ=="],
 
     "magic-string": ["magic-string@0.30.21", "", { "dependencies": { "@jridgewell/sourcemap-codec": "^1.5.5" } }, "sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ=="],
 
@@ -1825,7 +1825,7 @@
 
     "type-is": ["type-is@2.0.1", "", { "dependencies": { "content-type": "^1.0.5", "media-typer": "^1.1.0", "mime-types": "^3.0.0" } }, "sha512-OZs6gsjF4vMp32qrCbiVSkrFmXtG/AZhY3t0iAMrMBiAZyV9oALtXO8hsrHbMXF9x6L3grlFuwW2oAz7cav+Gw=="],
 
-    "typescript": ["typescript@6.0.2", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-bGdAIrZ0wiGDo5l8c++HWtbaNCWTS4UTv7RaTH/ThVIgjkveJt83m74bBHMJkuCbslY8ixgLBVZJIOiQlQTjfQ=="],
+    "typescript": ["typescript@6.0.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
 
     "uc.micro": ["uc.micro@2.1.0", "", {}, "sha512-ARDJmphmdvUk6Glw7y9DQ2bFkKBHwQHLi2lsaH6PPmz/Ka9sFOBsBluozhDltWmnv9u/cF6Rt87znRTPV+yp/A=="],
 
