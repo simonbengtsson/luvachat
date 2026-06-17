@@ -405,6 +405,10 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
           queryKey: conversationQueryKey(context.optimisticConversationId),
         })
       }
+      void navigate({
+        to: "/c/$conversationId",
+        params: { conversationId: conversation.id } as any,
+      })
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: conversationsQueryKey })
