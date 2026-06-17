@@ -5,13 +5,21 @@
 
 @custom-variant dark (&:is(.dark *));
 
-
 body {
   @apply m-0;
   font-family:
-    "Geist Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
-    "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans",
-    "Helvetica Neue", sans-serif;
+    "Geist Variable",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    "Roboto",
+    "Oxygen",
+    "Ubuntu",
+    "Cantarell",
+    "Fira Sans",
+    "Droid Sans",
+    "Helvetica Neue",
+    sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -19,8 +27,7 @@ body {
 code {
   font-family:
     source-code-pro, Menlo, Monaco, Consolas, "Courier New",
-    "Apple Color Emoji", "Segoe UI Emoji",
-    "Segoe UI Symbol", monospace;
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", monospace;
 }
 
 @theme inline {

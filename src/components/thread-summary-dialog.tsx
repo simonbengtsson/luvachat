@@ -31,13 +31,7 @@ export function ThreadSummaryDialog({
   message: EnrichedMessage
   onOpenChange: (open: boolean) => void
 }) {
-  const {
-    messages,
-    sendMessage,
-    stop,
-    isLoading,
-    error,
-  } = useChat({
+  const { messages, sendMessage, stop, isLoading, error } = useChat({
     id: `thread-summary-${message.id}`,
     onError: (chatError) => {
       console.error("Thread summary error", chatError)
@@ -82,9 +76,7 @@ export function ThreadSummaryDialog({
 
         <div className="max-h-[70vh] overflow-y-auto px-4 py-4">
           <div className="min-h-32 space-y-3">
-            {summaryText ? (
-              <ChatMessageMarkdown content={summaryText} />
-            ) : null}
+            {summaryText ? <ChatMessageMarkdown content={summaryText} /> : null}
             {showThinking ? (
               <div
                 className="flex items-center gap-1.5 text-sm text-muted-foreground"

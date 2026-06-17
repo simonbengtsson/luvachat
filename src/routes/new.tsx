@@ -24,7 +24,7 @@ import { LoaderCircleIcon, XIcon } from "lucide-react"
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 
 export const Route = createFileRoute("/new")({
-  validateSearch: (search) => ({ members: `${search.members || ''}`.trim() }),
+  validateSearch: (search) => ({ members: `${search.members || ""}`.trim() }),
   loaderDeps: ({ search }) => ({ members: search.members }),
   loader: async ({ deps }) => {
     const members = await getWorkspaceMembers()
@@ -55,13 +55,7 @@ function getFallbackText(value?: string | null) {
 }
 
 function parseMemberIds(value?: string) {
-  return Array.from(
-    new Set(
-      (value ?? "")
-        .split(",")
-        .filter(Boolean),
-    ),
-  )
+  return Array.from(new Set((value ?? "").split(",").filter(Boolean)))
 }
 
 function matchesMember(member: Member, query: string) {
@@ -233,7 +227,9 @@ function RouteComponent() {
   const recipientPicker = (
     <div className="relative max-w-5xl" ref={pickerRef}>
       <div className="grid gap-3 md:grid-cols-[56px_minmax(0,1fr)] md:items-start">
-        <div className="pt-3 text-sm font-medium text-muted-foreground">To:</div>
+        <div className="pt-3 text-sm font-medium text-muted-foreground">
+          To:
+        </div>
         <div className="space-y-0">
           <div
             className="min-h-14 rounded-xl border border-border bg-background px-3 py-2.5 shadow-xs transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/15"
@@ -330,7 +326,9 @@ function RouteComponent() {
                         </AvatarFallback>
                       </Avatar>
                       <div className="min-w-0">
-                        <div className="truncate font-medium">{member.name}</div>
+                        <div className="truncate font-medium">
+                          {member.name}
+                        </div>
                       </div>
                     </button>
                   ))}
@@ -355,9 +353,7 @@ function RouteComponent() {
           <>
             <div className="min-h-0 flex-1 overflow-auto bg-muted/10">
               <div className="bg-background px-4 py-4">
-                <div className="max-w-5xl">
-                  {recipientPicker}
-                </div>
+                <div className="max-w-5xl">{recipientPicker}</div>
               </div>
             </div>
             <div className="shrink-0 bg-background px-4 pb-5">
@@ -390,9 +386,7 @@ function RouteComponent() {
           </>
         ) : (
           <div className="min-h-0 flex-1 overflow-auto">
-            <div className="px-4 py-6 lg:px-8">
-              {recipientPicker}
-            </div>
+            <div className="px-4 py-6 lg:px-8">{recipientPicker}</div>
           </div>
         )}
       </main>

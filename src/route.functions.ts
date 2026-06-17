@@ -8,10 +8,12 @@ import { createServerFn } from "@tanstack/react-start"
 import { getRequest, setCookie } from "@tanstack/react-start/server"
 import { z } from "zod"
 
-export const getSession = createServerFn({ method: "GET" }).handler(async () => {
-  const request = getRequest()
-  return getLuvaSession(request)
-})
+export const getSession = createServerFn({ method: "GET" }).handler(
+  async () => {
+    const request = getRequest()
+    return getLuvaSession(request)
+  },
+)
 
 export const getSidebarSession = createServerFn({ method: "GET" }).handler(
   async () => {

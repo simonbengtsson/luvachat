@@ -70,9 +70,10 @@ async function getConversationAccessRecord(
       type: conversationsTable.type,
       name: conversationsTable.name,
       createdAt: conversationsTable.createdAt,
-      isMember: sql<number>`case when ${currentUserConversationMembershipTable.id} is null then 0 else 1 end`.as(
-        "is_member",
-      ),
+      isMember:
+        sql<number>`case when ${currentUserConversationMembershipTable.id} is null then 0 else 1 end`.as(
+          "is_member",
+        ),
     })
     .from(conversationsTable)
     .leftJoin(
@@ -113,7 +114,11 @@ export async function requireConversationAccess(
   conversationId: string,
   userId: string = context.userId,
 ): Promise<Conversation> {
-  const record = await getConversationAccessRecord(context, conversationId, userId)
+  const record = await getConversationAccessRecord(
+    context,
+    conversationId,
+    userId,
+  )
 
   if (!record || !hasConversationAccess(record)) {
     throw new Error("Conversation not found")
@@ -174,11 +179,9 @@ export async function setConversationNotificationLevel(
   notificationLevel: ConversationNotificationLevel,
 ): Promise<void> {
   await requireConversationAccess(context, conversationId, userId)
-  const existingMember = (await getConversationMemberForUser(
-    context,
-    conversationId,
-    userId,
-  ))[0]
+  const existingMember = (
+    await getConversationMemberForUser(context, conversationId, userId)
+  )[0]
 
   if (existingMember?.id) {
     await context.db
@@ -252,9 +255,10 @@ export async function getConversationsForUser(
       isMember: currentUserConversationMembershipTable.id,
       lastViewedAt: currentUserConversationMembershipTable.lastViewedAt,
       lastMessageAt: conversationLastMessageSubquery.lastMessageAt,
-      notificationLevel: sql<ConversationNotificationLevel>`coalesce(${currentUserConversationMembershipTable.notificationLevel}, 'all')`.as(
-        "notification_level",
-      ),
+      notificationLevel:
+        sql<ConversationNotificationLevel>`coalesce(${currentUserConversationMembershipTable.notificationLevel}, 'all')`.as(
+          "notification_level",
+        ),
     })
     .from(conversationsTable)
     .leftJoin(
@@ -310,9 +314,10 @@ export async function getConversationByIdForUser(
       name: conversationsTable.name,
       createdAt: conversationsTable.createdAt,
       lastViewedAt: currentUserConversationMembershipTable.lastViewedAt,
-      notificationLevel: sql<ConversationNotificationLevel>`coalesce(${currentUserConversationMembershipTable.notificationLevel}, 'all')`.as(
-        "notification_level",
-      ),
+      notificationLevel:
+        sql<ConversationNotificationLevel>`coalesce(${currentUserConversationMembershipTable.notificationLevel}, 'all')`.as(
+          "notification_level",
+        ),
     })
     .from(conversationsTable)
     .leftJoin(
@@ -460,11 +465,9 @@ export async function markConversationAsViewed(
   mostRecentMessageCreatedAt: string,
 ): Promise<void> {
   await requireConversationAccess(context, conversationId, userId)
-  const existingMember = (await getConversationMemberForUser(
-    context,
-    conversationId,
-    userId,
-  ))[0]
+  const existingMember = (
+    await getConversationMemberForUser(context, conversationId, userId)
+  )[0]
   const previousLastViewedAt = existingMember?.lastViewedAt
   if (
     previousLastViewedAt &&

@@ -94,7 +94,7 @@ import {
   MessageSquareTextIcon,
   SearchIcon,
   SmileIcon,
-  SparklesIcon
+  SparklesIcon,
 } from "lucide-react"
 import {
   lazy,
@@ -764,7 +764,9 @@ function ConversationView({
     isThreadView && threadMessageId
       ? messages.filter((message) => message.id !== threadMessageId)
       : messages
-  const composerPlaceholder = isThreadView ? "Reply in thread" : "Jot something down"
+  const composerPlaceholder = isThreadView
+    ? "Reply in thread"
+    : "Jot something down"
 
   useEffect(() => {
     if (

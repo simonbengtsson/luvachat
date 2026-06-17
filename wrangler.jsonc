@@ -3,9 +3,7 @@
   "name": "luvachat3",
   "workers_dev": true,
   "compatibility_date": "2026-03-17",
-  "compatibility_flags": [
-    "nodejs_compat"
-  ],
+  "compatibility_flags": ["nodejs_compat"],
   "main": "src/server.tsx",
   "r2_buckets": [
     {
@@ -24,9 +22,7 @@
   "migrations": [
     {
       "tag": "v1",
-      "new_sqlite_classes": [
-        "SyncObject"
-      ],
+      "new_sqlite_classes": ["SyncObject"],
     },
   ],
   "observability": {

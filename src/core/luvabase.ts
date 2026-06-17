@@ -58,9 +58,16 @@ export async function getSession(
 ): Promise<{ id: string; name: string; imageUrl: string | null }> {
   if (!isDevEnv()) {
     return {
-      id: request.headers.get("x-luvabase-user-id") || request.headers.get("x-luvabase-actor-id")!,
-      name: request.headers.get("x-luvabase-user-name") || request.headers.get("x-luvabase-actor-name")!,
-      imageUrl: request.headers.get("x-luvabase-user-image-url") || request.headers.get("x-luvabase-actor-image-url") || null,
+      id:
+        request.headers.get("x-luvabase-user-id") ||
+        request.headers.get("x-luvabase-actor-id")!,
+      name:
+        request.headers.get("x-luvabase-user-name") ||
+        request.headers.get("x-luvabase-actor-name")!,
+      imageUrl:
+        request.headers.get("x-luvabase-user-image-url") ||
+        request.headers.get("x-luvabase-actor-image-url") ||
+        null,
     }
   }
 
@@ -83,8 +90,8 @@ export async function getMembers(request: Request): Promise<Member[]> {
     ? await getRuntimeMembers(request)
     : Object.values(members)
 
-  return workspaceMembers.filter(
-    (member): member is Member => Boolean(member?.id),
+  return workspaceMembers.filter((member): member is Member =>
+    Boolean(member?.id),
   )
 }
 

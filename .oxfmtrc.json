@@ -1,0 +1,14 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "semi": false,
+  "trailingComma": "all",
+  "printWidth": 80,
+  "sortPackageJson": false,
+  "ignorePatterns": [
+    "src/components/ui",
+    "src/components/shadcnblocks",
+    "worker-configuration.d.ts",
+    "drizzle/*",
+    "routeTree.gen.ts"
+  ]
+}

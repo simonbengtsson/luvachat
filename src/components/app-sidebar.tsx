@@ -20,9 +20,7 @@ import {
   seedConversationQueryCache,
   useConversations,
 } from "@/core/conversationsQuery"
-import {
-  type Member,
-} from "@/core/luvabase"
+import { type Member } from "@/core/luvabase"
 import { useWorkspaceMembers } from "@/core/members"
 import type { EnrichedConversation } from "@/core/models"
 import { orpcClient } from "@/core/orpcClient"

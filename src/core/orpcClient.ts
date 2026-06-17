@@ -19,7 +19,10 @@ export let orpcClient = createORPCClient<SyncObjectRpcClient>(
   }),
 )
 
-export function createServerOrpcClient(syncObject: DurableObjectStub, userId: string) {
+export function createServerOrpcClient(
+  syncObject: DurableObjectStub,
+  userId: string,
+) {
   return createORPCClient<SyncObjectRpcClient>(
     new RPCLink({
       url: "https://internal/sync/orpc",

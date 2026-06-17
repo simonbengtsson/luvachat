@@ -273,7 +273,8 @@ async function listReactionsByMessageIds(
     const existingReaction = groupedReactions.get(reaction.emoji)
     if (existingReaction) {
       existingReaction.count += 1
-      existingReaction.reactedByCurrentUser ||= reaction.userId === context.userId
+      existingReaction.reactedByCurrentUser ||=
+        reaction.userId === context.userId
       continue
     }
 
@@ -395,7 +396,10 @@ function buildMentionActivityEvents(
   actorUserId: string,
 ): ActivityEvent[] {
   return mentionRecords.flatMap((mentionRecord) => {
-    if (!mentionRecord.mentionedUserId || mentionRecord.mentionedUserId === actorUserId) {
+    if (
+      !mentionRecord.mentionedUserId ||
+      mentionRecord.mentionedUserId === actorUserId
+    ) {
       return []
     }
 

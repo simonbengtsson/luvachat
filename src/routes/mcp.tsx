@@ -65,9 +65,7 @@ export const Route = createFileRoute("/mcp")({
               attachments: [],
             })
             return {
-              content: [
-                { type: "text", text: "Message sent" },
-              ],
+              content: [{ type: "text", text: "Message sent" }],
             }
           },
         )

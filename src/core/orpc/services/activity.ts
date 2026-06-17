@@ -47,8 +47,9 @@ async function listAttachmentCountsByMessageIds(
   const attachmentCounts = await context.db
     .select({
       messageId: messageAttachmentsTable.messageId,
-      attachmentCount:
-        sql<number>`cast(count(*) as integer)`.as("attachment_count"),
+      attachmentCount: sql<number>`cast(count(*) as integer)`.as(
+        "attachment_count",
+      ),
     })
     .from(messageAttachmentsTable)
     .where(inArray(messageAttachmentsTable.messageId, messageIds))
@@ -217,7 +218,10 @@ export async function getActivityForUser(
       threadRootMessageId: messagesTable.threadRootMessageId,
     })
     .from(activityEventsTable)
-    .innerJoin(messagesTable, eq(messagesTable.id, activityEventsTable.messageId))
+    .innerJoin(
+      messagesTable,
+      eq(messagesTable.id, activityEventsTable.messageId),
+    )
     .where(
       and(
         eq(activityEventsTable.userId, context.userId),
@@ -228,7 +232,9 @@ export async function getActivityForUser(
 
   const attachmentCountByMessageId = await listAttachmentCountsByMessageIds(
     context,
-    Array.from(new Set(eventRecords.map((eventRecord) => eventRecord.messageId))),
+    Array.from(
+      new Set(eventRecords.map((eventRecord) => eventRecord.messageId)),
+    ),
   )
   const conversationLastViewedAtByConversationId =
     await listConversationLastViewedAtByConversationIds(

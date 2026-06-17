@@ -9,10 +9,7 @@ function sendEvent(webSockets: WebSocket[], payload: string): void {
   }
 }
 
-export function broadcastEvent(
-  context: OrpcContext,
-  event: ServerEvent,
-): void {
+export function broadcastEvent(context: OrpcContext, event: ServerEvent): void {
   const payload = JSON.stringify(event)
 
   sendEvent(context.getWebSockets(), payload)

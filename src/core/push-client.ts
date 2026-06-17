@@ -62,9 +62,7 @@ export async function cleanupPushSubscription(): Promise<void> {
   }
 }
 
-function serializePushSubscription(
-  subscription: PushSubscription,
-) {
+function serializePushSubscription(subscription: PushSubscription) {
   const json = subscription.toJSON()
   const endpoint = json.endpoint ?? subscription.endpoint
   const p256dh = json.keys?.p256dh

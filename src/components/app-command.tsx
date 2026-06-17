@@ -1,8 +1,4 @@
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Command,
   CommandDialog,
@@ -67,7 +63,9 @@ export function AppCommand() {
   }
 
   const searchableConversations =
-    conversationsQuery.data?.filter((conversation) => conversation.type !== "direct") ?? []
+    conversationsQuery.data?.filter(
+      (conversation) => conversation.type !== "direct",
+    ) ?? []
 
   const getFallbackText = (value?: string | null) => {
     const source = value?.trim()

@@ -5,7 +5,12 @@ type SerializedError =
       name: string
       message: string
       stack?: string
-      cause?: SerializedError | Record<string, unknown> | string | number | boolean
+      cause?:
+        | SerializedError
+        | Record<string, unknown>
+        | string
+        | number
+        | boolean
       details?: Record<string, unknown>
     }
   | Record<string, unknown>

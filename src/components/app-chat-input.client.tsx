@@ -96,7 +96,9 @@ function AppChatInputAttachment({
         </div>
       ) : (
         <div className="flex w-full items-start gap-2 px-1">
-          <span className="min-w-0 flex-1 truncate text-sm">{attachment.name}</span>
+          <span className="min-w-0 flex-1 truncate text-sm">
+            {attachment.name}
+          </span>
           <Button
             type="button"
             variant="ghost"
@@ -293,7 +295,11 @@ function serializeBulletListItem(
 
   for (const child of node.content ?? []) {
     if (child.type === "paragraph") {
-      const text = serializeChatInputValue(child, mentionTriggers, indent).trim()
+      const text = serializeChatInputValue(
+        child,
+        mentionTriggers,
+        indent,
+      ).trim()
       if (text) {
         lines.push(`${" ".repeat(indent)}• ${text}`)
       }
@@ -327,7 +333,11 @@ function serializeOrderedListItem(
 
   for (const child of node.content ?? []) {
     if (child.type === "paragraph") {
-      const text = serializeChatInputValue(child, mentionTriggers, indent).trim()
+      const text = serializeChatInputValue(
+        child,
+        mentionTriggers,
+        indent,
+      ).trim()
       if (text) {
         lines.push(`${" ".repeat(indent)}${index}. ${text}`)
       }
@@ -419,7 +429,8 @@ export const AppChatInput = forwardRef<AppChatInputHandle, AppChatInputProps>(
       [members],
     )
     const mentionTriggers = useMemo(
-      () => new Map([[mentionConfigs.member.type, mentionConfigs.member.trigger]]),
+      () =>
+        new Map([[mentionConfigs.member.type, mentionConfigs.member.trigger]]),
       [mentionConfigs],
     )
     const { value, onChange, clear } = useChatInput({
@@ -466,7 +477,9 @@ export const AppChatInput = forwardRef<AppChatInputHandle, AppChatInputProps>(
           return true
         })
 
-        return uniqueNewFiles.length > 0 ? [...current, ...uniqueNewFiles] : current
+        return uniqueNewFiles.length > 0
+          ? [...current, ...uniqueNewFiles]
+          : current
       })
     }, [])
 
@@ -588,7 +601,10 @@ export const AppChatInput = forwardRef<AppChatInputHandle, AppChatInputProps>(
             {(item) => (
               <>
                 <Avatar className="h-6 w-6">
-                  <AvatarImage src={item.imageUrl ?? undefined} alt={item.name} />
+                  <AvatarImage
+                    src={item.imageUrl ?? undefined}
+                    alt={item.name}
+                  />
                   <AvatarFallback>{item.name[0]?.toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <span

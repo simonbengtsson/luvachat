@@ -12,9 +12,7 @@ export function useIsTouchDevice() {
 
     const mediaQuery = window.matchMedia(TOUCH_DEVICE_QUERY)
     const updateIsTouchDevice = () => {
-      setIsTouchDevice(
-        mediaQuery.matches || navigator.maxTouchPoints > 0,
-      )
+      setIsTouchDevice(mediaQuery.matches || navigator.maxTouchPoints > 0)
     }
 
     updateIsTouchDevice()

@@ -61,7 +61,9 @@ export class SyncObject extends DurableObject {
       }
 
       if (requestWithId.headers.get("Upgrade") !== "websocket") {
-        return new Response("Expected websocket upgrade request", { status: 426 })
+        return new Response("Expected websocket upgrade request", {
+          status: 426,
+        })
       }
 
       const [client, server] = Object.values(new WebSocketPair())
@@ -162,7 +164,10 @@ export class SyncObject extends DurableObject {
   private getAttachment(
     ws: WebSocket,
   ): { requestId?: string; userId: string } | null {
-    return ws.deserializeAttachment() as { requestId?: string; userId: string } | null
+    return ws.deserializeAttachment() as {
+      requestId?: string
+      userId: string
+    } | null
   }
 
   private getUserId(ws: WebSocket): string {

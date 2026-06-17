@@ -100,9 +100,7 @@ export const setConversationNotificationLevel = base
   })
 
 export async function getOrCreateDirectConversation(
-  context: Parameters<
-    typeof findParticipantConversationByMemberIds
-  >[0],
+  context: Parameters<typeof findParticipantConversationByMemberIds>[0],
   memberIds: string[],
   conversationName?: string,
 ) {

@@ -84,6 +84,7 @@
     "@vitejs/plugin-react": "^6.0.2",
     "dotenv": "^17.4.2",
     "luvabase": "^0.0.30",
+    "oxfmt": "^0.55.0",
     "tidewave": "^0.7.0",
     "typescript": "^6.0.3",
     "vite": "^8.0.16",
