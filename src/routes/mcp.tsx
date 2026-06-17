@@ -4,7 +4,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js"
 import { createFileRoute } from "@tanstack/react-router"
 import { env } from "cloudflare:workers"
-import { z } from "zod"
+import { z } from "zod/v3"
 
 export const Route = createFileRoute("/mcp")({
   server: {
@@ -23,7 +23,11 @@ export const Route = createFileRoute("/mcp")({
 
         server.registerTool(
           "listConversations",
-          { title: 'List Conversations', description: "List all conversations the current user is a member of, including public channels" },
+          {
+            title: "List Conversations",
+            description:
+              "List all conversations the current user is a member of, including public channels",
+          },
           async () => {
             console.log("Listing conversations")
             const orpcClient = await getOrpcClient()
@@ -37,12 +41,22 @@ export const Route = createFileRoute("/mcp")({
         )
 
         server.registerTool(
-          'sendMessage',
-          { title: 'Send Message', description: "Send a message to a conversation", inputSchema: z.object({
-            conversationId: z.string(),
-            message: z.string(),
-          }) },
-          async ({ conversationId, message }) => {
+          "sendMessage",
+          {
+            title: "Send Message",
+            description: "Send a message to a conversation",
+            inputSchema: {
+              conversationId: z.string() as any,
+              message: z.string() as any,
+            },
+          },
+          async ({
+            conversationId,
+            message,
+          }: {
+            conversationId: string
+            message: string
+          }) => {
             console.log("Sending message")
             const orpcClient = await getOrpcClient()
             await orpcClient.sendMessage({
@@ -56,7 +70,7 @@ export const Route = createFileRoute("/mcp")({
               ],
             }
           },
-        );
+        )
 
         const transport = new WebStandardStreamableHTTPServerTransport({
           sessionIdGenerator: undefined, // stateless mode for Cloudflare Workers

@@ -41,7 +41,6 @@ import {
 	useRef,
 	useState,
 } from "react";
-import tippy, { type Instance } from "tippy.js";
 
 export type ChatInputValue = JSONContent;
 
@@ -278,11 +277,11 @@ export function ChatInputEditor({
 	}, [editor, onEditorChange]);
 
 	useEffect(() => {
-		if (
-			effectiveValue &&
-			editor &&
-			JSON.stringify(effectiveValue) !== JSON.stringify(editor.getJSON())
-		) {
+		if (!effectiveValue || !editor || editor.isDestroyed) {
+			return;
+		}
+
+		if (JSON.stringify(effectiveValue) !== JSON.stringify(editor.getJSON())) {
 			editor.commands.setContent(effectiveValue);
 		}
 	}, [effectiveValue, editor]);
@@ -666,57 +665,38 @@ function getMentionSuggestion<T extends BaseMentionItem>(
 		},
 		render: () => {
 			// biome-ignore lint/suspicious/noExplicitAny: Ok
-			let component: ReactRenderer<any>;
-			let popup: Instance;
+			let component: ReactRenderer<any> | undefined;
+			let unmount: (() => void) | undefined;
+
+			const getListProps = (props: SuggestionProps<T>) => ({
+				items: props.items,
+				command: props.command,
+				renderItem: config.renderItem,
+			});
 
 			return {
 				onStart: (props: SuggestionProps<T>) => {
 					component = new ReactRenderer(GenericMentionList, {
-						props: {
-							items: props.items,
-							command: props.command,
-							renderItem: config.renderItem,
-						},
+						props: getListProps(props),
 						editor: props.editor,
 					});
 
-					if (!props.clientRect) {
-						return;
-					}
-
-					popup = tippy(document.body, {
-						getReferenceClientRect:
-							props.clientRect as () => DOMRect,
-						appendTo: () => document.body,
-						content: component.element,
-						showOnCreate: true,
-						interactive: true,
-						trigger: "manual",
-						placement: "bottom-start",
-					});
+					unmount = props.mount(component.element);
 				},
 				onUpdate: (props: SuggestionProps<T>) => {
-					component.updateProps(props);
-
-					if (!props.clientRect) {
-						return;
-					}
-
-					popup.setProps({
-						getReferenceClientRect:
-							props.clientRect as () => DOMRect,
-					});
+					component?.updateProps(getListProps(props));
 				},
 				onKeyDown: (props: { event: KeyboardEvent }) => {
 					if (props.event.key === "Escape") {
-						popup.hide();
 						return true;
 					}
-					return component.ref?.handleKeyDown?.(props.event) || false;
+					return component?.ref?.handleKeyDown?.(props.event) || false;
 				},
 				onExit: () => {
-					popup.destroy();
-					component.destroy();
+					unmount?.();
+					component?.destroy();
+					unmount = undefined;
+					component = undefined;
 				},
 			};
 		},

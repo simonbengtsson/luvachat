@@ -9,13 +9,5 @@
     {
       "type": "web",
     },
-    {
-      "type": "ios",
-      "identifier": "io.flown.luvachat",
-      "redirectUrls": [
-        "io.flown.luvachat://oauth-callback"
-      ],
-      "downloadLink": "https://apps.apple.com/us/app/peach-classes-workshops/id1518270776",
-    },
   ],
 }
