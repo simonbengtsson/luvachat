@@ -1,5 +1,9 @@
 import { logRequestError } from "@/core/error-reporting"
-import { createMiddleware, createStart } from "@tanstack/react-start"
+import {
+  createCsrfMiddleware,
+  createMiddleware,
+  createStart,
+} from "@tanstack/react-start"
 
 if (process.env.NODE_ENV === "development" && typeof window === "undefined") {
   import("tidewave/tanstack")
@@ -16,7 +20,11 @@ const requestErrorLogger = createMiddleware().server(
   },
 )
 
+const csrfMiddleware = createCsrfMiddleware({
+  filter: (ctx) => ctx.handlerType === "serverFn",
+})
+
 export const startInstance = createStart(() => ({
   defaultSsr: false,
-  requestMiddleware: [requestErrorLogger],
+  requestMiddleware: [csrfMiddleware, requestErrorLogger],
 }))
