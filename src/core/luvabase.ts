@@ -4,10 +4,11 @@ import {
   type Member,
 } from "luvabase/runtime";
 import {
+  type CloudflareAccessEnv,
   getCloudflareAccessMembers,
   getCloudflareAccessSession,
   hasCloudflareAccessConfig,
-} from "./cloudflareAcess";
+} from "./cloudflareAccess";
 
 export const DEV_USER_COOKIE_NAME = "luvachat-dev-user"
 
@@ -22,7 +23,10 @@ export function isDevEnv() {
   return Boolean(import.meta.env.DEV)
 }
 
-export function getDeploymentMode(request: Request): DeploymentMode {
+export function getDeploymentMode(
+  request: Request,
+  env?: CloudflareAccessEnv,
+): DeploymentMode {
   if (isDevEnv()) {
     return "development"
   }
@@ -31,7 +35,7 @@ export function getDeploymentMode(request: Request): DeploymentMode {
     return "luvabase"
   }
 
-  if (hasCloudflareAccessConfig(request)) {
+  if (hasCloudflareAccessConfig(request, env)) {
     return "cloudflare-access"
   }
 
@@ -83,13 +87,14 @@ function getDevUserIdFromRequest(request: Request): string | null {
 
 export async function getSession(
   request: Request,
+  env?: CloudflareAccessEnv,
 ): Promise<Session> {
-  const deploymentMode = getDeploymentMode(request)
+  const deploymentMode = getDeploymentMode(request, env)
   if (deploymentMode === "luvabase") {
     return getLuvabaseSession(request)
   }
   if (deploymentMode === "cloudflare-access") {
-    return getCloudflareAccessSession(request)
+    return getCloudflareAccessSession(request, env!)
   }
   return getDemoSession(request)
 }
@@ -109,13 +114,16 @@ function getDemoSession(request: Request): Session {
   }
 }
 
-export async function getMembers(request: Request): Promise<Member[]> {
-  const deploymentMode = getDeploymentMode(request)
+export async function getMembers(
+  request: Request,
+  env?: CloudflareAccessEnv,
+): Promise<Member[]> {
+  const deploymentMode = getDeploymentMode(request, env)
   const workspaceMembers =
     deploymentMode === "luvabase"
       ? await getRuntimeMembers(request)
       : deploymentMode === "cloudflare-access"
-        ? getCloudflareAccessMembers()
+        ? getCloudflareAccessMembers(env!)
         : Object.values(members)
 
   return workspaceMembers.filter((member): member is Member =>

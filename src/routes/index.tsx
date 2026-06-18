@@ -7,7 +7,7 @@ export const Route = createFileRoute("/")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const session = await getSession(request)
+        const session = await getSession(request, env)
         const syncObject = env.SyncObject.getByName("workspace")
         const serverOrpcClient = createServerOrpcClient(syncObject, session.id)
         const conversations = await serverOrpcClient.getConversations()

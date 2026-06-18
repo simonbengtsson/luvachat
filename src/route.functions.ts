@@ -5,6 +5,7 @@ import {
   getSession as getLuvaSession,
   isDevEnv,
 } from "@/core/luvabase"
+import type { CloudflareAccessEnv } from "@/core/cloudflareAccess"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequest, setCookie } from "@tanstack/react-start/server"
 import { z } from "zod"
@@ -12,14 +13,14 @@ import { z } from "zod"
 export const getSession = createServerFn({ method: "GET" }).handler(
   async () => {
     const request = getRequest()
-    return getLuvaSession(request)
+    return getLuvaSession(request, getCloudflareAccessEnv())
   },
 )
 
 export const getSidebarSession = createServerFn({ method: "GET" }).handler(
   async () => {
     const request = getRequest()
-    const session = await getLuvaSession(request)
+    const session = await getLuvaSession(request, getCloudflareAccessEnv())
 
     return {
       session,
@@ -33,7 +34,7 @@ export const getDeploymentInfo = createServerFn({ method: "GET" }).handler(
   async () => {
     const request = getRequest()
     return {
-      mode: getDeploymentMode(request),
+      mode: getDeploymentMode(request, getCloudflareAccessEnv()),
     }
   },
 )
@@ -41,7 +42,7 @@ export const getDeploymentInfo = createServerFn({ method: "GET" }).handler(
 export const getWorkspaceMembers = createServerFn({ method: "GET" }).handler(
   async () => {
     const request = getRequest()
-    return getLuvaMembers(request)
+    return getLuvaMembers(request, getCloudflareAccessEnv())
   },
 )
 
@@ -57,7 +58,7 @@ export const switchDevUser = createServerFn({ method: "POST" })
     }
 
     const request = getRequest()
-    const members = await getLuvaMembers(request)
+    const members = await getLuvaMembers(request, getCloudflareAccessEnv())
     const selectedMember = members.find((member) => member.id === data.userId)
 
     if (!selectedMember) {
@@ -70,3 +71,11 @@ export const switchDevUser = createServerFn({ method: "POST" })
       sameSite: "lax",
     })
   })
+
+function getCloudflareAccessEnv(): CloudflareAccessEnv {
+  return {
+    CF_ACCESS_AUD: process.env["CF_ACCESS_AUD"],
+    CF_ACCESS_TEAM_DOMAIN: process.env["CF_ACCESS_TEAM_DOMAIN"],
+    MEMBERS_JSON: process.env["MEMBERS_JSON"],
+  } as CloudflareAccessEnv
+}

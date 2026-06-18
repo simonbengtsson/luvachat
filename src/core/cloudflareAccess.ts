@@ -1,4 +1,3 @@
-import { env as cloudflareEnv } from "cloudflare:workers"
 import type { Member } from "luvabase/runtime"
 
 export type CloudflareAccessSession = {
@@ -7,7 +6,7 @@ export type CloudflareAccessSession = {
   imageUrl: string | null
 }
 
-type StandaloneCloudflareEnv = Cloudflare.Env & {
+export type CloudflareAccessEnv = Cloudflare.Env & {
   CF_ACCESS_AUD?: string
   CF_ACCESS_TEAM_DOMAIN?: string
   MEMBERS_JSON?: string
@@ -48,11 +47,13 @@ type Jwks = {
 
 const jwksCache = new Map<string, Promise<Jwks>>()
 
-export function hasCloudflareAccessConfig(request: Request): boolean {
-  const env = getStandaloneEnv()
+export function hasCloudflareAccessConfig(
+  request: Request,
+  env: CloudflareAccessEnv | undefined,
+): boolean {
   return Boolean(
     request.headers.get("cf-access-jwt-assertion") &&
-      env.CF_ACCESS_AUD &&
+      env?.CF_ACCESS_AUD &&
       env.CF_ACCESS_TEAM_DOMAIN &&
       env.MEMBERS_JSON,
   )
@@ -60,14 +61,15 @@ export function hasCloudflareAccessConfig(request: Request): boolean {
 
 export async function getCloudflareAccessSession(
   request: Request,
+  env: CloudflareAccessEnv,
 ): Promise<CloudflareAccessSession> {
   const token = request.headers.get("cf-access-jwt-assertion")
   if (!token) {
     throw new Error("Missing Luvabase user headers or Cloudflare Access JWT")
   }
 
-  const payload = await verifyCloudflareAccessJwt(token)
-  const members = getCloudflareAccessMembers()
+  const payload = await verifyCloudflareAccessJwt(token, env)
+  const members = getCloudflareAccessMembers(env)
   const matchingMember = members.find(
     (member) => member.id === payload.email || member.id === payload.sub,
   )
@@ -83,8 +85,8 @@ export async function getCloudflareAccessSession(
   }
 }
 
-export function getCloudflareAccessMembers(): Member[] {
-  const membersJson = getStandaloneEnv().MEMBERS_JSON
+export function getCloudflareAccessMembers(env: CloudflareAccessEnv): Member[] {
+  const membersJson = env.MEMBERS_JSON
   if (!membersJson) {
     throw new Error("Missing MEMBERS_JSON")
   }
@@ -109,6 +111,7 @@ export function getCloudflareAccessMembers(): Member[] {
 
 async function verifyCloudflareAccessJwt(
   token: string,
+  env: CloudflareAccessEnv,
 ): Promise<CloudflareAccessJwtPayload> {
   const [encodedHeader, encodedPayload, encodedSignature] = token.split(".")
   if (!encodedHeader || !encodedPayload || !encodedSignature) {
@@ -117,7 +120,6 @@ async function verifyCloudflareAccessJwt(
 
   const header = decodeJwtPart<CloudflareAccessJwtHeader>(encodedHeader)
   const payload = decodeJwtPart<CloudflareAccessJwtPayload>(encodedPayload)
-  const env = getStandaloneEnv()
   const issuer = getCloudflareAccessIssuer(env)
   const audience = env.CF_ACCESS_AUD
 
@@ -191,11 +193,7 @@ function getCloudflareAccessJwks(issuer: string): Promise<Jwks> {
   return request
 }
 
-function getStandaloneEnv(): StandaloneCloudflareEnv {
-  return cloudflareEnv as StandaloneCloudflareEnv
-}
-
-function getCloudflareAccessIssuer(env: StandaloneCloudflareEnv): string {
+function getCloudflareAccessIssuer(env: CloudflareAccessEnv): string {
   const teamDomain = env.CF_ACCESS_TEAM_DOMAIN
   if (!teamDomain) {
     throw new Error("Missing CF_ACCESS_TEAM_DOMAIN")

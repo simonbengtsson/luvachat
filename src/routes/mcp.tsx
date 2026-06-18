@@ -14,7 +14,7 @@ export const Route = createFileRoute("/mcp")({
         console.log("MCP request", url.pathname)
 
         const getOrpcClient = async () => {
-          const session = await getSession(request)
+          const session = await getSession(request, env)
           const syncObject = env.SyncObject.getByName("workspace")
           return createServerOrpcClient(syncObject, session.id)
         }

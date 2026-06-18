@@ -18,7 +18,7 @@ export default {
 
     try {
       if (url.pathname.startsWith("/sync")) {
-        const session = await getSession(requestWithId)
+        const session = await getSession(requestWithId, env)
         userId = session.id
         const syncObject = env.SyncObject.getByName("workspace")
         const headers = new Headers(requestWithId.headers)
