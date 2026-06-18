@@ -6,7 +6,8 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { initializeSyncConnection } from "@/core/clientConnection"
 import { queryClient } from "@/core/queryClient"
-import { QueryClientProvider } from "@tanstack/react-query"
+import { getDeploymentInfo } from "@/route.functions"
+import { QueryClientProvider, useQuery } from "@tanstack/react-query"
 import {
   HeadContent,
   Scripts,
@@ -112,11 +113,44 @@ function RootAppShell({ children }: { children: React.ReactNode }) {
         >
           <AppSidebar variant="inset" />
           <SidebarInset className="flex h-screen flex-col overflow-hidden">
-            {children}
+            <AppShellContent>{children}</AppShellContent>
           </SidebarInset>
           <AppCommand />
         </SidebarProvider>
       </TooltipProvider>
     </QueryClientProvider>
+  )
+}
+
+function AppShellContent({ children }: { children: React.ReactNode }) {
+  const deploymentInfoQuery = useQuery({
+    queryKey: ["deployment-info"],
+    queryFn: () => getDeploymentInfo(),
+    staleTime: Infinity,
+  })
+
+  return (
+    <>
+      {deploymentInfoQuery.data?.mode === "demo" ? <DemoModeBanner /> : null}
+      {children}
+    </>
+  )
+}
+
+function DemoModeBanner() {
+  return (
+    <div className="border-b bg-amber-50 px-4 py-2 text-sm text-amber-950 dark:border-amber-500/30 dark:bg-amber-950/35 dark:text-amber-100">
+      <span className="font-medium">Demo mode.</span>{" "}
+      This deployment is not connected to Luvabase or Cloudflare Access.{" "}
+      <a
+        className="font-medium underline underline-offset-2"
+        href="https://github.com/simonbengtsson/luvachat#cloudflare-access"
+        target="_blank"
+        rel="noreferrer"
+      >
+        Read more
+      </a>
+      .
+    </div>
   )
 }

@@ -1,5 +1,6 @@
 import {
   DEV_USER_COOKIE_NAME,
+  getDeploymentMode,
   getMembers as getLuvaMembers,
   getSession as getLuvaSession,
   isDevEnv,
@@ -22,8 +23,17 @@ export const getSidebarSession = createServerFn({ method: "GET" }).handler(
 
     return {
       session,
-      adminUrl: `https://luvabase.com/dash/pods/123`,
+      luvabaseAdminUrl: request.headers.get("x-luvabase-pod-url") || null,
       canSwitchDevUser: isDevEnv(),
+    }
+  },
+)
+
+export const getDeploymentInfo = createServerFn({ method: "GET" }).handler(
+  async () => {
+    const request = getRequest()
+    return {
+      mode: getDeploymentMode(request),
     }
   },
 )

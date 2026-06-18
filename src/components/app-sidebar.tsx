@@ -376,8 +376,8 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
           }
           const withoutOptimistic = context?.optimisticConversationId
             ? conversations.filter(
-                (item) => item.id !== context.optimisticConversationId,
-              )
+              (item) => item.id !== context.optimisticConversationId,
+            )
             : conversations
 
           if (withoutOptimistic.some((item) => item.id === createdChannel.id)) {
@@ -770,15 +770,17 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
                   </span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  render={<a href={sessionData.adminUrl} target="_blank" />}
-                >
-                  <Settings2Icon />
-                  <span>Admin</span>
-                  <ExternalLinkIcon className="ml-auto opacity-70" />
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {sessionData.luvabaseAdminUrl ? (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    render={<a href={sessionData.luvabaseAdminUrl} target="_blank" />}
+                  >
+                    <Settings2Icon />
+                    <span>Luvabase Admin</span>
+                    <ExternalLinkIcon className="ml-auto opacity-70" />
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ) : null}
             </SidebarMenu>
             {canSwitchDevUser ? (
               <DevUserSwitcher

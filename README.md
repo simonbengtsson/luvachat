@@ -15,13 +15,40 @@ Luvachat is your self-hostable team chat app. Think Slack, but smaller and built
 
 The easiest way to use Luvachat is to [install it on Luvabase](https://luvabase.com/apps/luvachat/install). On Luvabase authentication and workspace members are managed for you.
 
-You can also [Deploy to Cloudflare](https://deploy.workers.cloudflare.com/?url=https://github.com/simonbengtsson/luvachat) and run Luvachat on your own Cloudflare account.
+Another option is to [Deploy on Cloudflare](https://deploy.workers.cloudflare.com/?url=https://github.com/simonbengtsson/luvachat) and run Luvachat on your own Cloudflare account (see below to setup Cloudflare access)
 
-For local development:
+If you deploy Luvachat to Cloudflare without setting up Cloudflare Access or run it locally it will run in a demo mode with some sample members.
+
+Run the app in demo mode locally with:
 
 ```bash
 bun install
 bun run dev
+```
+
+### Cloudflare Access
+
+When running directly on Cloudflare, put the Worker behind a Cloudflare Access application and configure these Worker env variables:
+
+- `CF_ACCESS_TEAM_DOMAIN`: your Access team domain, for example `https://your-team.cloudflareaccess.com`
+- `CF_ACCESS_AUD`: the Access application audience tag
+- `MEMBERS_JSON`: the workspace member directory as JSON
+
+You can update `MEMBERS_JSON` to add/remove members, but you need to redeploy the worker for changes to take affect.
+
+```json
+[
+  {
+    "id": "alice@example.com",
+    "name": "Alice Andersson",
+    "imageUrl": "https://example.com/alice.png"
+  },
+  {
+    "id": "bob@example.com",
+    "name": "Bob Berg",
+    "imageUrl": null
+  }
+]
 ```
 
 ## Stack

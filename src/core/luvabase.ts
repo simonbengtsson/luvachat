@@ -2,12 +2,40 @@ import {
   getMembers as getRuntimeMembers,
   type LuvaEnv,
   type Member,
-} from "luvabase/runtime"
+} from "luvabase/runtime";
+import {
+  getCloudflareAccessMembers,
+  getCloudflareAccessSession,
+  hasCloudflareAccessConfig,
+} from "./cloudflareAcess";
 
 export const DEV_USER_COOKIE_NAME = "luvachat-dev-user"
 
+type Session = { id: string; name: string; imageUrl: string | null }
+export type DeploymentMode =
+  | "development"
+  | "luvabase"
+  | "cloudflare-access"
+  | "demo"
+
 export function isDevEnv() {
   return Boolean(import.meta.env.DEV)
+}
+
+export function getDeploymentMode(request: Request): DeploymentMode {
+  if (isDevEnv()) {
+    return "development"
+  }
+
+  if (isLuvabaseRequest(request)) {
+    return "luvabase"
+  }
+
+  if (hasCloudflareAccessConfig(request)) {
+    return "cloudflare-access"
+  }
+
+  return "demo"
 }
 
 const members = {
@@ -55,22 +83,18 @@ function getDevUserIdFromRequest(request: Request): string | null {
 
 export async function getSession(
   request: Request,
-): Promise<{ id: string; name: string; imageUrl: string | null }> {
-  if (!isDevEnv()) {
-    return {
-      id:
-        request.headers.get("x-luvabase-user-id") ||
-        request.headers.get("x-luvabase-actor-id")!,
-      name:
-        request.headers.get("x-luvabase-user-name") ||
-        request.headers.get("x-luvabase-actor-name")!,
-      imageUrl:
-        request.headers.get("x-luvabase-user-image-url") ||
-        request.headers.get("x-luvabase-actor-image-url") ||
-        null,
-    }
+): Promise<Session> {
+  const deploymentMode = getDeploymentMode(request)
+  if (deploymentMode === "luvabase") {
+    return getLuvabaseSession(request)
   }
+  if (deploymentMode === "cloudflare-access") {
+    return getCloudflareAccessSession(request)
+  }
+  return getDemoSession(request)
+}
 
+function getDemoSession(request: Request): Session {
   const cookieUserId = getDevUserIdFromRequest(request)
   const envUserId = import.meta.env.VITE_DEV_USER
 
@@ -86,13 +110,43 @@ export async function getSession(
 }
 
 export async function getMembers(request: Request): Promise<Member[]> {
-  const workspaceMembers = !isDevEnv()
-    ? await getRuntimeMembers(request)
-    : Object.values(members)
+  const deploymentMode = getDeploymentMode(request)
+  const workspaceMembers =
+    deploymentMode === "luvabase"
+      ? await getRuntimeMembers(request)
+      : deploymentMode === "cloudflare-access"
+        ? getCloudflareAccessMembers()
+        : Object.values(members)
 
   return workspaceMembers.filter((member): member is Member =>
     Boolean(member?.id),
   )
 }
 
-export type { LuvaEnv, Member }
+function isLuvabaseRequest(request: Request): boolean {
+  return Boolean(request.headers.get("x-luvabase-pod-url"))
+}
+
+function getLuvabaseSession(request: Request): Session {
+  const id =
+    request.headers.get("x-luvabase-user-id") ||
+    request.headers.get("x-luvabase-actor-id")
+  const name =
+    request.headers.get("x-luvabase-user-name") ||
+    request.headers.get("x-luvabase-actor-name")
+
+  if (!id || !name) {
+    throw new Error("Missing Luvabase user headers")
+  }
+
+  return {
+    id,
+    name,
+    imageUrl:
+      request.headers.get("x-luvabase-user-image-url") ||
+      request.headers.get("x-luvabase-actor-image-url") ||
+      null,
+  }
+}
+
+export type { LuvaEnv, Member };
