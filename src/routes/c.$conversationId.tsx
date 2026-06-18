@@ -1,6 +1,5 @@
 import { ConversationReplyInput } from "@/components/conversation-reply-input"
 import { SiteHeader } from "@/components/site-header"
-import { ThreadSummaryDialog } from "@/components/thread-summary-dialog"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
   ChatMessage,
@@ -94,7 +93,6 @@ import {
   MessageSquareTextIcon,
   SearchIcon,
   SmileIcon,
-  SparklesIcon,
 } from "lucide-react"
 import {
   lazy,
@@ -279,10 +277,6 @@ function MessageReactionChips({
   )
 }
 
-function canSummarizeThread(message: EnrichedMessage) {
-  return !message.threadRootMessageId && message.threadReplyCount > 0
-}
-
 function RouteComponent() {
   const { conversationId } = Route.useParams()
   const matchRoute = useMatchRoute()
@@ -399,8 +393,6 @@ function ConversationView({
   const isSyncConnected = syncConnectionStatus === "connected"
 
   const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false)
-  const [activeSummaryMessage, setActiveSummaryMessage] =
-    useState<EnrichedMessage | null>(null)
   const loadMoreRef = useRef<HTMLDivElement>(null)
   const lastPersistedViewedMessageIdRef = useRef<string | null>(null)
   const previousScrollHeightRef = useRef<number>(0)
@@ -944,16 +936,6 @@ function ConversationView({
                           toggleMessageReaction(threadRootMessage.id, emoji)
                         }
                       />
-                      {canSummarizeThread(threadRootMessage) ? (
-                        <ChatMessageAction
-                          label="Summarize thread with AI"
-                          onClick={() =>
-                            setActiveSummaryMessage(threadRootMessage)
-                          }
-                        >
-                          <SparklesIcon className="size-4" />
-                        </ChatMessageAction>
-                      ) : null}
                       <ChatMessageActionCopy
                         onClick={() =>
                           copyMessageContent(
@@ -1081,14 +1063,6 @@ function ConversationView({
                           onClick={() => openThread(message.id)}
                         >
                           <MessageSquareTextIcon className="size-4" />
-                        </ChatMessageAction>
-                      ) : null}
-                      {canSummarizeThread(message) ? (
-                        <ChatMessageAction
-                          label="Summarize thread with AI"
-                          onClick={() => setActiveSummaryMessage(message)}
-                        >
-                          <SparklesIcon className="size-4" />
                         </ChatMessageAction>
                       ) : null}
                       <ChatMessageActionCopy
@@ -1227,18 +1201,6 @@ function ConversationView({
             />
           </div>
         )}
-
-        {activeSummaryMessage ? (
-          <ThreadSummaryDialog
-            conversationId={conversationId}
-            message={activeSummaryMessage}
-            onOpenChange={(open) => {
-              if (!open) {
-                setActiveSummaryMessage(null)
-              }
-            }}
-          />
-        ) : null}
       </div>
     </div>
   )

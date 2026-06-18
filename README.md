@@ -9,7 +9,7 @@
 
 ## What is Luvachat?
 
-Luvachat is your self-hostable team chat app. Think Slack, but smaller and built for teams that want workspace messaging they can run themselves. It includes channels, direct conversations, threaded replies, activity, message search, and a built-in AI chat surface.
+Luvachat is your self-hostable team chat app. Think Slack, but smaller and built for teams that want workspace messaging they can run themselves. It includes channels, direct conversations, threaded replies, activity, message search, rich text, and attachments.
 
 ## Getting started
 
@@ -31,7 +31,6 @@ Luvachat is built as a TanStack Start app with a real-time sync and persistence 
 - Server: Cloudflare Durable Objects, Worker, R2, ORPC, Drizzle
 - Client: React, Shadcn, TanStack Router, TanStack Query, Tailwind
 - Rich text editing with [Tiptap](https://tiptap.dev)
-- AI chat with TanStack AI and OpenRouter
 
 ## Contributions
 
@@ -41,4 +40,4 @@ Very much welcome! The goal is to keep Luvachat focused and easy to self-host, b
 - More powerful search filters
 - Message editing and deletion
 - Workspace administration screens
-- More AI-assisted thread and conversation summaries
+- Improved thread and conversation summaries

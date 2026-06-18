@@ -13,13 +13,10 @@ import { Route as ThreadsRouteImport } from './routes/threads'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as NewRouteImport } from './routes/new'
 import { Route as McpRouteImport } from './routes/mcp'
-import { Route as AichatRouteImport } from './routes/aichat'
 import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CConversationIdRouteImport } from './routes/c.$conversationId'
 import { Route as AssetsSplatRouteImport } from './routes/assets.$'
-import { Route as ApiThreadSummaryRouteImport } from './routes/api/thread-summary'
-import { Route as ApiAichatRouteImport } from './routes/api/aichat'
 import { Route as CConversationIdReplyRouteImport } from './routes/c.$conversationId.reply'
 
 const ThreadsRoute = ThreadsRouteImport.update({
@@ -42,11 +39,6 @@ const McpRoute = McpRouteImport.update({
   path: '/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AichatRoute = AichatRouteImport.update({
-  id: '/aichat',
-  path: '/aichat',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ActivityRoute = ActivityRouteImport.update({
   id: '/activity',
   path: '/activity',
@@ -67,16 +59,6 @@ const AssetsSplatRoute = AssetsSplatRouteImport.update({
   path: '/assets/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiThreadSummaryRoute = ApiThreadSummaryRouteImport.update({
-  id: '/api/thread-summary',
-  path: '/api/thread-summary',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAichatRoute = ApiAichatRouteImport.update({
-  id: '/api/aichat',
-  path: '/api/aichat',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const CConversationIdReplyRoute = CConversationIdReplyRouteImport.update({
   id: '/reply',
   path: '/reply',
@@ -86,13 +68,10 @@ const CConversationIdReplyRoute = CConversationIdReplyRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
-  '/aichat': typeof AichatRoute
   '/mcp': typeof McpRoute
   '/new': typeof NewRoute
   '/search': typeof SearchRoute
   '/threads': typeof ThreadsRoute
-  '/api/aichat': typeof ApiAichatRoute
-  '/api/thread-summary': typeof ApiThreadSummaryRoute
   '/assets/$': typeof AssetsSplatRoute
   '/c/$conversationId': typeof CConversationIdRouteWithChildren
   '/c/$conversationId/reply': typeof CConversationIdReplyRoute
@@ -100,13 +79,10 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
-  '/aichat': typeof AichatRoute
   '/mcp': typeof McpRoute
   '/new': typeof NewRoute
   '/search': typeof SearchRoute
   '/threads': typeof ThreadsRoute
-  '/api/aichat': typeof ApiAichatRoute
-  '/api/thread-summary': typeof ApiThreadSummaryRoute
   '/assets/$': typeof AssetsSplatRoute
   '/c/$conversationId': typeof CConversationIdRouteWithChildren
   '/c/$conversationId/reply': typeof CConversationIdReplyRoute
@@ -115,13 +91,10 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
-  '/aichat': typeof AichatRoute
   '/mcp': typeof McpRoute
   '/new': typeof NewRoute
   '/search': typeof SearchRoute
   '/threads': typeof ThreadsRoute
-  '/api/aichat': typeof ApiAichatRoute
-  '/api/thread-summary': typeof ApiThreadSummaryRoute
   '/assets/$': typeof AssetsSplatRoute
   '/c/$conversationId': typeof CConversationIdRouteWithChildren
   '/c/$conversationId/reply': typeof CConversationIdReplyRoute
@@ -131,13 +104,10 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/activity'
-    | '/aichat'
     | '/mcp'
     | '/new'
     | '/search'
     | '/threads'
-    | '/api/aichat'
-    | '/api/thread-summary'
     | '/assets/$'
     | '/c/$conversationId'
     | '/c/$conversationId/reply'
@@ -145,13 +115,10 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/activity'
-    | '/aichat'
     | '/mcp'
     | '/new'
     | '/search'
     | '/threads'
-    | '/api/aichat'
-    | '/api/thread-summary'
     | '/assets/$'
     | '/c/$conversationId'
     | '/c/$conversationId/reply'
@@ -159,13 +126,10 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/activity'
-    | '/aichat'
     | '/mcp'
     | '/new'
     | '/search'
     | '/threads'
-    | '/api/aichat'
-    | '/api/thread-summary'
     | '/assets/$'
     | '/c/$conversationId'
     | '/c/$conversationId/reply'
@@ -174,13 +138,10 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ActivityRoute: typeof ActivityRoute
-  AichatRoute: typeof AichatRoute
   McpRoute: typeof McpRoute
   NewRoute: typeof NewRoute
   SearchRoute: typeof SearchRoute
   ThreadsRoute: typeof ThreadsRoute
-  ApiAichatRoute: typeof ApiAichatRoute
-  ApiThreadSummaryRoute: typeof ApiThreadSummaryRoute
   AssetsSplatRoute: typeof AssetsSplatRoute
   CConversationIdRoute: typeof CConversationIdRouteWithChildren
 }
@@ -215,13 +176,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof McpRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/aichat': {
-      id: '/aichat'
-      path: '/aichat'
-      fullPath: '/aichat'
-      preLoaderRoute: typeof AichatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/activity': {
       id: '/activity'
       path: '/activity'
@@ -250,20 +204,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AssetsSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/thread-summary': {
-      id: '/api/thread-summary'
-      path: '/api/thread-summary'
-      fullPath: '/api/thread-summary'
-      preLoaderRoute: typeof ApiThreadSummaryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/aichat': {
-      id: '/api/aichat'
-      path: '/api/aichat'
-      fullPath: '/api/aichat'
-      preLoaderRoute: typeof ApiAichatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/c/$conversationId/reply': {
       id: '/c/$conversationId/reply'
       path: '/reply'
@@ -289,13 +229,10 @@ const CConversationIdRouteWithChildren = CConversationIdRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ActivityRoute: ActivityRoute,
-  AichatRoute: AichatRoute,
   McpRoute: McpRoute,
   NewRoute: NewRoute,
   SearchRoute: SearchRoute,
   ThreadsRoute: ThreadsRoute,
-  ApiAichatRoute: ApiAichatRoute,
-  ApiThreadSummaryRoute: ApiThreadSummaryRoute,
   AssetsSplatRoute: AssetsSplatRoute,
   CConversationIdRoute: CConversationIdRouteWithChildren,
 }

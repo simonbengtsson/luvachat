@@ -10,7 +10,6 @@ declare namespace Cloudflare {
 		MAIN_BUCKET: R2Bucket;
 		TURSO_DATABASE_URL: string;
 		TURSO_AUTH_TOKEN: string;
-		OPENROUTER_API_KEY: string;
 		BASE_URL: string;
 		SyncObject: DurableObjectNamespace<import("./src/server").SyncObject>;
 	}
@@ -20,7 +19,7 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "TURSO_DATABASE_URL" | "TURSO_AUTH_TOKEN" | "OPENROUTER_API_KEY" | "BASE_URL">> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "TURSO_DATABASE_URL" | "TURSO_AUTH_TOKEN" | "BASE_URL">> {}
 }
 
 // Begin runtime types
