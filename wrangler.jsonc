@@ -1,31 +1,35 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "luvachat3",
-  "workers_dev": true,
-  "compatibility_date": "2026-03-17",
-  "compatibility_flags": ["nodejs_compat"],
-  "main": "src/server.tsx",
-  "r2_buckets": [
-    {
-      "binding": "MAIN_BUCKET",
-      "bucket_name": "luvachatlocal",
-    },
-  ],
-  "durable_objects": {
-    "bindings": [
-      {
-        "name": "SyncObject",
-        "class_name": "SyncObject",
-      },
-    ],
-  },
-  "migrations": [
-    {
-      "tag": "v1",
-      "new_sqlite_classes": ["SyncObject"],
-    },
-  ],
-  "observability": {
-    "enabled": true,
-  },
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "luvachat",
+	"workers_dev": true,
+	"compatibility_date": "2026-03-17",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"main": "src/server.tsx",
+	"r2_buckets": [
+		{
+			"binding": "MAIN_BUCKET",
+			"bucket_name": "luvachatlocal",
+		},
+	],
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "SyncObject",
+				"class_name": "SyncObject",
+			},
+		],
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": [
+				"SyncObject"
+			],
+		},
+	],
+	"observability": {
+		"enabled": true,
+	},
 }
