@@ -138,14 +138,15 @@ function sortMembersForSidebar(
   ]
 }
 
-function getDirectConversationMemberId(
+function getDirectConversationSidebarMemberIds(
   conversation: EnrichedConversation,
   currentUserId: string,
 ) {
-  return (
-    conversation.memberIds.find((memberId) => memberId !== currentUserId) ??
-    null
+  const otherMemberIds = conversation.memberIds.filter(
+    (memberId) => memberId !== currentUserId,
   )
+
+  return otherMemberIds.length > 0 ? otherMemberIds : conversation.memberIds
 }
 
 function getGroupConversationName(
@@ -375,8 +376,8 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
           }
           const withoutOptimistic = context?.optimisticConversationId
             ? conversations.filter(
-              (item) => item.id !== context.optimisticConversationId,
-            )
+                (item) => item.id !== context.optimisticConversationId,
+              )
             : conversations
 
           if (withoutOptimistic.some((item) => item.id === createdChannel.id)) {
@@ -458,16 +459,21 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
     (conversation) => conversation.type === "group",
   )
   const directConversations = conversations.filter(
-    (conversation) => conversation.type === "direct",
+    (conversation) => conversation.type === "direct", 
   )
   const directConversationsByMemberId = new Map<string, EnrichedConversation>()
 
   for (const conversation of directConversations) {
-    const memberId = getDirectConversationMemberId(conversation, currentUserId)
-    if (!memberId) {
-      continue
+    const memberIds = getDirectConversationSidebarMemberIds(
+      conversation,
+      currentUserId,
+    )
+
+    for (const memberId of memberIds) {
+      if (!directConversationsByMemberId.has(memberId)) {
+        directConversationsByMemberId.set(memberId, conversation)
+      }
     }
-    directConversationsByMemberId.set(memberId, conversation)
   }
 
   const sortedChannelConversations =
@@ -478,24 +484,6 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
     members,
     directConversationsByMemberId,
   )
-
-  async function handleOpenMemberConversation(
-    memberId: string,
-    conversationId?: string,
-  ) {
-    if (conversationId) {
-      await navigate({
-        to: "/c/$conversationId",
-        params: { conversationId } as any,
-      })
-      return
-    }
-
-    await navigate({
-      to: "/new",
-      search: { members: memberId },
-    })
-  }
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -654,10 +642,11 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
                   member.id,
                 )
                 const isActive = Boolean(
-                  matchRoute({
-                    to: "/c/$conversationId",
-                    params: { conversationId: conversation?.id ?? "" },
-                  }) ||
+                  (conversation &&
+                    matchRoute({
+                      to: "/c/$conversationId",
+                      params: { conversationId: conversation.id } as any,
+                    })) ||
                   matchRoute({
                     to: "/new",
                     search: { members: member.id },
@@ -674,12 +663,16 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
                   <SidebarMenuItem key={member.id}>
                     <SidebarMenuButton
                       isActive={isActive}
-                      onClick={() => {
-                        void handleOpenMemberConversation(
-                          member.id,
-                          conversation?.id,
+                      render={
+                        conversation ? (
+                          <Link
+                            to="/c/$conversationId"
+                            params={{ conversationId: conversation.id } as any}
+                          />
+                        ) : (
+                          <Link to="/new" search={{ members: member.id }} />
                         )
-                      }}
+                      }
                     >
                       <Avatar className="size-5">
                         <AvatarImage
@@ -771,7 +764,9 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
               {sessionData.luvabaseAdminUrl ? (
                 <SidebarMenuItem>
                   <SidebarMenuButton
-                    render={<a href={sessionData.luvabaseAdminUrl} target="_blank" />}
+                    render={
+                      <a href={sessionData.luvabaseAdminUrl} target="_blank" />
+                    }
                   >
                     <Settings2Icon />
                     <span>Luvabase Admin</span>
