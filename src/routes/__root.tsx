@@ -2,11 +2,13 @@ import { AppShellErrorBoundary } from "@/components/AppShellErrorBoundary"
 import { GlobalNotFoundPage } from "@/components/GlobalNotFoundPage"
 import { AppCommand } from "@/components/app-command"
 import { AppSidebar } from "@/components/app-sidebar"
+import { DevUserSwitcher } from "@/components/dev-user-switcher"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { initializeSyncConnection } from "@/core/clientConnection"
+import { useWorkspaceMembers } from "@/core/members"
 import { queryClient } from "@/core/queryClient"
-import { getDeploymentInfo } from "@/route.functions"
+import { getDeploymentInfo, getSidebarSession } from "@/route.functions"
 import { QueryClientProvider, useQuery } from "@tanstack/react-query"
 import {
   HeadContent,
@@ -103,54 +105,81 @@ function RootAppShell({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <SidebarProvider
-          style={
-            {
-              "--sidebar-width": "calc(var(--spacing) * 72)",
-              "--header-height": "calc(var(--spacing) * 12)",
-            } as React.CSSProperties
-          }
-        >
-          <AppSidebar variant="inset" />
-          <SidebarInset className="flex h-screen flex-col overflow-hidden">
-            <AppShellContent>{children}</AppShellContent>
-          </SidebarInset>
-          <AppCommand />
-        </SidebarProvider>
+        <AppShellFrame>{children}</AppShellFrame>
       </TooltipProvider>
     </QueryClientProvider>
   )
 }
 
-function AppShellContent({ children }: { children: React.ReactNode }) {
+function AppShellFrame({ children }: { children: React.ReactNode }) {
   const deploymentInfoQuery = useQuery({
     queryKey: ["deployment-info"],
     queryFn: () => getDeploymentInfo(),
     staleTime: Infinity,
   })
+  const isDemoMode = deploymentInfoQuery.data?.mode === "demo"
 
   return (
-    <>
-      {deploymentInfoQuery.data?.mode === "demo" ? <DemoModeBanner /> : null}
-      {children}
-    </>
+    <div className="flex h-screen flex-col overflow-hidden bg-sidebar">
+      {isDemoMode ? <DemoModeBanner /> : null}
+      <SidebarProvider
+        className="min-h-0 flex-1"
+        style={
+          {
+            "--sidebar-width": "calc(var(--spacing) * 72)",
+            "--header-height": "calc(var(--spacing) * 12)",
+            "--sidebar-offset-top": isDemoMode
+              ? "calc(var(--spacing) * 10)"
+              : "0px",
+          } as React.CSSProperties
+        }
+      >
+        <AppSidebar variant="inset" />
+        <SidebarInset className="flex h-full min-h-0 flex-col overflow-hidden">
+          {children}
+        </SidebarInset>
+        <AppCommand />
+      </SidebarProvider>
+    </div>
   )
 }
 
 function DemoModeBanner() {
+  const sessionQuery = useQuery({
+    queryKey: ["sidebar-session"],
+    queryFn: () => getSidebarSession(),
+  })
+  const membersQuery = useWorkspaceMembers()
+  const sessionData = sessionQuery.data
+  const members = membersQuery.data
+  const canSwitchUser = sessionData?.canSwitchDevUser && members
+
   return (
-    <div className="border-b bg-amber-50 px-4 py-2 text-sm text-amber-950 dark:border-amber-500/30 dark:bg-amber-950/35 dark:text-amber-100">
-      <span className="font-medium">Demo mode.</span>{" "}
-      This deployment is not connected to Luvabase or Cloudflare Access.{" "}
-      <a
-        className="font-medium underline underline-offset-2"
-        href="https://github.com/simonbengtsson/luvachat#cloudflare-access"
-        target="_blank"
-        rel="noreferrer"
-      >
-        Read more
-      </a>
-      .
+    <div className="min-h-10 w-full shrink-0 border-b border-white/20 bg-[#f39c12] px-4 py-1.5 text-sm leading-5 text-white">
+      <p>
+        <span className="font-medium">Demo mode.</span>{" "}
+        <span>
+          This deployment is not connected to Luvabase or Cloudflare Access.{" "}
+        </span>
+        <a
+          className="font-medium text-white underline underline-offset-2 hover:text-white/90"
+          href="https://github.com/simonbengtsson/luvachat#cloudflare-access"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Read more
+        </a>
+        <span>.</span>
+        {canSwitchUser ? (
+          <>
+            <span className="mx-2 text-white/70">|</span>
+            <DevUserSwitcher
+              currentUserId={sessionData.session.id}
+              members={members}
+            />
+          </>
+        ) : null}
+      </p>
     </div>
   )
 }

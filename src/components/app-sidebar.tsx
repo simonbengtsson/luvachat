@@ -60,7 +60,6 @@ import {
 import { type ComponentProps, useEffect, useState } from "react"
 import { dispatchOpenAppCommandEvent } from "./app-command.events"
 import { AppSidebarLoader } from "./app-sidebar-loader"
-import { DevUserSwitcher } from "./dev-user-switcher"
 import { PopupInput } from "./PopupInput"
 import {
   DropdownMenu,
@@ -449,7 +448,6 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   }
 
   const currentUserId = sessionData.session.id
-  const canSwitchDevUser = sessionData.canSwitchDevUser
   const hasUnreadThreads = hasUnreadThreadsQuery.data ?? false
   const hasUnreadActivity = hasUnreadActivityQuery.data ?? false
   const membersById = new Map(members.map((member) => [member.id, member]))
@@ -782,12 +780,6 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
                 </SidebarMenuItem>
               ) : null}
             </SidebarMenu>
-            {canSwitchDevUser ? (
-              <DevUserSwitcher
-                currentUserId={currentUserId}
-                members={members}
-              />
-            ) : null}
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>

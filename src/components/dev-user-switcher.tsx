@@ -25,12 +25,11 @@ export function DevUserSwitcher({
   })
 
   return (
-    <section className="px-2 pt-3">
-      <div className="mb-2 text-xs font-medium text-sidebar-foreground/70">
-        Dev User
-      </div>
+    <span className="inline-flex max-w-full items-center gap-2 align-middle">
+      <span className="shrink-0 font-medium text-white/90">Current User</span>
       <NativeSelect
-        className="w-full"
+        size="sm"
+        className="w-36 max-w-full text-white [&_[data-slot=native-select-icon]]:text-white/80 [&_[data-slot=native-select]]:border-white/40 [&_[data-slot=native-select]]:bg-white/10 [&_[data-slot=native-select]]:text-white [&_[data-slot=native-select]]:focus-visible:border-white/70 [&_[data-slot=native-select]]:focus-visible:ring-white/30"
         value={currentUserId}
         disabled={switchDevUserMutation.isPending}
         onChange={(event) => {
@@ -43,11 +42,15 @@ export function DevUserSwitcher({
         }}
       >
         {members.map((member) => (
-          <NativeSelectOption key={member.id} value={member.id}>
+          <NativeSelectOption
+            key={member.id}
+            value={member.id}
+            className="text-foreground"
+          >
             {member.name}
           </NativeSelectOption>
         ))}
       </NativeSelect>
-    </section>
+    </span>
   )
 }

@@ -2,6 +2,7 @@ import {
   getMembers as getRuntimeMembers,
   type LuvaEnv,
   type Member,
+  type RuntimeEnv,
 } from "luvabase/runtime";
 import {
   type CloudflareAccessEnv,
@@ -13,11 +14,7 @@ import {
 export const DEV_USER_COOKIE_NAME = "luvachat-dev-user"
 
 type Session = { id: string; name: string; imageUrl: string | null }
-export type DeploymentMode =
-  | "development"
-  | "luvabase"
-  | "cloudflare-access"
-  | "demo"
+export type DeploymentMode = "luvabase" | "cloudflare-access" | "demo"
 
 export function isDevEnv() {
   return Boolean(import.meta.env.DEV)
@@ -27,10 +24,6 @@ export function getDeploymentMode(
   request: Request,
   env?: CloudflareAccessEnv,
 ): DeploymentMode {
-  if (isDevEnv()) {
-    return "development"
-  }
-
   if (isLuvabaseRequest(request)) {
     return "luvabase"
   }
@@ -116,12 +109,12 @@ function getDemoSession(request: Request): Session {
 
 export async function getMembers(
   request: Request,
-  env?: CloudflareAccessEnv,
+  env?: CloudflareAccessEnv & RuntimeEnv,
 ): Promise<Member[]> {
   const deploymentMode = getDeploymentMode(request, env)
   const workspaceMembers =
     deploymentMode === "luvabase"
-      ? await getRuntimeMembers(request)
+      ? await getRuntimeMembers(env!)
       : deploymentMode === "cloudflare-access"
         ? getCloudflareAccessMembers(env!)
         : Object.values(members)
