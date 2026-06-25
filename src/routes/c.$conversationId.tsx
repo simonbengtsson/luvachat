@@ -446,6 +446,7 @@ function ConversationView({
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: activityQueryKey })
+      void queryClient.invalidateQueries({ queryKey: threadsQueryKey })
     },
   })
 

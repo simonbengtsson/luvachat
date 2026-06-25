@@ -34,7 +34,7 @@ import { threadsInfiniteQueryOptions } from "@/core/threadsQuery"
 import { getSession } from "@/route.functions"
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { FileIcon, MessageSquareTextIcon } from "lucide-react"
+import { ChevronRightIcon, FileIcon, MessageSquareTextIcon } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
 export const Route = createFileRoute("/threads")({
@@ -114,7 +114,7 @@ function RouteComponent() {
     queryFn: () => getSession(),
   })
 
-  const threads = threadsQuery.data?.threads ?? []
+  const items = threadsQuery.data?.items ?? []
 
   useEffect(() => {
     scrollContainerRef.current?.scrollTo({ top: 0 })
@@ -185,7 +185,7 @@ function RouteComponent() {
           title="Threads"
           actions={
             <Toggle
-              aria-label="Show unread threads only"
+              aria-label="Show unread items only"
               pressed={showUnreadOnly}
               onPressedChange={setShowUnreadOnly}
               variant="outline"
@@ -222,7 +222,7 @@ function RouteComponent() {
         title="Threads"
         actions={
           <Toggle
-            aria-label="Show unread threads only"
+            aria-label="Show unread items only"
             pressed={showUnreadOnly}
             onPressedChange={setShowUnreadOnly}
             variant="outline"
@@ -247,52 +247,60 @@ function RouteComponent() {
               />
             ))}
           </div>
-        ) : threads.length === 0 ? (
+        ) : items.length === 0 ? (
           <Empty className="border border-dashed border-border/70 bg-muted/20">
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <MessageSquareTextIcon />
               </EmptyMedia>
               <EmptyTitle>
-                {showUnreadOnly ? "No unread threads" : "No threads yet"}
+                {showUnreadOnly
+                  ? "No unread items"
+                  : "No threads or messages yet"}
               </EmptyTitle>
               <EmptyDescription>
                 {showUnreadOnly
                   ? "You're all caught up."
-                  : "Threads you participate in will show up here."}
+                  : "Threads and recent conversations will show up here."}
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
         ) : (
           <div className="space-y-5">
-            {threads.map((thread) => {
-              const author = membersById.get(thread.userId)
-              const authorName = author?.name ?? thread.userId
-              const tiptapDocument = parseTiptapJson(thread.tiptapJson)
+            {items.map((item) => {
+              const message = item.message
+              const isThreadItem = item.type === "thread"
+              const author = membersById.get(message.userId)
+              const authorName = author?.name ?? message.userId
+              const tiptapDocument = parseTiptapJson(message.tiptapJson)
               const threadReplyLabel =
-                thread.threadReplyCount === 1
+                message.threadReplyCount === 1
                   ? "1 reply"
-                  : `${thread.threadReplyCount} replies`
+                  : `${message.threadReplyCount} replies`
               const conversationLabel = getConversationLabel(
-                thread.conversationId,
+                message.conversationId,
                 conversationsById,
                 currentUserId,
                 membersById,
               )
+              const itemLabel =
+                isThreadItem
+                  ? `Thread in ${conversationLabel}`
+                  : conversationLabel
 
               return (
                 <section
-                  key={thread.id}
+                  key={`${item.type}-${message.id}`}
                   className="rounded-2xl border border-border/70 bg-background p-2"
                 >
                   <div className="flex items-center gap-2 px-3 pt-2 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                    {thread.threadIsUnread ? (
+                    {item.isUnread ? (
                       <span
                         aria-hidden
                         className="size-2 rounded-full bg-foreground"
                       />
                     ) : null}
-                    {conversationLabel}
+                    {itemLabel}
                   </div>
                   <ChatMessage className="rounded-xl hover:bg-transparent">
                     <ChatMessageAvatar className="mt-0.5 size-9">
@@ -307,21 +315,21 @@ function RouteComponent() {
                     <ChatMessageContainer>
                       <ChatMessageHeader>
                         <ChatMessageAuthor>{authorName}</ChatMessageAuthor>
-                        <ChatMessageTimestamp createdAt={thread.createdAt} />
+                        <ChatMessageTimestamp createdAt={message.createdAt} />
                       </ChatMessageHeader>
-                      {thread.content || thread.attachments.length > 0 ? (
+                      {message.content || message.attachments.length > 0 ? (
                         <ChatMessageContent className="px-2 py-0">
-                          {thread.content ? (
+                          {message.content ? (
                             tiptapDocument ? (
                               <TiptapContent content={tiptapDocument} />
                             ) : (
-                              <ChatMessageMarkdown content={thread.content} />
+                              <ChatMessageMarkdown content={message.content} />
                             )
                           ) : null}
-                          {thread.attachments.length > 0 ? (
+                          {message.attachments.length > 0 ? (
                             <div className="overflow-x-auto pt-1 pb-1">
                               <div className="flex gap-2">
-                                {thread.attachments.map((attachment) => {
+                                {message.attachments.map((attachment) => {
                                   const attachmentUrl = getAttachmentUrl(
                                     attachment.storageKey,
                                   )
@@ -371,28 +379,47 @@ function RouteComponent() {
                         </ChatMessageContent>
                       ) : null}
                       <ChatMessageFooter className="px-2 pt-0">
-                        <ChatMessageThread
-                          type="button"
-                          onClick={() => {
-                            void navigate({
-                              to: "/c/$conversationId",
-                              params: {
-                                conversationId: thread.conversationId,
-                              } as any,
-                              search: { thread: thread.id },
-                            })
-                          }}
-                        >
-                          <ChatMessageThreadReplyCount>
-                            {threadReplyLabel}
-                          </ChatMessageThreadReplyCount>
-                          {thread.threadLastReplyAt ? (
-                            <ChatMessageThreadTimestamp
-                              date={thread.threadLastReplyAt}
-                            />
-                          ) : null}
-                          <ChatMessageThreadAction />
-                        </ChatMessageThread>
+                        {isThreadItem ? (
+                          <ChatMessageThread
+                            type="button"
+                            onClick={() => {
+                              void navigate({
+                                to: "/c/$conversationId",
+                                params: {
+                                  conversationId: message.conversationId,
+                                } as any,
+                                search: { thread: message.id },
+                              })
+                            }}
+                          >
+                            <ChatMessageThreadReplyCount>
+                              {threadReplyLabel}
+                            </ChatMessageThreadReplyCount>
+                            {message.threadLastReplyAt ? (
+                              <ChatMessageThreadTimestamp
+                                date={message.threadLastReplyAt}
+                              />
+                            ) : null}
+                            <ChatMessageThreadAction />
+                          </ChatMessageThread>
+                        ) : (
+                          <ChatMessageThread
+                            type="button"
+                            onClick={() => {
+                              void navigate({
+                                to: "/c/$conversationId",
+                                params: {
+                                  conversationId: message.conversationId,
+                                } as any,
+                              })
+                            }}
+                          >
+                            <span className="text-sm font-medium text-sky-600">
+                              Open conversation
+                            </span>
+                            <ChevronRightIcon className="ml-auto h-4 w-4 text-muted-foreground" />
+                          </ChatMessageThread>
+                        )}
                       </ChatMessageFooter>
                     </ChatMessageContainer>
                   </ChatMessage>

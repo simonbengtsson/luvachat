@@ -31,6 +31,7 @@ export function applyMessageCreatedToCache(
   } else {
     upsertMessageInConversationCache(queryClient, message)
     updateConversationMetadata(queryClient, message)
+    void queryClient.invalidateQueries({ queryKey: threadsQueryKey })
   }
 }
 
@@ -64,6 +65,8 @@ export function applyMessageUpdatedToCache(
         existingMessage.id === message.id ? message : existingMessage,
       ) ?? existing,
   )
+
+  void queryClient.invalidateQueries({ queryKey: threadsQueryKey })
 }
 
 function upsertMessageInConversationCache(
@@ -225,13 +228,17 @@ export function markThreadViewedInCache(
       threadPage
         ? {
             ...threadPage,
-            threads: threadPage.threads.map((thread) =>
-              thread.id === threadRootMessageId
+            items: threadPage.items.map((item) =>
+              item.type === "thread" && item.message.id === threadRootMessageId
                 ? {
-                    ...thread,
-                    threadIsUnread: false,
+                    ...item,
+                    isUnread: false,
+                    message: {
+                      ...item.message,
+                      threadIsUnread: false,
+                    },
                   }
-                : thread,
+                : item,
             ),
           }
         : threadPage,

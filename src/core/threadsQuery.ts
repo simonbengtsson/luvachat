@@ -28,7 +28,7 @@ export function useHasUnreadThreads() {
         unreadOnly: true,
         limit: 1,
       }),
-      select: (data) => data.threads.length > 0,
+      select: (data) => data.items.length > 0,
     }),
   )
 }
@@ -47,7 +47,7 @@ export function threadsInfiniteQueryOptions(unreadOnly = false) {
     select: (data) => ({
       pages: data.pages,
       pageParams: data.pageParams,
-      threads: data.pages.flatMap((page) => page.threads),
+      items: data.pages.flatMap((page) => page.items),
     }),
   })
 }

@@ -10,14 +10,18 @@ import {
   or,
   sql,
 } from "drizzle-orm"
+import { alias } from "drizzle-orm/sqlite-core"
 import type {
   EnrichedMessage,
   MessageSearchPage,
   MessageSearchResult,
   ThreadPage,
+  ThreadOverviewItem,
 } from "../../models"
 import {
   activityEventsTable,
+  conversationMembersTable,
+  conversationsTable,
   messageAttachmentsTable,
   messageMentionsTable,
   messageReactionsTable,
@@ -54,6 +58,17 @@ type ThreadListRecord = MessageListRecord & {
   threadActivityAt: string
 }
 
+type ThreadOverviewRecord = ThreadListRecord & {
+  conversationIsUnread: boolean | number
+}
+
+type ThreadOverviewCandidate = {
+  type: ThreadOverviewItem["type"]
+  activityAt: string
+  isUnread: boolean
+  record: MessageListRecord
+}
+
 type ReactionSummary = EnrichedMessage["reactions"][number]
 type MessageSearchRow = {
   messageId: string
@@ -83,14 +98,16 @@ function getMessageSearchPreview(
 }
 
 function createThreadCursor(
-  threadActivityAt: string,
+  activityAt: string,
   createdAt: string,
-  threadRootMessageId: string,
+  type: ThreadOverviewItem["type"],
+  messageId: string,
 ) {
   return JSON.stringify({
-    threadActivityAt,
+    activityAt,
     createdAt,
-    threadRootMessageId,
+    type,
+    messageId,
   })
 }
 
@@ -103,19 +120,91 @@ function parseThreadCursor(cursor?: string) {
     const parsed = JSON.parse(cursor)
 
     if (
-      typeof parsed?.threadActivityAt === "string" &&
+      typeof parsed?.activityAt === "string" &&
       typeof parsed?.createdAt === "string" &&
-      typeof parsed?.threadRootMessageId === "string"
+      (parsed?.type === "thread" || parsed?.type === "conversation") &&
+      typeof parsed?.messageId === "string"
     ) {
       return parsed as {
-        threadActivityAt: string
+        activityAt: string
         createdAt: string
-        threadRootMessageId: string
+        type: ThreadOverviewItem["type"]
+        messageId: string
       }
     }
   } catch {}
 
   return null
+}
+
+function getThreadOverviewTypeOrder(type: ThreadOverviewItem["type"]) {
+  return type === "thread" ? 0 : 1
+}
+
+function compareThreadOverviewItems(
+  left: Pick<ThreadOverviewItem, "type" | "activityAt"> & {
+    message: Pick<EnrichedMessage, "createdAt" | "id">
+  },
+  right: Pick<ThreadOverviewItem, "type" | "activityAt"> & {
+    message: Pick<EnrichedMessage, "createdAt" | "id">
+  },
+) {
+  const activityCompare = right.activityAt.localeCompare(left.activityAt)
+  if (activityCompare !== 0) {
+    return activityCompare
+  }
+
+  const createdCompare = right.message.createdAt.localeCompare(
+    left.message.createdAt,
+  )
+  if (createdCompare !== 0) {
+    return createdCompare
+  }
+
+  const typeCompare =
+    getThreadOverviewTypeOrder(left.type) -
+    getThreadOverviewTypeOrder(right.type)
+  if (typeCompare !== 0) {
+    return typeCompare
+  }
+
+  return right.message.id.localeCompare(left.message.id)
+}
+
+function getThreadOverviewPageStartIndex(
+  items: ThreadOverviewItem[],
+  cursor?: string,
+) {
+  const parsedCursor = parseThreadCursor(cursor)
+  if (!parsedCursor) {
+    return 0
+  }
+
+  const exactMatchIndex = items.findIndex(
+    (item) =>
+      item.activityAt === parsedCursor.activityAt &&
+      item.message.createdAt === parsedCursor.createdAt &&
+      item.type === parsedCursor.type &&
+      item.message.id === parsedCursor.messageId,
+  )
+
+  if (exactMatchIndex >= 0) {
+    return exactMatchIndex + 1
+  }
+
+  const cursorItem = {
+    type: parsedCursor.type,
+    activityAt: parsedCursor.activityAt,
+    message: {
+      createdAt: parsedCursor.createdAt,
+      id: parsedCursor.messageId,
+    },
+  }
+  const fallbackIndex = items.findIndex(
+    (item) => compareThreadOverviewItems(cursorItem, item) < 0,
+  )
+
+  return fallbackIndex >= 0 ? fallbackIndex : items.length
 }
 
 function normalizeTiptapJson(tiptapJson: string | null | undefined) {
@@ -649,17 +738,32 @@ export async function getThreadsForUser(
 ): Promise<ThreadPage> {
   const limit = input.limit ?? 20
   const threadSummarySubquery = createThreadSummarySubquery(context)
+  const currentUserConversationMembershipTable = alias(
+    conversationMembersTable,
+    "thread_overview_conversation_membership",
+  )
+  const currentUserThreadMembershipTable = alias(
+    threadMembersTable,
+    "thread_overview_thread_membership",
+  )
   const threadActivityAtSql = sql<string>`coalesce(${threadSummarySubquery.threadLastReplyAt}, ${messagesTable.createdAt})`
   const threadIsUnreadSql = sql<number>`
     case
-      when ${threadMembersTable.lastViewedAt} is null then 1
-      when ${threadMembersTable.lastViewedAt} < ${threadActivityAtSql} then 1
+      when ${currentUserThreadMembershipTable.id} is null then 0
+      when ${currentUserThreadMembershipTable.lastViewedAt} is null then 1
+      when ${currentUserThreadMembershipTable.lastViewedAt} < ${threadActivityAtSql} then 1
       else 0
     end
   `
-  const parsedCursor = parseThreadCursor(input.cursor)
+  const conversationIsUnreadSql = sql<number>`
+    case
+      when ${currentUserConversationMembershipTable.lastViewedAt} is null then 1
+      when ${currentUserConversationMembershipTable.lastViewedAt} < ${messagesTable.createdAt} then 1
+      else 0
+    end
+  `
 
-  const threadRecords = await context.db
+  const threadOverviewRecords = await context.db
     .select({
       id: messagesTable.id,
       conversationId: messagesTable.conversationId,
@@ -675,11 +779,34 @@ export async function getThreadsForUser(
       threadLastReplyAt: threadSummarySubquery.threadLastReplyAt,
       threadIsUnread: threadIsUnreadSql.as("thread_is_unread"),
       threadActivityAt: threadActivityAtSql.as("thread_activity_at"),
+      conversationIsUnread: conversationIsUnreadSql.as(
+        "conversation_is_unread",
+      ),
     })
-    .from(threadMembersTable)
+    .from(messagesTable)
     .innerJoin(
-      messagesTable,
-      eq(messagesTable.id, threadMembersTable.threadRootMessageId),
+      conversationsTable,
+      eq(conversationsTable.id, messagesTable.conversationId),
+    )
+    .leftJoin(
+      currentUserConversationMembershipTable,
+      and(
+        eq(
+          currentUserConversationMembershipTable.conversationId,
+          messagesTable.conversationId,
+        ),
+        eq(currentUserConversationMembershipTable.userId, context.userId),
+      ),
+    )
+    .leftJoin(
+      currentUserThreadMembershipTable,
+      and(
+        eq(
+          currentUserThreadMembershipTable.threadRootMessageId,
+          messagesTable.id,
+        ),
+        eq(currentUserThreadMembershipTable.userId, context.userId),
+      ),
     )
     .leftJoin(
       threadSummarySubquery,
@@ -687,46 +814,92 @@ export async function getThreadsForUser(
     )
     .where(
       and(
-        eq(threadMembersTable.userId, context.userId),
-        input.unreadOnly ? sql`${threadIsUnreadSql} = 1` : undefined,
-        parsedCursor
-          ? or(
-              sql`${threadActivityAtSql} < ${parsedCursor.threadActivityAt}`,
-              and(
-                sql`${threadActivityAtSql} = ${parsedCursor.threadActivityAt}`,
-                lt(messagesTable.createdAt, parsedCursor.createdAt),
-              ),
-              and(
-                sql`${threadActivityAtSql} = ${parsedCursor.threadActivityAt}`,
-                eq(messagesTable.createdAt, parsedCursor.createdAt),
-                lt(messagesTable.id, parsedCursor.threadRootMessageId),
-              ),
-            )
-          : undefined,
+        isNull(messagesTable.threadRootMessageId),
+        sql`${conversationsTable.type} = 'channel' or ${currentUserConversationMembershipTable.id} is not null`,
       ),
     )
-    .orderBy(
-      desc(threadActivityAtSql),
-      desc(messagesTable.createdAt),
-      desc(messagesTable.id),
-    )
-    .limit(limit + 1)
+    .orderBy(desc(messagesTable.createdAt), desc(messagesTable.id))
+
+  const latestConversationRecords = new Map<string, ThreadOverviewRecord>()
+  for (const record of threadOverviewRecords) {
+    if (!latestConversationRecords.has(record.conversationId)) {
+      latestConversationRecords.set(record.conversationId, record)
+    }
+  }
+
+  const threadCandidates = threadOverviewRecords
+    .filter((record) => record.threadReplyCount > 0)
+    .map((record) => ({
+      type: "thread" as const,
+      activityAt: record.threadActivityAt,
+      isUnread: Boolean(record.threadIsUnread),
+      record,
+    }))
+  const threadConversationIds = new Set(
+    threadCandidates.map((candidate) => candidate.record.conversationId),
+  )
+  const candidates: ThreadOverviewCandidate[] = [
+    ...threadCandidates,
+    ...Array.from(latestConversationRecords.values())
+      .filter(
+        (record) =>
+          record.threadReplyCount === 0 &&
+          !threadConversationIds.has(record.conversationId),
+      )
+      .map((record) => ({
+        type: "conversation" as const,
+        activityAt: record.createdAt,
+        isUnread: Boolean(record.conversationIsUnread),
+        record: {
+          ...record,
+          threadIsUnread: record.conversationIsUnread,
+        },
+      })),
+  ]
+
+  const messages = await enrichMessages(
+    context,
+    candidates.map((candidate) => candidate.record),
+  )
+  const messagesById = new Map(messages.map((message) => [message.id, message]))
+  const items = candidates
+    .flatMap((candidate): ThreadOverviewItem[] => {
+      const message = messagesById.get(candidate.record.id)
+      if (!message) {
+        return []
+      }
+
+      return [
+        {
+          type: candidate.type,
+          activityAt: candidate.activityAt,
+          isUnread: candidate.isUnread,
+          message: {
+            ...message,
+            threadIsUnread: candidate.isUnread,
+          },
+        },
+      ]
+    })
+    .filter((item) => !input.unreadOnly || item.isUnread)
+    .sort(compareThreadOverviewItems)
+
+  const startIndex = getThreadOverviewPageStartIndex(items, input.cursor)
+  const pageItems = items.slice(startIndex, startIndex + limit)
+  const lastItem = pageItems.at(-1)
 
   let nextCursor: string | undefined
-  if (threadRecords.length > limit) {
-    threadRecords.pop()
-    const lastThread = threadRecords.at(-1) as ThreadListRecord | undefined
-    nextCursor = lastThread
-      ? createThreadCursor(
-          lastThread.threadActivityAt,
-          lastThread.createdAt,
-          lastThread.id,
-        )
-      : undefined
+  if (startIndex + pageItems.length < items.length && lastItem) {
+    nextCursor = createThreadCursor(
+      lastItem.activityAt,
+      lastItem.message.createdAt,
+      lastItem.type,
+      lastItem.message.id,
+    )
   }
 
   return {
-    threads: await enrichMessages(context, threadRecords),
+    items: pageItems,
     nextCursor,
   }
 }

@@ -62,8 +62,15 @@ export const ActivityPage = z.object({
 })
 
 export type ThreadPage = z.infer<typeof ThreadPage>
+export type ThreadOverviewItem = z.infer<typeof ThreadOverviewItem>
+export const ThreadOverviewItem = z.object({
+  type: z.enum(["thread", "conversation"]),
+  activityAt: z.string().min(1),
+  isUnread: z.boolean(),
+  message: EnrichedMessage,
+})
 export const ThreadPage = z.object({
-  threads: z.array(EnrichedMessage),
+  items: z.array(ThreadOverviewItem),
   nextCursor: z.string().optional(),
 })
 
