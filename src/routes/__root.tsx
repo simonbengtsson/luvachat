@@ -8,7 +8,7 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { initializeSyncConnection } from "@/core/clientConnection"
 import { useWorkspaceMembers } from "@/core/members"
 import { queryClient } from "@/core/queryClient"
-import { getDeploymentInfo, getSidebarSession } from "@/route.functions"
+import { getSidebarSession } from "@/route.functions"
 import { QueryClientProvider, useQuery } from "@tanstack/react-query"
 import {
   HeadContent,
@@ -134,16 +134,17 @@ function RootAppShell({ children }: { children: React.ReactNode }) {
 }
 
 function AppShellFrame({ children }: { children: React.ReactNode }) {
-  const deploymentInfoQuery = useQuery({
-    queryKey: ["deployment-info"],
-    queryFn: () => getDeploymentInfo(),
-    staleTime: Infinity,
+  const sessionQuery = useQuery({
+    queryKey: ["sidebar-session"],
+    queryFn: () => getSidebarSession(),
   })
-  const isDemoMode = deploymentInfoQuery.data?.mode === "demo"
+  const isDemoMode = sessionQuery.data?.deploymentMode === "demo"
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-sidebar">
-      {isDemoMode ? <DemoModeBanner /> : null}
+      {isDemoMode && sessionQuery.data ? (
+        <DemoModeBanner sessionData={sessionQuery.data} />
+      ) : null}
       <SidebarProvider
         className="min-h-0 flex-1"
         style={
@@ -166,15 +167,13 @@ function AppShellFrame({ children }: { children: React.ReactNode }) {
   )
 }
 
-function DemoModeBanner() {
-  const sessionQuery = useQuery({
-    queryKey: ["sidebar-session"],
-    queryFn: () => getSidebarSession(),
-  })
+function DemoModeBanner({
+  sessionData,
+}: {
+  sessionData: Awaited<ReturnType<typeof getSidebarSession>>
+}) {
   const membersQuery = useWorkspaceMembers()
-  const sessionData = sessionQuery.data
   const members = membersQuery.data
-  const canSwitchUser = sessionData?.canSwitchDevUser && members
 
   return (
     <div className="min-h-10 w-full shrink-0 border-b border-white/20 bg-[#f39c12] px-4 py-1.5 text-sm leading-5 text-white">
@@ -193,15 +192,11 @@ function DemoModeBanner() {
           Read more
         </a>
         <span>.</span>
-        {canSwitchUser ? (
-          <>
-            <span className="mx-2 text-white/70">|</span>
-            <DevUserSwitcher
-              currentUserId={sessionData.session.id}
-              members={members}
-            />
-          </>
-        ) : null}
+        <span className="mx-2 text-white/70">|</span>
+        <DevUserSwitcher
+          currentUserId={sessionData.session.id}
+          members={members || []}
+        />
       </p>
     </div>
   )

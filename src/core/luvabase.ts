@@ -1,5 +1,6 @@
 import {
   getMembers as getRuntimeMembers,
+  getSession as getRuntimeSession,
   type LuvaEnv,
   type Member,
   type RuntimeEnv,
@@ -22,9 +23,9 @@ export function isDevEnv() {
 
 export function getDeploymentMode(
   request: Request,
-  env?: CloudflareAccessEnv,
+  env?: CloudflareAccessEnv & RuntimeEnv,
 ): DeploymentMode {
-  if (isLuvabaseRequest(request)) {
+  if (isLuvabaseRequest(request, env)) {
     return "luvabase"
   }
 
@@ -124,29 +125,27 @@ export async function getMembers(
   )
 }
 
-function isLuvabaseRequest(request: Request): boolean {
-  return Boolean(request.headers.get("x-luvabase-pod-url"))
+function isLuvabaseRequest(
+  request: Request,
+  env?: RuntimeEnv,
+): boolean {
+  return Boolean(
+    getRuntimeSession(request).isAuthenticated || env?.LUVABASE_POD_SECRET,
+  )
 }
 
 function getLuvabaseSession(request: Request): Session {
-  const id =
-    request.headers.get("x-luvabase-user-id") ||
-    request.headers.get("x-luvabase-actor-id")
-  const name =
-    request.headers.get("x-luvabase-user-name") ||
-    request.headers.get("x-luvabase-actor-name")
+  const session = getRuntimeSession(request)
+  const member = session.member
 
-  if (!id || !name) {
+  if (!member) {
     throw new Error("Missing Luvabase user headers")
   }
 
   return {
-    id,
-    name,
-    imageUrl:
-      request.headers.get("x-luvabase-user-image-url") ||
-      request.headers.get("x-luvabase-actor-image-url") ||
-      null,
+    id: member.id,
+    name: member.name,
+    imageUrl: member.imageUrl,
   }
 }
 

@@ -1,14 +1,14 @@
+import type { CloudflareAccessEnv } from "@/core/cloudflareAccess"
 import {
   DEV_USER_COOKIE_NAME,
   getDeploymentMode,
   getMembers as getLuvaMembers,
   getSession as getLuvaSession,
-  isDevEnv,
 } from "@/core/luvabase"
-import type { CloudflareAccessEnv } from "@/core/cloudflareAccess"
-import type { RuntimeEnv } from "luvabase/runtime"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequest, setCookie } from "@tanstack/react-start/server"
+import { env as workerEnv } from "cloudflare:workers"
+import type { RuntimeEnv } from "luvabase/runtime"
 import { z } from "zod"
 
 export const getSession = createServerFn({ method: "GET" }).handler(
@@ -21,21 +21,17 @@ export const getSession = createServerFn({ method: "GET" }).handler(
 export const getSidebarSession = createServerFn({ method: "GET" }).handler(
   async () => {
     const request = getRequest()
-    const session = await getLuvaSession(request, getRuntimeEnv())
+    const runtimeEnv = getRuntimeEnv()
+    const deploymentMode = getDeploymentMode(request, runtimeEnv)
+    const session = await getLuvaSession(request, runtimeEnv)
 
     return {
       session,
-      luvabaseAdminUrl: request.headers.get("x-luvabase-pod-url") || null,
-      canSwitchDevUser: isDevEnv(),
-    }
-  },
-)
-
-export const getDeploymentInfo = createServerFn({ method: "GET" }).handler(
-  async () => {
-    const request = getRequest()
-    return {
-      mode: getDeploymentMode(request, getRuntimeEnv()),
+      deploymentMode,
+      luvabaseAdminUrl:
+        request.headers.get("x-luvabase-pod-url") ||
+        runtimeEnv.LUVABASE_POD_URL ||
+        null,
     }
   },
 )
@@ -54,12 +50,14 @@ export const switchDevUser = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
-    if (!isDevEnv()) {
+    const request = getRequest()
+    const runtimeEnv = getRuntimeEnv()
+
+    if (getDeploymentMode(request, runtimeEnv) !== "demo") {
       return
     }
 
-    const request = getRequest()
-    const members = await getLuvaMembers(request, getRuntimeEnv())
+    const members = await getLuvaMembers(request, runtimeEnv)
     const selectedMember = members.find((member) => member.id === data.userId)
 
     if (!selectedMember) {
@@ -74,15 +72,26 @@ export const switchDevUser = createServerFn({ method: "POST" })
   })
 
 function getRuntimeEnv(): CloudflareAccessEnv & RuntimeEnv {
+  const env = workerEnv as CloudflareAccessEnv & RuntimeEnv
+
   return {
-    CF_ACCESS_AUD: process.env["CF_ACCESS_AUD"],
-    CF_ACCESS_TEAM_DOMAIN: process.env["CF_ACCESS_TEAM_DOMAIN"],
-    MEMBERS_JSON: process.env["MEMBERS_JSON"],
-    LUVABASE_RUNTIME_VERSION: process.env["LUVABASE_RUNTIME_VERSION"],
-    LUVABASE_POD_ID: process.env["LUVABASE_POD_ID"],
-    LUVABASE_POD_URL: process.env["LUVABASE_POD_URL"],
-    LUVABASE_POD_INSTALLED_AT: process.env["LUVABASE_POD_INSTALLED_AT"],
-    LUVABASE_POD_UPDATED_AT: process.env["LUVABASE_POD_UPDATED_AT"],
-    LUVABASE_POD_SECRET: process.env["LUVABASE_POD_SECRET"],
+    CF_ACCESS_AUD: env.CF_ACCESS_AUD ?? process.env["CF_ACCESS_AUD"],
+    CF_ACCESS_TEAM_DOMAIN:
+      env.CF_ACCESS_TEAM_DOMAIN ?? process.env["CF_ACCESS_TEAM_DOMAIN"],
+    MEMBERS_JSON: env.MEMBERS_JSON ?? process.env["MEMBERS_JSON"],
+    LUVABASE_RUNTIME_VERSION:
+      env.LUVABASE_RUNTIME_VERSION ??
+      process.env["LUVABASE_RUNTIME_VERSION"],
+    LUVABASE_POD_ID: env.LUVABASE_POD_ID ?? process.env["LUVABASE_POD_ID"],
+    LUVABASE_POD_URL:
+      env.LUVABASE_POD_URL ?? process.env["LUVABASE_POD_URL"],
+    LUVABASE_POD_INSTALLED_AT:
+      env.LUVABASE_POD_INSTALLED_AT ??
+      process.env["LUVABASE_POD_INSTALLED_AT"],
+    LUVABASE_POD_UPDATED_AT:
+      env.LUVABASE_POD_UPDATED_AT ??
+      process.env["LUVABASE_POD_UPDATED_AT"],
+    LUVABASE_POD_SECRET:
+      env.LUVABASE_POD_SECRET ?? process.env["LUVABASE_POD_SECRET"],
   } as CloudflareAccessEnv & RuntimeEnv
 }
