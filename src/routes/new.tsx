@@ -139,7 +139,7 @@ function RouteComponent() {
   }
 
   const recipientPicker = (
-    <div className="relative max-w-5xl" ref={pickerRef}>
+    <div className="relative" ref={pickerRef}>
       <div className="grid gap-3 md:grid-cols-[56px_minmax(0,1fr)] md:items-start">
         <div className="pt-3 text-sm font-medium text-muted-foreground">
           To:
@@ -271,9 +271,7 @@ function RouteComponent() {
                 isTouchDevice && "pb-24",
               )}
             >
-              <div className="bg-background px-4 py-4">
-                <div className="max-w-5xl">{recipientPicker}</div>
-              </div>
+              <div className="bg-background px-4 py-4">{recipientPicker}</div>
             </div>
             {isTouchDevice ? (
               <div className="pointer-events-none fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+1rem)] z-20">
@@ -292,21 +290,19 @@ function RouteComponent() {
               </div>
             ) : (
               <div className="shrink-0 bg-background px-4 pb-5">
-                <div className="max-w-5xl">
-                  <NewMessageInput
-                    memberIds={selectedMemberIds}
-                    members={members}
-                    conversationName={conversationName || undefined}
-                    autoFocus
-                    onMessageSent={(conversationId) =>
-                      navigate({
-                        to: "/c/$conversationId",
-                        params: { conversationId } as any,
-                        replace: true,
-                      })
-                    }
-                  />
-                </div>
+                <NewMessageInput
+                  memberIds={selectedMemberIds}
+                  members={members}
+                  conversationName={conversationName || undefined}
+                  autoFocus
+                  onMessageSent={(conversationId) =>
+                    navigate({
+                      to: "/c/$conversationId",
+                      params: { conversationId } as any,
+                      replace: true,
+                    })
+                  }
+                />
               </div>
             )}
           </>
