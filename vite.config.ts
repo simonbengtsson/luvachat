@@ -11,6 +11,16 @@ const config = defineConfig({
     ),
   },
   resolve: {
+    // Mention in input failed without deduping
+    dedupe: [
+      "prosemirror-model",
+      "prosemirror-state",
+      "prosemirror-transform",
+      "prosemirror-view",
+      "prosemirror-commands",
+      "prosemirror-keymap",
+      "prosemirror-schema-list",
+    ],
     tsconfigPaths: true,
   },
   plugins: [
