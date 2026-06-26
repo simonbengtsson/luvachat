@@ -15,6 +15,7 @@ import { Route as NewRouteImport } from './routes/new'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as NewReplyRouteImport } from './routes/new.reply'
 import { Route as CConversationIdRouteImport } from './routes/c.$conversationId'
 import { Route as AssetsSplatRouteImport } from './routes/assets.$'
 import { Route as CConversationIdReplyRouteImport } from './routes/c.$conversationId.reply'
@@ -49,6 +50,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NewReplyRoute = NewReplyRouteImport.update({
+  id: '/reply',
+  path: '/reply',
+  getParentRoute: () => NewRoute,
+} as any)
 const CConversationIdRoute = CConversationIdRouteImport.update({
   id: '/c/$conversationId',
   path: '/c/$conversationId',
@@ -69,22 +75,24 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
   '/mcp': typeof McpRoute
-  '/new': typeof NewRoute
+  '/new': typeof NewRouteWithChildren
   '/search': typeof SearchRoute
   '/threads': typeof ThreadsRoute
   '/assets/$': typeof AssetsSplatRoute
   '/c/$conversationId': typeof CConversationIdRouteWithChildren
+  '/new/reply': typeof NewReplyRoute
   '/c/$conversationId/reply': typeof CConversationIdReplyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
   '/mcp': typeof McpRoute
-  '/new': typeof NewRoute
+  '/new': typeof NewRouteWithChildren
   '/search': typeof SearchRoute
   '/threads': typeof ThreadsRoute
   '/assets/$': typeof AssetsSplatRoute
   '/c/$conversationId': typeof CConversationIdRouteWithChildren
+  '/new/reply': typeof NewReplyRoute
   '/c/$conversationId/reply': typeof CConversationIdReplyRoute
 }
 export interface FileRoutesById {
@@ -92,11 +100,12 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
   '/mcp': typeof McpRoute
-  '/new': typeof NewRoute
+  '/new': typeof NewRouteWithChildren
   '/search': typeof SearchRoute
   '/threads': typeof ThreadsRoute
   '/assets/$': typeof AssetsSplatRoute
   '/c/$conversationId': typeof CConversationIdRouteWithChildren
+  '/new/reply': typeof NewReplyRoute
   '/c/$conversationId/reply': typeof CConversationIdReplyRoute
 }
 export interface FileRouteTypes {
@@ -110,6 +119,7 @@ export interface FileRouteTypes {
     | '/threads'
     | '/assets/$'
     | '/c/$conversationId'
+    | '/new/reply'
     | '/c/$conversationId/reply'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -121,6 +131,7 @@ export interface FileRouteTypes {
     | '/threads'
     | '/assets/$'
     | '/c/$conversationId'
+    | '/new/reply'
     | '/c/$conversationId/reply'
   id:
     | '__root__'
@@ -132,6 +143,7 @@ export interface FileRouteTypes {
     | '/threads'
     | '/assets/$'
     | '/c/$conversationId'
+    | '/new/reply'
     | '/c/$conversationId/reply'
   fileRoutesById: FileRoutesById
 }
@@ -139,7 +151,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ActivityRoute: typeof ActivityRoute
   McpRoute: typeof McpRoute
-  NewRoute: typeof NewRoute
+  NewRoute: typeof NewRouteWithChildren
   SearchRoute: typeof SearchRoute
   ThreadsRoute: typeof ThreadsRoute
   AssetsSplatRoute: typeof AssetsSplatRoute
@@ -190,6 +202,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/new/reply': {
+      id: '/new/reply'
+      path: '/reply'
+      fullPath: '/new/reply'
+      preLoaderRoute: typeof NewReplyRouteImport
+      parentRoute: typeof NewRoute
+    }
     '/c/$conversationId': {
       id: '/c/$conversationId'
       path: '/c/$conversationId'
@@ -214,6 +233,16 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface NewRouteChildren {
+  NewReplyRoute: typeof NewReplyRoute
+}
+
+const NewRouteChildren: NewRouteChildren = {
+  NewReplyRoute: NewReplyRoute,
+}
+
+const NewRouteWithChildren = NewRoute._addFileChildren(NewRouteChildren)
+
 interface CConversationIdRouteChildren {
   CConversationIdReplyRoute: typeof CConversationIdReplyRoute
 }
@@ -230,7 +259,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ActivityRoute: ActivityRoute,
   McpRoute: McpRoute,
-  NewRoute: NewRoute,
+  NewRoute: NewRouteWithChildren,
   SearchRoute: SearchRoute,
   ThreadsRoute: ThreadsRoute,
   AssetsSplatRoute: AssetsSplatRoute,

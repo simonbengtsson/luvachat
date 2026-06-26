@@ -139,7 +139,7 @@ function AppShellFrame({ children }: { children: React.ReactNode }) {
     queryFn: () => getDeploymentInfo(),
     staleTime: Infinity,
   })
-  const isDemoMode = deploymentInfoQuery.data?.mode === "2demo"
+  const isDemoMode = deploymentInfoQuery.data?.mode === "demo"
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-sidebar">

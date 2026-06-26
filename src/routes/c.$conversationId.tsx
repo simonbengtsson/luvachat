@@ -1181,7 +1181,7 @@ function ConversationView({
               )}
             >
               <MessageSquareTextIcon className="size-4" />
-              Reply
+              New
             </Link>
           </div>
         ) : (

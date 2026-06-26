@@ -1,30 +1,24 @@
-import {
-  AppChatInput,
-  type AppChatInputHandle,
-} from "@/components/app-chat-input"
+import { NewMessageInput } from "@/components/new-message-input"
 import { SiteHeader } from "@/components/site-header"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import {
-  getSyncConnectionStatus,
-  subscribeToSyncConnectionStatus,
-} from "@/core/clientConnection"
-import {
-  conversationQueryKey,
-  conversationsQueryKey,
-} from "@/core/conversationsQuery"
+import { buttonVariants } from "@/components/ui/button"
 import type { Member } from "@/core/luvabase"
-import type { EnrichedConversation } from "@/core/models"
-import { orpcClient } from "@/core/orpcClient"
-import { applyMessageCreatedToCache } from "@/core/realtimeCache"
+import { useIsTouchDevice } from "@/hooks/use-touch-device"
+import { cn } from "@/lib/utils"
 import { getWorkspaceMembers } from "@/route.functions"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router"
-import type { JSONContent } from "@tiptap/react"
-import { LoaderCircleIcon, XIcon } from "lucide-react"
-import { useEffect, useRef, useState, useSyncExternalStore } from "react"
+import {
+  createFileRoute,
+  Link,
+  notFound,
+  Outlet,
+  useMatchRoute,
+  useNavigate,
+} from "@tanstack/react-router"
+import { MessageSquareTextIcon, XIcon } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
 
 export const Route = createFileRoute("/new")({
-  validateSearch: (search) => ({ members: `${search.members || ""}`.trim() }),
+  validateSearch: (search) => ({ members: `${search.members || ""}` }),
   loaderDeps: ({ search }) => ({ members: search.members }),
   loader: async ({ deps }) => {
     const members = await getWorkspaceMembers()
@@ -71,25 +65,20 @@ function matchesMember(member: Member, query: string) {
 }
 
 function RouteComponent() {
+  const matchRoute = useMatchRoute()
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
   const search = Route.useSearch()
   const { members } = Route.useLoaderData()
   const pickerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const composerRef = useRef<AppChatInputHandle>(null)
   const [query, setQuery] = useState("")
   const [isOpen, setIsOpen] = useState(false)
   const [selectedMemberIds, setSelectedMemberIds] = useState(() =>
     parseMemberIds(search.members),
   )
   const hasSelectedMembers = selectedMemberIds.length > 0
-  const syncConnectionStatus = useSyncExternalStore(
-    subscribeToSyncConnectionStatus,
-    getSyncConnectionStatus,
-    getSyncConnectionStatus,
-  )
-  const isSyncConnected = syncConnectionStatus === "connected"
+  const isTouchDevice = useIsTouchDevice()
+  const isReplyRoute = Boolean(matchRoute({ to: "/new/reply" }))
 
   const membersById = new Map(members.map((member) => [member.id, member]))
 
@@ -125,59 +114,9 @@ function RouteComponent() {
       !selectedMemberIds.includes(member.id) && matchesMember(member, query),
   )
 
-  const sendDirectMessageMutation = useMutation({
-    mutationFn: ({
-      memberIds,
-      content,
-      tiptapJson,
-      attachments,
-      conversationName,
-    }: {
-      memberIds: string[]
-      content: string
-      tiptapJson: string | null
-      attachments: File[]
-      conversationName?: string
-    }) =>
-      orpcClient.sendDirectMessage({
-        memberIds,
-        content,
-        tiptapJson,
-        attachments,
-        conversationName,
-      }),
-    onSuccess: async ({ conversation, message }, { memberIds }) => {
-      const conversationWithUserState: EnrichedConversation = {
-        ...conversation,
-        memberIds,
-        lastViewedAt: message.createdAt,
-        lastMessageAt: message.createdAt,
-        notificationLevel: "all",
-      }
-
-      queryClient.setQueryData<EnrichedConversation[]>(
-        conversationsQueryKey,
-        (conversations = []) => [
-          conversationWithUserState,
-          ...conversations.filter((item) => item.id !== conversation.id),
-        ],
-      )
-      queryClient.setQueryData(
-        conversationQueryKey(conversation.id),
-        conversationWithUserState,
-      )
-      applyMessageCreatedToCache(queryClient, message)
-
-      await navigate({
-        to: "/c/$conversationId",
-        params: { conversationId: conversation.id } as any,
-        replace: true,
-      })
-    },
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: conversationsQueryKey })
-    },
-  })
+  if (isReplyRoute) {
+    return <Outlet />
+  }
 
   function handleAddMember(memberId: string) {
     if (selectedMemberIds.includes(memberId)) {
@@ -197,31 +136,6 @@ function RouteComponent() {
       ),
     )
     inputRef.current?.focus()
-  }
-
-  function submitMessage(
-    content: string,
-    attachments: File[],
-    tiptapDocument: JSONContent,
-  ) {
-    const memberIds = selectedMemberIds
-
-    if (
-      !isSyncConnected ||
-      sendDirectMessageMutation.isPending ||
-      memberIds.length === 0 ||
-      (!content.trim() && attachments.length === 0)
-    ) {
-      return
-    }
-
-    sendDirectMessageMutation.mutate({
-      memberIds,
-      content,
-      tiptapJson: content.trim() ? JSON.stringify(tiptapDocument) : null,
-      attachments,
-      conversationName: conversationName || undefined,
-    })
   }
 
   const recipientPicker = (
@@ -351,38 +265,50 @@ function RouteComponent() {
       <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {hasSelectedMembers ? (
           <>
-            <div className="min-h-0 flex-1 overflow-auto bg-muted/10">
+            <div
+              className={cn(
+                "min-h-0 flex-1 overflow-auto bg-muted/10",
+                isTouchDevice && "pb-24",
+              )}
+            >
               <div className="bg-background px-4 py-4">
                 <div className="max-w-5xl">{recipientPicker}</div>
               </div>
             </div>
-            <div className="shrink-0 bg-background px-4 pb-5">
-              <div className="max-w-5xl">
-                <div className="flex flex-col gap-2">
-                  <AppChatInput
-                    ref={composerRef}
-                    autoFocus
-                    onSubmit={submitMessage}
+            {isTouchDevice ? (
+              <div className="pointer-events-none fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+1rem)] z-20">
+                <Link
+                  to="/new/reply"
+                  search={{ members: selectedMemberIds.join(",") }}
+                  preload="intent"
+                  className={cn(
+                    buttonVariants({ size: "lg" }),
+                    "pointer-events-auto rounded-full px-4 shadow-lg",
+                  )}
+                >
+                  <MessageSquareTextIcon className="size-4" />
+                  Continue
+                </Link>
+              </div>
+            ) : (
+              <div className="shrink-0 bg-background px-4 pb-5">
+                <div className="max-w-5xl">
+                  <NewMessageInput
+                    memberIds={selectedMemberIds}
                     members={members}
-                    disabled={
-                      !isSyncConnected || sendDirectMessageMutation.isPending
+                    conversationName={conversationName || undefined}
+                    autoFocus
+                    onMessageSent={(conversationId) =>
+                      navigate({
+                        to: "/c/$conversationId",
+                        params: { conversationId } as any,
+                        replace: true,
+                      })
                     }
-                    placeholder="Jot something down"
-                    clearOnSubmit={false}
-                    allowAttachmentsWithoutText
                   />
-                  {!isSyncConnected ? (
-                    <div
-                      className="flex items-center gap-1.5 px-1 text-xs text-muted-foreground"
-                      aria-live="polite"
-                    >
-                      <LoaderCircleIcon className="size-3.5 animate-spin" />
-                      <span>Not connected, retrying...</span>
-                    </div>
-                  ) : null}
                 </div>
               </div>
-            </div>
+            )}
           </>
         ) : (
           <div className="min-h-0 flex-1 overflow-auto">
