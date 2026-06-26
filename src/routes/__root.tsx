@@ -177,7 +177,7 @@ function DemoModeBanner({
 
   return (
     <div className="min-h-10 w-full shrink-0 border-b border-white/20 bg-[#f39c12] px-4 py-1.5 text-sm leading-5 text-white">
-      <p>
+      <div className="flex flex-wrap items-center">
         <span className="font-medium">Demo mode.</span>{" "}
         <span>
           This deployment is not connected to Luvabase or Cloudflare
@@ -197,7 +197,7 @@ function DemoModeBanner({
           currentUserId={sessionData.session.id}
           members={members || []}
         />
-      </p>
+      </div>
     </div>
   )
 }

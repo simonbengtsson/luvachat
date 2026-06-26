@@ -97,6 +97,15 @@ export function ConversationReplyInput({
 
   return (
     <div className="flex flex-col gap-2">
+      {!isSyncConnected ? (
+        <div
+          className="flex items-center gap-1.5 px-1 text-xs text-muted-foreground"
+          aria-live="polite"
+        >
+          <LoaderCircleIcon className="size-3.5 animate-spin" />
+          <span>Not connected, retrying...</span>
+        </div>
+      ) : null}
       <AppChatInput
         ref={composerRef}
         onSubmit={submitMessage}
@@ -107,15 +116,6 @@ export function ConversationReplyInput({
         allowAttachmentsWithoutText
         autoFocus={autoFocus}
       />
-      {!isSyncConnected ? (
-        <div
-          className="flex items-center gap-1.5 px-1 text-xs text-muted-foreground"
-          aria-live="polite"
-        >
-          <LoaderCircleIcon className="size-3.5 animate-spin" />
-          <span>Not connected, retrying...</span>
-        </div>
-      ) : null}
     </div>
   )
 }

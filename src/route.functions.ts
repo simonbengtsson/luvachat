@@ -44,7 +44,7 @@ export const getWorkspaceMembers = createServerFn({ method: "GET" }).handler(
 )
 
 export const switchDevUser = createServerFn({ method: "POST" })
-  .inputValidator(
+  .validator(
     z.object({
       userId: z.string().min(1),
     }),
@@ -52,10 +52,6 @@ export const switchDevUser = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const request = getRequest()
     const runtimeEnv = getRuntimeEnv()
-
-    if (getDeploymentMode(request, runtimeEnv) !== "demo") {
-      return
-    }
 
     const members = await getLuvaMembers(request, runtimeEnv)
     const selectedMember = members.find((member) => member.id === data.userId)

@@ -14,8 +14,8 @@
     "build": "vite build",
     "preview": "bun run build && vite preview",
     "test": "vitest run",
-    "deploy:staging": "bun run build && wrangler deploy",
     "check": "bunx tsc --noEmit",
+    "deploy:cf": "bun run build && wrangler deploy",
     "deploy": "luvabase deploy",
     "types": "wrangler types"
   },
