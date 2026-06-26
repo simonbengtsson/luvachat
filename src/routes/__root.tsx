@@ -34,6 +34,24 @@ export const Route = createRootRoute({
         content: "Luvachat",
       },
       {
+        name: "apple-mobile-web-app-capable",
+        content: "yes",
+      },
+      {
+        name: "mobile-web-app-capable",
+        content: "yes",
+      },
+      {
+        name: "theme-color",
+        content: "#fafafa",
+        media: "(prefers-color-scheme: light)",
+      },
+      {
+        name: "theme-color",
+        content: "#171717",
+        media: "(prefers-color-scheme: dark)",
+      },
+      {
         title: "Luvachat",
       },
     ],
@@ -41,6 +59,10 @@ export const Route = createRootRoute({
       {
         rel: "stylesheet",
         href: appCss,
+      },
+      {
+        rel: "manifest",
+        href: "/manifest.json",
       },
       {
         rel: "icon",
@@ -117,7 +139,7 @@ function AppShellFrame({ children }: { children: React.ReactNode }) {
     queryFn: () => getDeploymentInfo(),
     staleTime: Infinity,
   })
-  const isDemoMode = deploymentInfoQuery.data?.mode === "demo"
+  const isDemoMode = deploymentInfoQuery.data?.mode === "2demo"
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-sidebar">
@@ -159,7 +181,8 @@ function DemoModeBanner() {
       <p>
         <span className="font-medium">Demo mode.</span>{" "}
         <span>
-          This deployment is not connected to Luvabase or Cloudflare Access.{" "}
+          This deployment is not connected to Luvabase or Cloudflare
+          Access.{" "}
         </span>
         <a
           className="font-medium text-white underline underline-offset-2 hover:text-white/90"

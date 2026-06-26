@@ -6,7 +6,6 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
-  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -49,7 +48,6 @@ import {
   HashIcon,
   LogOutIcon,
   type LucideIcon,
-  MessageCircleIcon,
   MessageSquareTextIcon,
   PlusIcon,
   SearchIcon,
@@ -459,7 +457,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
     (conversation) => conversation.type === "group",
   )
   const directConversations = conversations.filter(
-    (conversation) => conversation.type === "direct", 
+    (conversation) => conversation.type === "direct",
   )
   const directConversationsByMemberId = new Map<string, EnrichedConversation>()
 
@@ -487,19 +485,6 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              className="data-[slot=sidebar-menu-button]:p-1.5!"
-              render={<a href="/" />}
-            >
-              <MessageCircleIcon className="size-5!" />
-              <span className="text-base font-semibold">Luvachat</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>
