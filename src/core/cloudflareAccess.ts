@@ -7,10 +7,18 @@ export type CloudflareAccessSession = {
   imageUrl: string | null
 }
 
+type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue }
+
 export type CloudflareAccessEnv = Cloudflare.Env & {
   CF_ACCESS_AUD?: string
   CF_ACCESS_JWKS_URL?: string
-  CF_MEMBERS_JSON?: string
+  CF_MEMBERS_JSON?: JsonValue
 }
 
 function createCloudflareAccessSetupError(): AppError {
@@ -114,12 +122,10 @@ export function getCloudflareAccessMembers(env: CloudflareAccessEnv): Member[] {
     throw createCloudflareAccessSetupError()
   }
 
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(membersJson)
-  } catch {
-    throw createCloudflareAccessSetupError()
-  }
+  const parsed =
+    typeof membersJson === "string"
+      ? parseCloudflareAccessMembersJson(membersJson)
+      : membersJson
 
   if (!Array.isArray(parsed)) {
     throw createCloudflareAccessSetupError()
@@ -138,6 +144,14 @@ export function getCloudflareAccessMembers(env: CloudflareAccessEnv): Member[] {
       imageUrl: member.imageUrl ?? null,
     }
   })
+}
+
+function parseCloudflareAccessMembersJson(membersJson: string): unknown {
+  try {
+    return JSON.parse(membersJson)
+  } catch {
+    throw createCloudflareAccessSetupError()
+  }
 }
 
 function isCloudflareAccessMemberInput(
