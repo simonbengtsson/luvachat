@@ -20,6 +20,11 @@ import {
 import { useEffect } from "react"
 import appCss from "../styles.css?url"
 
+const siteTitle = "Luvachat"
+const siteDescription = "Self-hostable team chat"
+const siteUrl = "https://github.com/simonbengtsson/luvachat"
+const siteImageUrl = "/og.png"
+
 type SidebarSessionData = Awaited<ReturnType<typeof getSidebarSession>>
 type ReadySidebarSessionData = SidebarSessionData & {
   session: NonNullable<SidebarSessionData["session"]>
@@ -38,7 +43,7 @@ export const Route = createRootRoute({
       },
       {
         name: "apple-mobile-web-app-title",
-        content: "Luvachat",
+        content: siteTitle,
       },
       {
         name: "apple-mobile-web-app-capable",
@@ -59,7 +64,55 @@ export const Route = createRootRoute({
         media: "(prefers-color-scheme: dark)",
       },
       {
-        title: "Luvachat",
+        name: "description",
+        content: siteDescription,
+      },
+      {
+        title: siteTitle,
+      },
+      {
+        property: "og:type",
+        content: "website",
+      },
+      {
+        property: "og:title",
+        content: siteTitle,
+      },
+      {
+        property: "og:description",
+        content: siteDescription,
+      },
+      {
+        property: "og:url",
+        content: siteUrl,
+      },
+      {
+        property: "og:site_name",
+        content: siteTitle,
+      },
+      {
+        property: "og:image",
+        content: siteImageUrl,
+      },
+      {
+        property: "og:image:alt",
+        content: "Luvachat app icon",
+      },
+      {
+        name: "twitter:card",
+        content: "summary",
+      },
+      {
+        name: "twitter:title",
+        content: siteTitle,
+      },
+      {
+        name: "twitter:description",
+        content: siteDescription,
+      },
+      {
+        name: "twitter:image",
+        content: siteImageUrl,
       },
     ],
     links: [
