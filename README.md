@@ -7,6 +7,8 @@
 💬 Rich text messages, emoji reactions, file attachments, and push notifications.<br>
 ❤️ Open source and self-hostable on Luvabase and Cloudflare.<br>
 
+![Screenshot](./screenshot.png)
+
 ## What is Luvachat?
 
 Luvachat is your self-hostable team chat app. Think Slack, but smaller and built for teams that want workspace messaging they can run themselves. It includes channels, direct conversations, threaded replies, activity, message search, rich text, and attachments.
