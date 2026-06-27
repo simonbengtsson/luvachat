@@ -30,7 +30,7 @@ bun run dev
 
 ### Cloudflare
 
-When you deploy to Cloudflare Luvachat will run in demo mode by default. To change into production, start with restricting access to the worker and then configure the below worker env variables.
+When you deploy to Cloudflare Luvachat will run in demo mode by default. To change into production, start with restricting access to the worker and then configure the below worker env variables. Instead of managing each member in the cloudflare access policy editor you can set it to allow "everyone" since only members listed in the members json will be allowed access anyway.
 
 AUD and JWKs URL will be shown to you when you restrict access and members should be manually be kept up to date. For a user to be able to use the app their email must match an email in the members list.
 
