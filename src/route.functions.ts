@@ -31,6 +31,7 @@ export const getSidebarSession = createServerFn({ method: "GET" }).handler(
       return {
         session,
         deploymentMode,
+        logoutUrl: getLogoutUrl(deploymentMode),
         luvabaseAdminUrl:
           runtimeEnv.LUVABASE_POD_ADMIN_URL ||
           null,
@@ -44,6 +45,7 @@ export const getSidebarSession = createServerFn({ method: "GET" }).handler(
       return {
         session: null,
         deploymentMode,
+        logoutUrl: getLogoutUrl(deploymentMode),
         luvabaseAdminUrl:
           runtimeEnv.LUVABASE_POD_ADMIN_URL ||
           null,
@@ -83,6 +85,16 @@ export const switchDevUser = createServerFn({ method: "POST" })
       sameSite: "lax",
     })
   })
+
+function getLogoutUrl(
+  deploymentMode: ReturnType<typeof getDeploymentMode>,
+): string | null {
+  if (deploymentMode === "cloudflare") {
+    return "/cdn-cgi/access/logout"
+  }
+
+  return null
+}
 
 function getRuntimeEnv(): CloudflareAccessEnv & RuntimeEnv & { LUVABASE_POD_ADMIN_URL?: string } {
   const env = workerEnv as CloudflareAccessEnv & RuntimeEnv & { LUVABASE_POD_ADMIN_URL?: string }

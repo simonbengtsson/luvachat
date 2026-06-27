@@ -56,6 +56,7 @@ import {
   EllipsisVerticalIcon,
   ExternalLinkIcon,
   HashIcon,
+  LogOutIcon,
   type LucideIcon,
   MessageSquareTextIcon,
   PlusIcon,
@@ -894,6 +895,12 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
                   Luvachat on GitHub
                   <ExternalLinkIcon className="ml-auto opacity-70" />
                 </DropdownMenuItem>
+                {sessionData.logoutUrl ? (
+                  <DropdownMenuItem render={<a href={sessionData.logoutUrl} />}>
+                    Log out
+                    <LogOutIcon className="ml-auto opacity-70" />
+                  </DropdownMenuItem>
+                ) : null}
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarMenuItem>

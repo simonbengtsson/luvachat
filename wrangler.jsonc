@@ -2,6 +2,7 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "luvachat",
 	"workers_dev": true,
+	"preview_urls": false,
 	"compatibility_date": "2026-03-17",
 	"compatibility_flags": [
 		"nodejs_compat"
