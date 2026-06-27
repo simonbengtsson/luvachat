@@ -76,6 +76,8 @@ import {
 } from "./ui/dropdown-menu"
 
 const CHANNEL_NAME_PLACEHOLDER = "Channel name"
+const CLOUDFLARE_README_URL =
+  "https://github.com/simonbengtsson/luvachat#cloudflare"
 
 function sanitizeChannelName(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]/g, "")
@@ -495,6 +497,10 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
     members,
     directConversationsByMemberId,
   )
+  const usesCloudflareMemberManagement =
+    sessionData.deploymentMode === "cloudflare"
+  const canShowAddMember =
+    usesCloudflareMemberManagement || Boolean(sessionData.luvabaseAdminUrl)
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -712,7 +718,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
                 )
               })
             )}
-            {sessionData.luvabaseAdminUrl ? (
+            {canShowAddMember ? (
               <SidebarMenuItem>
                 <Dialog>
                   <DialogTrigger
@@ -728,23 +734,43 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>Add or remove members</DialogTitle>
-                      <DialogDescription>
-                        Workspace members are managed in the Luvabase admin. Use
-                        the admin to add new members or remove existing ones.
-                      </DialogDescription>
+                      {usesCloudflareMemberManagement ? (
+                        <>
+                          <DialogTitle>Update members JSON</DialogTitle>
+                          <DialogDescription>
+                            Cloudflare deployments manage workspace members with
+                            the <code>CF_MEMBERS_JSON</code> worker environment
+                            variable. Update that JSON to add or remove members.
+                          </DialogDescription>
+                        </>
+                      ) : (
+                        <>
+                          <DialogTitle>Add or remove members</DialogTitle>
+                          <DialogDescription>
+                            Workspace members are managed in the Luvabase admin.
+                            Use the admin to add new members or remove existing
+                            ones.
+                          </DialogDescription>
+                        </>
+                      )}
                     </DialogHeader>
                     <DialogFooter showCloseButton>
                       <Button
                         render={
                           <a
-                            href={sessionData.luvabaseAdminUrl}
+                            href={
+                              usesCloudflareMemberManagement
+                                ? CLOUDFLARE_README_URL
+                                : sessionData.luvabaseAdminUrl!
+                            }
                             target="_blank"
                             rel="noreferrer"
                           />
                         }
                       >
-                        Open Luvabase Admin
+                        {usesCloudflareMemberManagement
+                          ? "Open setup guide"
+                          : "Open Luvabase Admin"}
                         <ExternalLinkIcon />
                       </Button>
                     </DialogFooter>
