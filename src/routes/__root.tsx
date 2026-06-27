@@ -26,6 +26,7 @@ type ReadySidebarSessionData = SidebarSessionData & {
 }
 
 export const Route = createRootRoute({
+  errorComponent: GlobalErrorPage,
   head: () => ({
     meta: [
       {

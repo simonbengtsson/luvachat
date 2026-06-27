@@ -1,8 +1,10 @@
 import { GlobalStatusPage } from "@/components/GlobalStatusPage"
+import { Button } from "@/components/ui/button"
 import { isCloudflareAccessConfigError } from "@/core/cloudflareAccess"
-import { AlertCircleIcon } from "lucide-react"
+import type { ErrorComponentProps } from "@tanstack/react-router"
+import { AlertCircleIcon, RefreshCcwIcon } from "lucide-react"
 
-type GlobalErrorPageProps = {
+type GlobalErrorPageProps = Omit<Partial<ErrorComponentProps>, "error"> & {
   cloudflareAccessMessage?: string
   error?: unknown
 }
@@ -10,6 +12,7 @@ type GlobalErrorPageProps = {
 export function GlobalErrorPage({
   cloudflareAccessMessage,
   error,
+  reset,
 }: GlobalErrorPageProps) {
   const isCloudflareAccessError = isCloudflareAccessConfigError(error)
   const message =
@@ -27,6 +30,15 @@ export function GlobalErrorPage({
       }
       message={message}
       icon={<AlertCircleIcon />}
+      action={
+        reset ? (
+          <Button variant="outline" onClick={reset}>
+            <RefreshCcwIcon />
+            Try again
+          </Button>
+        ) : null
+      }
+      showHeader={false}
     />
   )
 }
