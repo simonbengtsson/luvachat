@@ -30,13 +30,15 @@ bun run dev
 
 ### Cloudflare
 
-When you deploy to Cloudflare Luvachat will run in demo mode by default. To change into production, start with restricting access to the worker and then configure the below worker env variables. Instead of managing each member in the cloudflare access policy editor you can set it to allow "everyone" since only members listed in the members json will be allowed access anyway.
+When you deploy to Cloudflare Luvachat will run in demo mode by default. To change into production, start with restricting access to the worker and then configure the below worker env variables.
 
-AUD and JWKs URL will be shown to you when you restrict access and members should be manually be kept up to date. For a user to be able to use the app their email must match an email in the members list.
+To restrict access to a worker the easiest way is to go to the worker in the Cloudflare dashboard -> domains -> click Public and change to Restricted. This will show the AUD and JWKS url that you can then copy and add as env variables together with the members json. For a Cloudflare Access user to be able to use the app their email must match an email in the members list.
 
-- `CF_ACCESS_AUD`: the Access application audience tag
-- `CF_ACCESS_JWKS_URL`: your Access JWKS URL, for example `https://your-team.cloudflareaccess.com/cdn-cgi/access/certs`
-- `CF_MEMBERS_JSON`: the workspace members as JSON.
+By default when restricting access to a worker it is only allowing the currently logged in Cloudflare user. Click Manage policy to update this and the easiest is to set the policy to allow "everyone" since only members listed in the members json will be allowed access anyway.
+
+- `CF_ACCESS_AUD`: The Cloudflare Access application audience tag
+- `CF_ACCESS_JWKS_URL`: The Cloudflare Access JWKS URL`
+- `CF_MEMBERS_JSON`: the workspace members as JSON. Example:
 
 ```json
 [
