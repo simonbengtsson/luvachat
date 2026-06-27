@@ -20,6 +20,11 @@ import {
 import { useEffect } from "react"
 import appCss from "../styles.css?url"
 
+type SidebarSessionData = Awaited<ReturnType<typeof getSidebarSession>>
+type ReadySidebarSessionData = SidebarSessionData & {
+  session: NonNullable<SidebarSessionData["session"]>
+}
+
 export const Route = createRootRoute({
   head: () => ({
     meta: [
@@ -139,16 +144,26 @@ function AppShellFrame({ children }: { children: React.ReactNode }) {
     queryKey: ["sidebar-session"],
     queryFn: () => getSidebarSession(),
   })
-  const isDemoMode = sessionQuery.data?.deploymentMode === "demo"
+  const sessionData = sessionQuery.data
+  const hasSession = Boolean(sessionData?.session)
+  const isDemoMode = hasSession && sessionData?.deploymentMode === "demo"
 
   if (sessionQuery.error) {
     return <GlobalErrorPage error={sessionQuery.error} />
   }
 
+  if (sessionData?.setupError) {
+    return (
+      <GlobalErrorPage
+        cloudflareAccessMessage={sessionData.setupError}
+      />
+    )
+  }
+
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-sidebar">
-      {isDemoMode && sessionQuery.data ? (
-        <DemoModeBanner sessionData={sessionQuery.data} />
+      {isDemoMode && sessionData?.session ? (
+        <DemoModeBanner sessionData={sessionData} />
       ) : null}
       <SidebarProvider
         className="min-h-0 flex-1"
@@ -175,7 +190,7 @@ function AppShellFrame({ children }: { children: React.ReactNode }) {
 function DemoModeBanner({
   sessionData,
 }: {
-  sessionData: Awaited<ReturnType<typeof getSidebarSession>>
+  sessionData: ReadySidebarSessionData
 }) {
   const membersQuery = useWorkspaceMembers()
   const members = membersQuery.data

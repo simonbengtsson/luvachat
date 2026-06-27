@@ -1,4 +1,7 @@
-import type { CloudflareAccessEnv } from "@/core/cloudflareAccess"
+import {
+  isCloudflareAccessConfigError,
+  type CloudflareAccessEnv,
+} from "@/core/cloudflareAccess"
 import {
   DEV_USER_COOKIE_NAME,
   getDeploymentMode,
@@ -23,14 +26,34 @@ export const getSidebarSession = createServerFn({ method: "GET" }).handler(
     const request = getRequest()
     const runtimeEnv = getRuntimeEnv()
     const deploymentMode = getDeploymentMode(request, runtimeEnv)
-    const session = await getLuvaSession(request, runtimeEnv)
 
-    return {
-      session,
-      deploymentMode,
-      luvabaseAdminUrl:
-        runtimeEnv.LUVABASE_POD_ADMIN_URL ||
-        null,
+    try {
+      const session = await getLuvaSession(request, runtimeEnv)
+
+      return {
+        session,
+        deploymentMode,
+        luvabaseAdminUrl:
+          runtimeEnv.LUVABASE_POD_ADMIN_URL ||
+          null,
+        setupError: null,
+      }
+    } catch (error) {
+      if (!isCloudflareAccessConfigError(error)) {
+        throw error
+      }
+
+      return {
+        session: null,
+        deploymentMode,
+        luvabaseAdminUrl:
+          runtimeEnv.LUVABASE_POD_ADMIN_URL ||
+          null,
+        setupError:
+          error instanceof Error
+            ? error.message
+            : "Cloudflare Access setup is invalid.",
+      }
     }
   },
 )

@@ -451,7 +451,11 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   const conversations = conversationsQuery.data
   const members = membersQuery.data
 
-  if (!sessionData || !conversations || !members) {
+  if (sessionData?.setupError) {
+    throw new Error(sessionData.setupError)
+  }
+
+  if (!sessionData || !sessionData.session || !conversations || !members) {
     throw new Error("Sidebar data missing")
   }
 

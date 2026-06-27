@@ -3,20 +3,27 @@ import { isCloudflareAccessConfigError } from "@/core/cloudflareAccess"
 import { AlertCircleIcon } from "lucide-react"
 
 type GlobalErrorPageProps = {
+  cloudflareAccessMessage?: string
   error?: unknown
 }
 
-export function GlobalErrorPage({ error }: GlobalErrorPageProps) {
+export function GlobalErrorPage({
+  cloudflareAccessMessage,
+  error,
+}: GlobalErrorPageProps) {
   const isCloudflareAccessError = isCloudflareAccessConfigError(error)
   const message =
-    isCloudflareAccessError && error instanceof Error
+    cloudflareAccessMessage ??
+    (isCloudflareAccessError && error instanceof Error
       ? error.message
-      : "Something went wrong. Please try again."
+      : "Something went wrong. Please try again.")
 
   return (
     <GlobalStatusPage
       title={
-        isCloudflareAccessError ? "Cloudflare Access setup needed" : "Something went wrong"
+        cloudflareAccessMessage || isCloudflareAccessError
+          ? "Cloudflare Access setup needed"
+          : "Something went wrong"
       }
       message={message}
       icon={<AlertCircleIcon />}
