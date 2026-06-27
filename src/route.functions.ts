@@ -29,8 +29,7 @@ export const getSidebarSession = createServerFn({ method: "GET" }).handler(
       session,
       deploymentMode,
       luvabaseAdminUrl:
-        request.headers.get("x-luvabase-pod-url") ||
-        runtimeEnv.LUVABASE_POD_URL ||
+        runtimeEnv.LUVABASE_POD_ADMIN_URL ||
         null,
     }
   },
@@ -67,8 +66,8 @@ export const switchDevUser = createServerFn({ method: "POST" })
     })
   })
 
-function getRuntimeEnv(): CloudflareAccessEnv & RuntimeEnv {
-  const env = workerEnv as CloudflareAccessEnv & RuntimeEnv
+function getRuntimeEnv(): CloudflareAccessEnv & RuntimeEnv & { LUVABASE_POD_ADMIN_URL?: string } {
+  const env = workerEnv as CloudflareAccessEnv & RuntimeEnv & { LUVABASE_POD_ADMIN_URL?: string }
 
   return {
     CF_ACCESS_AUD: env.CF_ACCESS_AUD ?? process.env["CF_ACCESS_AUD"],
@@ -89,5 +88,7 @@ function getRuntimeEnv(): CloudflareAccessEnv & RuntimeEnv {
       process.env["LUVABASE_POD_UPDATED_AT"],
     LUVABASE_POD_SECRET:
       env.LUVABASE_POD_SECRET ?? process.env["LUVABASE_POD_SECRET"],
-  } as CloudflareAccessEnv & RuntimeEnv
+    LUVABASE_POD_ADMIN_URL:
+      env.LUVABASE_POD_ADMIN_URL ?? process.env["LUVABASE_POD_ADMIN_URL"],
+  } as CloudflareAccessEnv & RuntimeEnv & { LUVABASE_POD_ADMIN_URL?: string }
 }

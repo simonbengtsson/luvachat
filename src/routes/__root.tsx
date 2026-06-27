@@ -177,12 +177,9 @@ function DemoModeBanner({
 
   return (
     <div className="min-h-10 w-full shrink-0 border-b border-white/20 bg-[#f39c12] px-4 py-1.5 text-sm leading-5 text-white">
-      <div className="flex flex-wrap items-center">
+      <div className="flex flex-wrap items-center gap-1">
         <span className="font-medium">Demo mode.</span>{" "}
-        <span>
-          This deployment is not connected to Luvabase or Cloudflare
-          Access.{" "}
-        </span>
+        <span>Not connected to Cloudflare Access. </span>
         <a
           className="font-medium text-white underline underline-offset-2 hover:text-white/90"
           href="https://github.com/simonbengtsson/luvachat#cloudflare-access"

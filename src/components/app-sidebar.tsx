@@ -1,4 +1,14 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import {
   Sidebar,
   SidebarContent,
@@ -46,7 +56,6 @@ import {
   EllipsisVerticalIcon,
   ExternalLinkIcon,
   HashIcon,
-  LogOutIcon,
   type LucideIcon,
   MessageSquareTextIcon,
   PlusIcon,
@@ -699,6 +708,46 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
                 )
               })
             )}
+            {sessionData.luvabaseAdminUrl ? (
+              <SidebarMenuItem>
+                <Dialog>
+                  <DialogTrigger
+                    render={
+                      <SidebarMenuButton
+                        closeOnClick={false}
+                        className="text-sidebar-foreground/70"
+                      />
+                    }
+                  >
+                    <PlusIcon className="text-sidebar-foreground/70" />
+                    <span>Add member</span>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Add or remove members</DialogTitle>
+                      <DialogDescription>
+                        Workspace members are managed in the Luvabase admin. Use
+                        the admin to add new members or remove existing ones.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter showCloseButton>
+                      <Button
+                        render={
+                          <a
+                            href={sessionData.luvabaseAdminUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                          />
+                        }
+                      >
+                        Open Luvabase Admin
+                        <ExternalLinkIcon />
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </SidebarMenuItem>
+            ) : null}
           </SidebarMenu>
         </SidebarGroup>
         <SidebarGroup className="mt-auto">
@@ -803,9 +852,17 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
                 align="end"
                 sideOffset={4}
               >
-                <DropdownMenuItem>
-                  <LogOutIcon />
-                  Log out
+                <DropdownMenuItem
+                  render={
+                    <a
+                      href="https://github.com/simonbengtsson/luvachat"
+                      target="_blank"
+                      rel="noreferrer"
+                    />
+                  }
+                >
+                  Luvachat on GitHub
+                  <ExternalLinkIcon className="ml-auto opacity-70" />
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

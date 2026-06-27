@@ -9,15 +9,16 @@ import {
   conversationsTable,
   messagesTable,
   pushSubscriptionsTable,
+  type Conversation,
   type PushSubscriptionRecord,
 } from "../../schema"
 import type { OrpcContext } from "../context"
 
-async function listThreadParticipantUserIds(
+async function listThreadPushRecipientUserIds(
   context: OrpcContext,
   message: EnrichedMessage,
 ): Promise<string[]> {
-  const threadMessageId = message.threadRootMessageId ?? message.id
+  const threadMessageId = message.threadRootMessageId!
   const participants = await context.db
     .select({
       userId: messagesTable.userId,
@@ -37,6 +38,58 @@ async function listThreadParticipantUserIds(
     .orderBy(asc(messagesTable.userId))
 
   return participants.map((participant) => participant.userId)
+}
+
+async function listChannelPushRecipientUserIds(
+  context: OrpcContext,
+  message: EnrichedMessage,
+): Promise<string[]> {
+  const recipients = await context.db
+    .select({
+      userId: pushSubscriptionsTable.userId,
+    })
+    .from(pushSubscriptionsTable)
+    .where(sql`${pushSubscriptionsTable.userId} <> ${message.userId}`)
+    .groupBy(pushSubscriptionsTable.userId)
+    .orderBy(asc(pushSubscriptionsTable.userId))
+
+  return recipients.map((recipient) => recipient.userId)
+}
+
+async function listConversationMemberPushRecipientUserIds(
+  context: OrpcContext,
+  message: EnrichedMessage,
+): Promise<string[]> {
+  const recipients = await context.db
+    .select({
+      userId: conversationMembersTable.userId,
+    })
+    .from(conversationMembersTable)
+    .where(
+      and(
+        eq(conversationMembersTable.conversationId, message.conversationId),
+        sql`${conversationMembersTable.userId} <> ${message.userId}`,
+      ),
+    )
+    .orderBy(asc(conversationMembersTable.userId))
+
+  return recipients.map((recipient) => recipient.userId)
+}
+
+async function listPushRecipientUserIds(
+  context: OrpcContext,
+  message: EnrichedMessage,
+  conversation: Conversation,
+): Promise<string[]> {
+  if (message.threadRootMessageId) {
+    return listThreadPushRecipientUserIds(context, message)
+  }
+
+  if (conversation.type === "channel") {
+    return listChannelPushRecipientUserIds(context, message)
+  }
+
+  return listConversationMemberPushRecipientUserIds(context, message)
 }
 
 async function listPushSubscriptionsByUserIds(
@@ -133,9 +186,20 @@ export async function sendPushNotifications(
   context: OrpcContext,
   message: EnrichedMessage,
 ): Promise<void> {
-  const participantUserIds = await listThreadParticipantUserIds(
+  const conversation = await context.db
+    .select()
+    .from(conversationsTable)
+    .where(eq(conversationsTable.id, message.conversationId))
+    .limit(1)
+  const currentConversation = conversation[0]
+  if (!currentConversation) {
+    return
+  }
+
+  const participantUserIds = await listPushRecipientUserIds(
     context,
     message,
+    currentConversation,
   )
   const mutedUserIds = await listMutedConversationUserIds(
     context,
@@ -153,17 +217,9 @@ export async function sendPushNotifications(
     return
   }
 
-  const conversation = await context.db
-    .select({
-      name: conversationsTable.name,
-    })
-    .from(conversationsTable)
-    .where(eq(conversationsTable.id, message.conversationId))
-    .limit(1)
-
   const payload = buildPushNotificationPayload(
     message,
-    conversation[0]?.name ?? null,
+    currentConversation.name,
   )
 
   await Promise.allSettled(
