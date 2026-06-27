@@ -1,4 +1,5 @@
 import { AppShellErrorBoundary } from "@/components/AppShellErrorBoundary"
+import { GlobalErrorPage } from "@/components/GlobalErrorPage"
 import { GlobalNotFoundPage } from "@/components/GlobalNotFoundPage"
 import { AppCommand } from "@/components/app-command"
 import { AppSidebar } from "@/components/app-sidebar"
@@ -139,6 +140,10 @@ function AppShellFrame({ children }: { children: React.ReactNode }) {
     queryFn: () => getSidebarSession(),
   })
   const isDemoMode = sessionQuery.data?.deploymentMode === "demo"
+
+  if (sessionQuery.error) {
+    return <GlobalErrorPage error={sessionQuery.error} />
+  }
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-sidebar">

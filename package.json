@@ -5,6 +5,19 @@
   "imports": {
     "#/*": "./src/*"
   },
+  "cloudflare": {
+    "bindings": {
+      "CF_ACCESS_AUD": {
+        "description": "The Cloudflare Access application audience tag. See readme."
+      },
+      "CF_ACCESS_JWKS_URL": {
+        "description": "The Cloudflare Access JWKS URL. See readme."
+      },
+      "CF_MEMBERS_JSON": {
+        "description": "The workspace member directory (json array of objects with email, name, and imageUrl). See readme."
+      }
+    }
+  },
   "scripts": {
     "submit": "bun run bundle && bun run copy:bundle && open https://luvabase.com/dash/submit-app",
     "copy:bundle": "osascript -e \"set the clipboard to (POSIX file \\\"$(realpath app.luva)\\\")\"",
@@ -12,11 +25,10 @@
     "d:gen": "drizzle-kit generate",
     "dev": "vite dev --port 3000 --host",
     "build": "vite build",
-    "preview": "bun run build && vite preview",
     "test": "vitest run",
     "check": "bunx tsc --noEmit",
     "deploy:cf": "bun run build && wrangler deploy",
-    "deploy": "luvabase deploy",
+    "deploy:lv": "luvabase deploy",
     "types": "wrangler types"
   },
   "dependencies": {

@@ -28,25 +28,25 @@ bun install
 bun run dev
 ```
 
-### Cloudflare Access
+### Cloudflare
 
-When running directly on Cloudflare, put the Worker behind a Cloudflare Access application and configure these Worker env variables:
+When you deploy to Cloudflare Luvachat will run in demo mode by default. To change into production, start with restricting access to the worker and then configure the below worker env variables.
 
-- `CF_ACCESS_TEAM_DOMAIN`: your Access team domain, for example `https://your-team.cloudflareaccess.com`
+AUD and JWKs URL will be shown to you when you restrict access and members should be manually be kept up to date. For a user to be able to use the app their email must match an email in the members list.
+
 - `CF_ACCESS_AUD`: the Access application audience tag
-- `MEMBERS_JSON`: the workspace member directory as JSON
-
-You can update `MEMBERS_JSON` to add/remove members, but you need to redeploy the worker for changes to take affect.
+- `CF_ACCESS_JWKS_URL`: your Access JWKS URL, for example `https://your-team.cloudflareaccess.com/cdn-cgi/access/certs`
+- `CF_MEMBERS_JSON`: the workspace members as JSON.
 
 ```json
 [
   {
-    "id": "alice@example.com",
+    "email": "alice@example.com",
     "name": "Alice Andersson",
     "imageUrl": "https://example.com/alice.png"
   },
   {
-    "id": "bob@example.com",
+    "email": "bob@example.com",
     "name": "Bob Berg",
     "imageUrl": null
   }

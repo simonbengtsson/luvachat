@@ -7,6 +7,7 @@ type AppShellErrorBoundaryProps = {
 }
 
 type AppShellErrorBoundaryState = {
+  error: unknown
   hasError: boolean
   resetKey: string
 }
@@ -16,6 +17,7 @@ export class AppShellErrorBoundary extends Component<
   AppShellErrorBoundaryState
 > {
   state: AppShellErrorBoundaryState = {
+    error: null,
     hasError: false,
     resetKey: this.props.resetKey,
   }
@@ -26,6 +28,7 @@ export class AppShellErrorBoundary extends Component<
   ) {
     if (state.hasError && state.resetKey !== props.resetKey) {
       return {
+        error: null,
         hasError: false,
         resetKey: props.resetKey,
       }
@@ -40,15 +43,16 @@ export class AppShellErrorBoundary extends Component<
     return null
   }
 
-  static getDerivedStateFromError() {
+  static getDerivedStateFromError(error: unknown) {
     return {
+      error,
       hasError: true,
     }
   }
 
   render() {
     if (this.state.hasError) {
-      return <GlobalErrorPage />
+      return <GlobalErrorPage error={this.state.error} />
     }
 
     return this.props.children

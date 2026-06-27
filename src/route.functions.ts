@@ -71,9 +71,9 @@ function getRuntimeEnv(): CloudflareAccessEnv & RuntimeEnv & { LUVABASE_POD_ADMI
 
   return {
     CF_ACCESS_AUD: env.CF_ACCESS_AUD ?? process.env["CF_ACCESS_AUD"],
-    CF_ACCESS_TEAM_DOMAIN:
-      env.CF_ACCESS_TEAM_DOMAIN ?? process.env["CF_ACCESS_TEAM_DOMAIN"],
-    MEMBERS_JSON: env.MEMBERS_JSON ?? process.env["MEMBERS_JSON"],
+    CF_ACCESS_JWKS_URL:
+      env.CF_ACCESS_JWKS_URL ?? process.env["CF_ACCESS_JWKS_URL"],
+    CF_MEMBERS_JSON: env.CF_MEMBERS_JSON ?? process.env["CF_MEMBERS_JSON"],
     LUVABASE_RUNTIME_VERSION:
       env.LUVABASE_RUNTIME_VERSION ??
       process.env["LUVABASE_RUNTIME_VERSION"],
