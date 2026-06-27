@@ -154,11 +154,7 @@ function AppShellFrame({ children }: { children: React.ReactNode }) {
   }
 
   if (sessionData?.setupError) {
-    return (
-      <GlobalErrorPage
-        cloudflareAccessMessage={sessionData.setupError}
-      />
-    )
+    return <GlobalErrorPage appError={sessionData.setupError} />
   }
 
   return (
@@ -203,7 +199,7 @@ function DemoModeBanner({
         <span>Not connected to Cloudflare Access. </span>
         <a
           className="font-medium text-white underline underline-offset-2 hover:text-white/90"
-          href="https://github.com/simonbengtsson/luvachat#cloudflare-access"
+          href="https://github.com/simonbengtsson/luvachat#cloudflare"
           target="_blank"
           rel="noreferrer"
         >

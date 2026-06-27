@@ -452,7 +452,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   const members = membersQuery.data
 
   if (sessionData?.setupError) {
-    throw new Error(sessionData.setupError)
+    throw new Error(sessionData.setupError.message)
   }
 
   if (!sessionData || !sessionData.session || !conversations || !members) {

@@ -1,7 +1,5 @@
-import {
-  isCloudflareAccessConfigError,
-  type CloudflareAccessEnv,
-} from "@/core/cloudflareAccess"
+import { getAppErrorView, isAppError } from "@/core/appError"
+import type { CloudflareAccessEnv } from "@/core/cloudflareAccess"
 import {
   DEV_USER_COOKIE_NAME,
   getDeploymentMode,
@@ -39,7 +37,7 @@ export const getSidebarSession = createServerFn({ method: "GET" }).handler(
         setupError: null,
       }
     } catch (error) {
-      if (!isCloudflareAccessConfigError(error)) {
+      if (!isAppError(error)) {
         throw error
       }
 
@@ -49,10 +47,7 @@ export const getSidebarSession = createServerFn({ method: "GET" }).handler(
         luvabaseAdminUrl:
           runtimeEnv.LUVABASE_POD_ADMIN_URL ||
           null,
-        setupError:
-          error instanceof Error
-            ? error.message
-            : "Cloudflare Access setup is invalid.",
+        setupError: getAppErrorView(error),
       }
     }
   },

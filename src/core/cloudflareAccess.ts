@@ -1,4 +1,5 @@
 import type { Member } from "luvabase/runtime"
+import { AppError } from "./appError"
 
 export type CloudflareAccessSession = {
   id: string
@@ -12,28 +13,27 @@ export type CloudflareAccessEnv = Cloudflare.Env & {
   CF_MEMBERS_JSON?: string
 }
 
-const MISSING_CF_MEMBERS_JSON_MESSAGE =
-  "Cloudflare Access is configured, but CF_MEMBERS_JSON is missing."
-const MISSING_CF_ACCESS_AUD_MESSAGE =
-  "Cloudflare Access is configured, but CF_ACCESS_AUD is missing."
-const MISSING_CF_ACCESS_JWKS_URL_MESSAGE =
-  "Cloudflare Access is configured, but CF_ACCESS_JWKS_URL is missing."
-const MISSING_CF_ACCESS_JWT_MESSAGE =
-  "Cloudflare Access is configured, but the request is missing the cf-access-jwt-assertion header."
-
-export class CloudflareAccessConfigError extends Error {
-  constructor(message: string) {
-    super(message)
-    this.name = "CloudflareAccessConfigError"
-  }
+function createCloudflareAccessSetupError(): AppError {
+  return new AppError({
+    action: {
+      href: "https://github.com/simonbengtsson/luvachat#cloudflare",
+      label: "Read more",
+    },
+    message:
+      "Cloudflare Access is configured, but required environment variables are missing or invalid.",
+    title: "Cloudflare Access setup needed",
+  })
 }
 
-export function isCloudflareAccessConfigError(error: unknown): boolean {
-  return (
-    error instanceof CloudflareAccessConfigError ||
-    (error instanceof Error &&
-      (error.name === "CloudflareAccessConfigError"))
-  )
+function createCloudflareAccessMemberError(email: string): AppError {
+  return new AppError({
+    action: {
+      href: "https://github.com/simonbengtsson/luvachat#cloudflare",
+      label: "Read more",
+    },
+    message: `You signed in as ${email}, but that email is not included as a member.`,
+    title: "Cloudflare Access setup needed",
+  })
 }
 
 type CloudflareAccessJwtHeader = {
@@ -87,22 +87,18 @@ export async function getCloudflareAccessSession(
 
   const token = request.headers.get("cf-access-jwt-assertion")
   if (!token) {
-    throw new CloudflareAccessConfigError(MISSING_CF_ACCESS_JWT_MESSAGE)
+    throw createCloudflareAccessSetupError()
   }
 
   const payload = await verifyCloudflareAccessJwt(token, env)
   if (!payload.email) {
-    throw new CloudflareAccessConfigError(
-      "Cloudflare Access did not include an email claim.",
-    )
+    throw createCloudflareAccessSetupError()
   }
 
   const matchingMember = members.find((member) => member.id === payload.email)
 
   if (!matchingMember) {
-    throw new CloudflareAccessConfigError(
-      `You signed in as ${payload.email}, but that email is not listed in CF_MEMBERS_JSON.`,
-    )
+    throw createCloudflareAccessMemberError(payload.email)
   }
 
   return {
@@ -115,25 +111,23 @@ export async function getCloudflareAccessSession(
 export function getCloudflareAccessMembers(env: CloudflareAccessEnv): Member[] {
   const membersJson = env.CF_MEMBERS_JSON
   if (!membersJson) {
-    throw new CloudflareAccessConfigError(MISSING_CF_MEMBERS_JSON_MESSAGE)
+    throw createCloudflareAccessSetupError()
   }
 
   let parsed: unknown
   try {
     parsed = JSON.parse(membersJson)
   } catch {
-    throw new CloudflareAccessConfigError("CF_MEMBERS_JSON is not valid JSON.")
+    throw createCloudflareAccessSetupError()
   }
 
   if (!Array.isArray(parsed)) {
-    throw new CloudflareAccessConfigError("CF_MEMBERS_JSON must be an array.")
+    throw createCloudflareAccessSetupError()
   }
 
   return parsed.map((member) => {
     if (!isCloudflareAccessMemberInput(member)) {
-      throw new CloudflareAccessConfigError(
-        "Each CF_MEMBERS_JSON member must include an email.",
-      )
+      throw createCloudflareAccessSetupError()
     }
 
     return {
@@ -160,7 +154,7 @@ function isCloudflareAccessMemberInput(
 
 function validateCloudflareAccessSettings(env: CloudflareAccessEnv): void {
   if (!env.CF_ACCESS_AUD) {
-    throw new CloudflareAccessConfigError(MISSING_CF_ACCESS_AUD_MESSAGE)
+    throw createCloudflareAccessSetupError()
   }
 
   getCloudflareAccessJwksUrl(env)
@@ -237,28 +231,22 @@ function getCloudflareAccessJwks(jwksUrl: string): Promise<Jwks> {
   const request = fetch(jwksUrl)
     .then(async (response) => {
       if (!response.ok) {
-        throw new CloudflareAccessConfigError(
-          "CF_ACCESS_JWKS_URL did not return Cloudflare Access keys.",
-        )
+        throw createCloudflareAccessSetupError()
       }
 
       const jwks = (await response.json()) as Jwks
       if (!Array.isArray(jwks.keys)) {
-        throw new CloudflareAccessConfigError(
-          "CF_ACCESS_JWKS_URL did not return Cloudflare Access keys.",
-        )
+        throw createCloudflareAccessSetupError()
       }
 
       return jwks
     })
     .catch((error: unknown) => {
-      if (error instanceof CloudflareAccessConfigError) {
+      if (error instanceof AppError) {
         throw error
       }
 
-      throw new CloudflareAccessConfigError(
-        "CF_ACCESS_JWKS_URL did not return Cloudflare Access keys.",
-      )
+      throw createCloudflareAccessSetupError()
     })
   jwksCache.set(jwksUrl, request)
   return request
@@ -267,15 +255,13 @@ function getCloudflareAccessJwks(jwksUrl: string): Promise<Jwks> {
 function getCloudflareAccessJwksUrl(env: CloudflareAccessEnv): string {
   const jwksUrl = env.CF_ACCESS_JWKS_URL
   if (!jwksUrl) {
-    throw new CloudflareAccessConfigError(MISSING_CF_ACCESS_JWKS_URL_MESSAGE)
+    throw createCloudflareAccessSetupError()
   }
 
   try {
     return new URL(jwksUrl).toString()
   } catch {
-    throw new CloudflareAccessConfigError(
-      "CF_ACCESS_JWKS_URL must be a valid URL.",
-    )
+    throw createCloudflareAccessSetupError()
   }
 }
 

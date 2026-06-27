@@ -1,37 +1,41 @@
 import { GlobalStatusPage } from "@/components/GlobalStatusPage"
-import { Button } from "@/components/ui/button"
-import { isCloudflareAccessConfigError } from "@/core/cloudflareAccess"
+import { Button, buttonVariants } from "@/components/ui/button"
+import { getAppErrorView, isAppError, type AppErrorView } from "@/core/appError"
 import type { ErrorComponentProps } from "@tanstack/react-router"
-import { AlertCircleIcon, RefreshCcwIcon } from "lucide-react"
+import { AlertCircleIcon, ExternalLinkIcon, RefreshCcwIcon } from "lucide-react"
 
 type GlobalErrorPageProps = Omit<Partial<ErrorComponentProps>, "error"> & {
-  cloudflareAccessMessage?: string
+  appError?: AppErrorView | null
   error?: unknown
 }
 
 export function GlobalErrorPage({
-  cloudflareAccessMessage,
+  appError,
   error,
   reset,
 }: GlobalErrorPageProps) {
-  const isCloudflareAccessError = isCloudflareAccessConfigError(error)
-  const message =
-    cloudflareAccessMessage ??
-    (isCloudflareAccessError && error instanceof Error
-      ? error.message
-      : "Something went wrong. Please try again.")
+  const appErrorView = appError ??
+    (isAppError(error) ? getAppErrorView(error) : null)
+  const message = appErrorView?.message ??
+    "Something went wrong. Please try again."
 
   return (
     <GlobalStatusPage
-      title={
-        cloudflareAccessMessage || isCloudflareAccessError
-          ? "Cloudflare Access setup needed"
-          : "Something went wrong"
-      }
+      title={appErrorView?.title ?? "Something went wrong"}
       message={message}
       icon={<AlertCircleIcon />}
       action={
-        reset ? (
+        appErrorView?.action ? (
+          <a
+            className={buttonVariants({ variant: "outline" })}
+            href={appErrorView.action.href}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <ExternalLinkIcon />
+            {appErrorView.action.label}
+          </a>
+        ) : reset ? (
           <Button variant="outline" onClick={reset}>
             <RefreshCcwIcon />
             Try again
