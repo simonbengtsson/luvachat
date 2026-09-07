@@ -9,35 +9,20 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as ThreadsRouteImport } from './routes/threads'
-import { Route as SearchRouteImport } from './routes/search'
-import { Route as NewRouteImport } from './routes/new'
-import { Route as McpRouteImport } from './routes/mcp'
-import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as NewReplyRouteImport } from './routes/new.reply'
-import { Route as CConversationIdRouteImport } from './routes/c.$conversationId'
+import { Route as ActivityRouteImport } from './routes/activity'
+import { Route as McpRouteImport } from './routes/mcp'
+import { Route as NewRouteImport } from './routes/new'
+import { Route as SearchRouteImport } from './routes/search'
+import { Route as ThreadsRouteImport } from './routes/threads'
 import { Route as AssetsSplatRouteImport } from './routes/assets.$'
+import { Route as CConversationIdRouteImport } from './routes/c.$conversationId'
+import { Route as NewReplyRouteImport } from './routes/new.reply'
 import { Route as CConversationIdReplyRouteImport } from './routes/c.$conversationId.reply'
 
-const ThreadsRoute = ThreadsRouteImport.update({
-  id: '/threads',
-  path: '/threads',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SearchRoute = SearchRouteImport.update({
-  id: '/search',
-  path: '/search',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const NewRoute = NewRouteImport.update({
-  id: '/new',
-  path: '/new',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const McpRoute = McpRouteImport.update({
-  id: '/mcp',
-  path: '/mcp',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ActivityRoute = ActivityRouteImport.update({
@@ -45,25 +30,40 @@ const ActivityRoute = ActivityRouteImport.update({
   path: '/activity',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
-const NewReplyRoute = NewReplyRouteImport.update({
-  id: '/reply',
-  path: '/reply',
-  getParentRoute: () => NewRoute,
+const NewRoute = NewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const CConversationIdRoute = CConversationIdRouteImport.update({
-  id: '/c/$conversationId',
-  path: '/c/$conversationId',
+const SearchRoute = SearchRouteImport.update({
+  id: '/search',
+  path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ThreadsRoute = ThreadsRouteImport.update({
+  id: '/threads',
+  path: '/threads',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AssetsSplatRoute = AssetsSplatRouteImport.update({
   id: '/assets/$',
   path: '/assets/$',
   getParentRoute: () => rootRouteImport,
+} as any)
+const CConversationIdRoute = CConversationIdRouteImport.update({
+  id: '/c/$conversationId',
+  path: '/c/$conversationId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NewReplyRoute = NewReplyRouteImport.update({
+  id: '/reply',
+  path: '/reply',
+  getParentRoute: () => NewRoute,
 } as any)
 const CConversationIdReplyRoute = CConversationIdReplyRouteImport.update({
   id: '/reply',
@@ -160,32 +160,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/threads': {
-      id: '/threads'
-      path: '/threads'
-      fullPath: '/threads'
-      preLoaderRoute: typeof ThreadsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/search': {
-      id: '/search'
-      path: '/search'
-      fullPath: '/search'
-      preLoaderRoute: typeof SearchRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/new': {
-      id: '/new'
-      path: '/new'
-      fullPath: '/new'
-      preLoaderRoute: typeof NewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/mcp': {
-      id: '/mcp'
-      path: '/mcp'
-      fullPath: '/mcp'
-      preLoaderRoute: typeof McpRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/activity': {
@@ -195,25 +174,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ActivityRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/new/reply': {
-      id: '/new/reply'
-      path: '/reply'
-      fullPath: '/new/reply'
-      preLoaderRoute: typeof NewReplyRouteImport
-      parentRoute: typeof NewRoute
+    '/new': {
+      id: '/new'
+      path: '/new'
+      fullPath: '/new'
+      preLoaderRoute: typeof NewRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/c/$conversationId': {
-      id: '/c/$conversationId'
-      path: '/c/$conversationId'
-      fullPath: '/c/$conversationId'
-      preLoaderRoute: typeof CConversationIdRouteImport
+    '/search': {
+      id: '/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/threads': {
+      id: '/threads'
+      path: '/threads'
+      fullPath: '/threads'
+      preLoaderRoute: typeof ThreadsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/assets/$': {
@@ -222,6 +208,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/assets/$'
       preLoaderRoute: typeof AssetsSplatRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/c/$conversationId': {
+      id: '/c/$conversationId'
+      path: '/c/$conversationId'
+      fullPath: '/c/$conversationId'
+      preLoaderRoute: typeof CConversationIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/new/reply': {
+      id: '/new/reply'
+      path: '/reply'
+      fullPath: '/new/reply'
+      preLoaderRoute: typeof NewReplyRouteImport
+      parentRoute: typeof NewRoute
     }
     '/c/$conversationId/reply': {
       id: '/c/$conversationId/reply'
